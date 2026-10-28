@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# afk-loop <index.md> [rounds]: run from the feature worktree after /slice.
+# /build AFK then /final-review AFK, each in a fresh headless session (= /clear), until
+# review.md says PASS, a ticket blocks, a run makes no progress, or rounds (default 3) run out.
+# Prints every session's peak context per agent; logs to ~/.claude/afk-logs/.
+set -u
+idx=$1; rounds=${2:-3}; dir=$(dirname "$idx"); spec=$dir/spec.md
+wf=$(dirname "$0")/wf
+log=~/.claude/afk-logs/$(basename "$(pwd)")-$(date +%Y_%m_%d_%H%M); mkdir -p "$log"
+[ -r "$spec" ] || { echo "no $spec"; exit 2; }
+
+notify() {
+  osascript -e "display notification \"$1\" with title \"afk-loop $(basename "$(pwd)")\"" 2>/dev/null
+  # phone: ntfy app subscribed to the topic in ~/.claude/afk-ntfy-topic (public server, keep it unguessable)
+  [ -s ~/.claude/afk-ntfy-topic ] && curl -s -m 10 -H "Title: afk-loop $(basename "$(pwd)")" -d "$1" \
+    "https://ntfy.sh/$(cat ~/.claude/afk-ntfy-topic)" >/dev/null
+  echo "afk-loop: $1 (logs: $log)"
+}
+
+peaks() { # peak context of session $1 and each of its subagents; flags anything over 100k
+  local f; f=$(find ~/.claude/projects -maxdepth 2 -name "$1.jsonl" | head -1)
+  [ -n "$f" ] || return
+  python3 - "$f" "${f%.jsonl}"/subagents/*.jsonl <<'EOF'
+import json, sys, os
+for f in sys.argv[1:]:
+    if not os.path.exists(f): continue
+    peak = 0
+    for line in open(f):
+        m = json.loads(line).get("message")
+        u = m.get("usage") if isinstance(m, dict) else None
+        if u: peak = max(peak, sum(u.get(k, 0) for k in ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens")))
+    meta = f[:-6] + ".meta.json"
+    who = "lead"
+    if os.path.exists(meta):
+        d = json.load(open(meta)); who = f"{d.get('agentType')}/{d.get('model')}: {d.get('description', '')}"
+    print(f"  {peak // 1000:>4}k{' OVER 100k' if peak > 100_000 else ''}  {who}")
+EOF
+}
+
+n=0
+run() { # one fresh headless session
+  n=$((n + 1)); echo "[$n] $1"
+  # add --disallowedTools <mcp server> for any paid MCP tools you only want called by hand
+  claude -p "$1" --permission-mode auto --settings '{"worktree":{"baseRef":"head"}}' \
+    --output-format json < /dev/null > "$log/$n.json"
+  python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("result", ""))' "$log/$n.json" > "$log/$n.txt" 2>&1
+  peaks "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("session_id", ""))' "$log/$n.json" 2>/dev/null)" | tee -a "$log/peaks.txt"
+}
+
+for ((r = 1; r <= rounds; r++)); do
+  for ((b = 1; b <= 10; b++)); do  # ponytail: 10 build sessions per round, raise for huge indexes
+    front=$("$wf" frontier "$idx"); code=$?
+    [ "$front" = "all done" ] && break
+    # exit 1 with only "doing" left = a crashed session; /build resets those, so run it
+    [ $code -ne 0 ] && echo "$front" | grep -q ' blocked' && { notify "blocked: $(echo "$front" | grep ' blocked' | tr '\n' ' ')"; exit 1; }
+    [ $code -eq 2 ] && { notify "bad index: $front"; exit 1; }
+    before=$(git rev-parse HEAD)
+    run "/build $idx AFK"
+    [ "$(git rev-parse HEAD)" = "$before" ] && { notify "build made no progress, see $log/$n.txt"; exit 1; }
+  done
+  [ "$front" = "all done" ] || { notify "build still unfinished after 10 sessions"; exit 1; }
+  run "/final-review $spec AFK"
+  grep -q '^Verdict: PASS' "$dir/review.md" 2>/dev/null && {
+    notify "PASS. Read the (afk) rulings: $(grep -c '(afk)' "$idx") in $idx"; exit 0; }
+  [ "$("$wf" frontier "$idx")" = "all done" ] && { notify "final-review FAIL with no fix tickets (OPEN items?), see review.md"; exit 1; }
+done
+notify "no PASS after $rounds rounds"; exit 1

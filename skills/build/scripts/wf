@@ -1,0 +1,385 @@
+#!/usr/bin/env bash
+# wf <subcommand> ...: deterministic checks for /spec, /slice, /build, /final-review.
+#   wf frontier <index.md>   todo tickets whose blockers are all done, one id per line.
+#                            None runnable: "all done" (exit 0), or each unfinished ticket
+#                            with its status (exit 1). Malformed index: file:line: problem (exit 2).
+#   wf chains <index.md>     "Chain: T02 > T03 > T04" per chain (/build rule 7): each next ticket's
+#                            blockers all sit earlier in the chain, and every ticket but the last
+#                            has no dependents outside it. Single tickets are not printed.
+#   wf check-plan <index.md>  /slice output is well formed: index has Spec/Branch/Base/Test command;
+#                            ticket ids unique, blockers exist, no cycles; one tickets/<id>-*.md
+#                            per row and no extras; each ticket has Spec, Blocked by (same as the
+#                            index) and every template section with content. Two tickets listing
+#                            the same file must have a blocked-by path between them, unless one is done. Every Delivers
+#                            AC has a ### Tests heading naming it, and Delivers AC lines match
+#                            <index dir>/spec.md word for word (MISSING / DRIFT). One
+#                            file:line: problem per line, exit 1 on any.
+#   wf check-spec <spec.md>   /spec rules: Status draft|approved, Branch, Base, Date; stories US-1, US-2...
+#                            in order; their ACs US-n.AC1, AC2... in order (a letter suffix like AC7b
+#                            may follow AC7); each AC has Given, when, then; no OPEN: once approved;
+#                            Out of Scope and Manual check have content; no file paths (dir/file.ext).
+#                            One file:line: problem per line, exit 1 on any.
+#   wf gate <spec|index.md> [--build|--final]
+#                            Current branch is the file's Branch: and the tree is clean.
+#                            --build: settings allow git, check-red-green.sh and wf (skip in auto or
+#                            bypass mode), and every ignored venv / node_modules / .env is listed in
+#                            .worktreeinclude. --final: every ticket in the index next to it is done.
+#                            One problem per line, exit 1 on any.
+#   wf scope <index.md> [head]
+#                            Files changed in Base...head (default HEAD) that no ticket's Files
+#                            section lists (a listed path ending in / covers everything under it).
+#                            The plan's own folder is exempt. One path per line, exit 1 on any.
+#   wf red <spec.md> [head]   Every spec AC (lettered ones like AC7b too) has a commit whose subject is
+#                            exactly "test(<id>): red" or "test(<id>): guard" in Base..head (Base from the spec, head
+#                            default HEAD). One file:line: problem per AC without one, exit 1 on any.
+#   wf size <index.md> [head] Non-test files changed in Base...head that cross 1000 lines, or were already
+#                            over 1000 and grew by more than 100. One path: before -> after per file, exit 1 on any.
+#   wf set <index.md> <id> todo|doing|"blocked: <reason>"
+#   wf done <index.md> <id> <merge sha>
+#   wf ruling <index.md> "<ticket or stage>: <ruling, why>"
+#                            Edit the index (status cell, or a dated line under ## Rulings) and
+#                            commit only index.md. Exit 2 on a bad id, status, sha or index.
+set -u
+
+tickets() { # id<TAB>blockers<TAB>status<TAB>line, from the index's ticket table
+  awk -F'|' -v f="$1" '
+    $2 ~ /^ *[A-Z][0-9]+ *$/ {
+      if (NF < 6) { printf "%s:%d: ticket row needs 4 columns\n", f, NR > "/dev/stderr"; bad=1; next }
+      id=$2; b=$(NF-2); s=$(NF-1)
+      gsub(/^ +| +$/, "", id); gsub(/^ +| +$/, "", b); gsub(/^ +| +$/, "", s)
+      gsub(/ /, "", b)
+      printf "%s\t%s\t%s\t%d\n", id, b, s, NR
+    }
+    END { exit bad }' "$1"
+}
+
+load() { # rows=ticket rows of index $1, or exit 2 on an unreadable or malformed index
+  [ -r "$1" ] || { echo "$1: cannot read"; exit 2; }
+  rows=$(tickets "$1") || exit 2
+  [ -n "$rows" ] || { echo "$1: no ticket rows"; exit 2; }
+  printf '%s\n' "$rows" | awk -F'\t' -v f="$1" '
+    { id[NR]=$1; bl[NR]=$2; ln[NR]=$4; seen[$1]=1 }
+    END {
+      for (i=1; i<=NR; i++) if (bl[i] != "none") {
+        n=split(bl[i], b, ",")
+        for (j=1; j<=n; j++) if (!(b[j] in seen)) { printf "%s:%d: %s blocked by unknown ticket %s\n", f, ln[i], id[i], b[j]; bad=1 }
+      }
+      exit bad
+    }' || exit 2
+}
+
+frontier() {
+  local rows; load "$1"
+  printf '%s\n' "$rows" | awk -F'\t' '
+    { id[NR]=$1; bl[NR]=$2; st[NR]=$3; done_[$1]=($3 ~ /^done /) }
+    END {
+      for (i=1; i<=NR; i++) {
+        if (st[i] != "todo") continue
+        ok=1
+        if (bl[i] != "none") { n=split(bl[i], b, ","); for (j=1; j<=n; j++) if (!done_[b[j]]) ok=0 }
+        if (ok) { print id[i]; any=1 }
+      }
+      if (any) exit 0
+      for (i=1; i<=NR; i++) if (!done_[id[i]]) { printf "%s %s\n", id[i], st[i]; left=1 }
+      if (!left) { print "all done"; exit 0 }
+      exit 1
+    }'
+}
+
+chains() {
+  local rows; load "$1"
+  printf '%s\n' "$rows" | awk -F'\t' '
+    { id[NR]=$1; nb[NR]=($2 == "none") ? 0 : split($2, b, ",")
+      for (j=1; j<=nb[NR]; j++) { blk[NR, j]=b[j]; deps[b[j]]=deps[b[j]] " " $1 } }
+    function inside(x,   k) { for (k=1; k<=len; k++) if (c[k] == x) return 1; return 0 }
+    function fits(i,   j) { # every blocker of ticket i is already in the chain
+      if (!nb[i]) return 0
+      for (j=1; j<=nb[i]; j++) if (!inside(blk[i, j])) return 0
+      return 1
+    }
+    END {
+      for (s=1; s<=NR; s++) {
+        if (used[id[s]]) continue
+        len=1; c[1]=id[s]; used[id[s]]=1
+        while (1) { # grow while exactly one unused ticket fits
+          nc=0
+          for (i=1; i<=NR; i++) if (!used[id[i]] && fits(i)) { nc++; pick=i }
+          if (nc != 1) break
+          c[++len]=id[pick]; used[id[pick]]=1
+        }
+        for (k=1; k<len; k++) { # cut after the first ticket with a dependent outside the chain
+          n=split(deps[c[k]], d, " ")
+          for (j=1; j<=n; j++) if (!inside(d[j])) { for (m=k+1; m<=len; m++) used[c[m]]=0; len=k; k=0; break }
+        }
+        if (len < 2) continue
+        line="Chain: " c[1]; for (k=2; k<=len; k++) line=line " > " c[k]; print line
+      }
+    }'
+}
+
+SECTIONS="Delivers|Files|Interfaces|Tests|Approach|Constraints|Verify|Out of scope"
+
+check_plan() {
+  local f=$1 dir rows err id n t files
+  [ -r "$f" ] || { echo "$f: cannot read"; exit 2; }
+  dir=$(dirname "$f")
+  {
+    awk -v f="$f" '
+      /^(Spec|Branch|Base|Test command): *[^ ]/ { k=$0; sub(/:.*/, "", k); has[k]=1 }
+      END { split("Spec Branch Base Test_command", w, " ")
+            for (i=1; i<=4; i++) { k=w[i]; gsub(/_/, " ", k); if (!has[k]) printf "%s:1: missing \"%s:\" line\n", f, k } }' "$f"
+    err=$(mktemp) || exit 2
+    rows=$(tickets "$f" 2>"$err"); cat "$err"; rm -f "$err"
+    [ -n "$rows" ] || echo "$f:1: no ticket rows"
+    printf '%s\n' "$rows" | awk -F'\t' -v f="$f" '
+      NF { if ($1 in ln) printf "%s:%d: ticket %s listed twice\n", f, $4, $1
+           id[++n]=$1; ln[$1]=$4; nb[$1]=($2 == "none") ? 0 : split($2, b, ",")
+           for (j=1; j<=nb[$1]; j++) blk[$1, j]=b[j] }
+      function visit(u,   j, v) {
+        color[u]=1
+        for (j=1; j<=nb[u]; j++) { v=blk[u, j]
+          if (color[v] == 1 && !cyc) { printf "%s:%d: blocked-by cycle through %s and %s\n", f, ln[u], u, v; cyc=1 }
+          else if (!color[v]) visit(v) }
+        color[u]=2
+      }
+      END {
+        for (i=1; i<=n; i++) for (j=1; j<=nb[id[i]]; j++) if (!(blk[id[i], j] in ln)) { printf "%s:%d: %s blocked by unknown ticket %s\n", f, ln[id[i]], id[i], blk[id[i], j]; bad=1 }
+        if (!bad) for (i=1; i<=n; i++) if (!color[id[i]]) visit(id[i])
+      }'
+    printf '%s\n' "$rows" | while IFS=$'\t' read -r id b _ n; do
+      [ -n "$id" ] || continue
+      set -- "$dir/tickets/$id"-*.md
+      if [ ! -e "$1" ]; then echo "$f:$n: $id has no ticket file tickets/$id-*.md"; continue; fi
+      [ $# -eq 1 ] || { echo "$f:$n: $id has $# ticket files"; continue; }
+      awk -v id="$id" -v want="$b" -v secs="$SECTIONS" '
+        BEGIN { ns=split(secs, sec, "|") }
+        /^Spec: *[^ ]/ { spec=1 }
+        /^Blocked by:/ { got=$0; sub(/^Blocked by: */, "", got); gsub(/ /, "", got); bl=FNR }
+        /^## / { cur=substr($0, 4); at[cur]=FNR; next }
+        cur != "" && /[^ ]/ { body[cur]=1 }
+        END {
+          if (!spec) printf "%s:1: missing \"Spec:\" line\n", FILENAME
+          if (!bl) printf "%s:1: missing \"Blocked by:\" line\n", FILENAME
+          else {
+            n1=split(got, g, ","); n2=split(want, w, ","); same=(n1 == n2)
+            for (i=1; i<=n2; i++) inw[w[i]]=1
+            for (i=1; i<=n1; i++) if (!(g[i] in inw)) same=0
+            if (!same) printf "%s:%d: Blocked by %s, index says %s\n", FILENAME, bl, got, want
+          }
+          for (i=1; i<=ns; i++) {
+            if (!(sec[i] in at)) printf "%s:1: missing section \"## %s\"\n", FILENAME, sec[i]
+            else if (!body[sec[i]]) printf "%s:%d: section \"## %s\" is empty\n", FILENAME, at[sec[i]], sec[i]
+          }
+        }' "$1"
+    done
+    set -- "$dir"/tickets/*.md; [ -e "$1" ] || set --
+    [ -r "$dir/spec.md" ] || echo "$f:1: no spec.md next to the index"
+    printf '%s\n' "$rows" | awk -F'\t' 'NF { printf "%s:%s:%s\n", $1, $2, $3 }' | awk -v spec="$dir/spec.md" -v AC='US-[0-9]+[.]AC[0-9]+[a-z]?' '
+      NR == FNR { split($0, kv, ":"); nb=split(kv[2], b, ","); for (j=1; j<=nb; j++) if (b[j] != "none") reach[kv[1], b[j]]=1; ids[kv[1]]=1; isdone[kv[1]]=(kv[3] ~ /^done /); next }
+      FILENAME == spec { spec_ok=1; if ($0 ~ "^- " AC ":") { inspec[$0]=1; specln[$0]=FNR; specorder[++ns]=$0 }; next }
+      FNR == 1 { id=FILENAME; sub(/.*\//, "", id); sub(/-.*/, "", id); sec="" }
+      /^## / { sec=substr($0, 4); next }
+      sec == "Delivers" && $0 ~ "^- " AC ":" {
+        intix[$0]=1; if (spec_ok && !($0 in inspec)) printf "%s:%d: DRIFT: AC line not in spec.md word for word\n", FILENAME, FNR
+        a=$0; sub(/^- /, "", a); sub(/:.*/, "", a); want[FILENAME, a]=FNR; wantf[FILENAME]=1; acs[FILENAME]=acs[FILENAME] " " a }
+      sec == "Files" && /^- [a-z]+: / { p=$0; sub(/^- [a-z]+: */, "", p); gsub(/`/, "", p); sub(/ .*/, "", p)
+        if (p != "") { k=++nf; fid[k]=id; fpath[k]=p; ffile[k]=FILENAME; fln[k]=FNR } }
+      sec == "Tests" && /^### / { tests[FILENAME]=tests[FILENAME] " " $0 " " }
+      function covered(fn, a,   s, re) { s=tests[fn]; re="[^A-Za-z0-9.]" a "[^A-Za-z0-9]"; gsub(/[.]/, "[.]", re); return s ~ re }
+      END {
+        for (fn in wantf) { n=split(acs[fn], x, " "); for (i=1; i<=n; i++) if (!covered(fn, x[i])) printf "%s:%d: %s has no ### Tests heading naming it\n", fn, want[fn, x[i]], x[i] }
+        if (spec_ok) for (i=1; i<=ns; i++) if (!(specorder[i] in intix)) printf "%s:%d: MISSING: AC in no ticket'"'"'s Delivers\n", spec, specln[specorder[i]]
+        for (u in ids) for (v in ids) for (w in ids) if (reach[v, u] && reach[u, w]) reach[v, w]=1  # ponytail: O(n^3) closure, fine for tens of tickets
+        for (i=1; i<=nf; i++) for (j=i+1; j<=nf; j++) {
+          u=fid[i]; v=fid[j]
+          if (u == v || isdone[u] || isdone[v] || fpath[i] != fpath[j] || reach[u, v] || reach[v, u] || seen[u, v, fpath[i]]++) continue
+          printf "%s:%d: %s shares %s with %s, but neither is blocked by the other\n", ffile[j], fln[j], v, fpath[i], u
+        }
+      }' - $([ -r "$dir/spec.md" ] && printf '%q' "$dir/spec.md") "$@"
+    for t in "$dir"/tickets/*.md; do
+      [ -e "$t" ] || continue
+      id=${t##*/}; id=${id%%-*}
+      printf '%s\n' "$rows" | cut -f1 | grep -qFx -- "$id" || echo "$t:1: $id is not in the index table"
+    done
+  } > "${tmp:=$(mktemp)}"
+  cat "$tmp"; [ ! -s "$tmp" ]; n=$?; rm -f "$tmp"; exit $n
+}
+
+check_spec() {
+  [ -r "$1" ] || { echo "$1: cannot read"; exit 2; }
+  local out
+  out=$(awk -v f="$1" '
+    function p(n, msg) { printf "%s:%d: %s\n", f, n, msg }
+    /^Status: (draft|approved) *$/ { status=$2 }
+    /^(Branch|Base|Date): *[^ <]/ { k=$0; sub(/:.*/, "", k); has[k]=1 }
+    /^## / { sec=substr($0, 4); sub(/ +$/, "", sec); at[sec]=NR; next }
+    sec != "" && /[^ ]/ { body[sec]=1 }
+    /OPEN:/ { open_[++no]=NR }
+    /^### US-[0-9]+ / { n=$2; sub(/^US-/, "", n); n+=0
+      if (n != story + 1) p(NR, "US-" n " out of order, want US-" story + 1 " here")
+      story=n; ac=0; next }
+    /^- US-[0-9]+[.]AC[0-9]+[a-z]?:/ {
+      id=$2; sub(/:$/, "", id); s_=id; sub(/^US-/, "", s_); sub(/[.].*/, "", s_)
+      m=id; sub(/.*AC/, "", m); suf=m; sub(/[0-9]+/, "", suf); m+=0
+      if (s_ + 0 != story) p(NR, id " sits under story US-" story)
+      if (id in seen) p(NR, id " appears twice")
+      seen[id]=1
+      if (suf == "" && m != ac + 1) p(NR, id " out of order, want AC" ac + 1 " here")
+      if (suf != "" && m != ac) p(NR, id " does not follow AC" m)
+      if (suf == "") ac=m
+      if (tolower($0) !~ /given/ || tolower($0) !~ /when/ || tolower($0) !~ /then/) p(NR, id " is not Given / when / then")
+    }
+    /[A-Za-z0-9_.-]+\/[A-Za-z0-9_.\/-]+[.][a-z][a-z0-9]?[a-z0-9]?[a-z0-9]?([^a-z0-9]|$)/ && !/:\/\// && !/^(Branch|Base):/ { p(NR, "file path (rule 4: no file paths)") }
+    END {
+      if (!status) p(1, "missing \"Status: draft|approved\" line")
+      split("Branch Base Date", w, " ")
+      for (i=1; i<=3; i++) if (!has[w[i]]) p(1, "missing \"" w[i] ":\" line")
+      if (status == "approved") for (i=1; i<=no; i++) p(open_[i], "OPEN: in an approved spec")
+      if (!story) p(1, "no ### US-n stories")
+      split("Out of Scope|Manual check", w, "|")
+      for (i=1; i<=2; i++) if (!(w[i] in at)) p(1, "missing section \"## " w[i] "\""); else if (!body[w[i]]) p(at[w[i]], "section \"## " w[i] "\" is empty")
+    }' "$1")
+  [ -z "$out" ] || { printf '%s\n' "$out"; exit 1; }
+}
+
+gate() {
+  local f=$1 mode=${2:-} dir root want ln cur rule need have p
+  [ -r "$f" ] || { echo "$f: cannot read"; exit 2; }
+  dir=$(dirname "$f")
+  root=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null) || { echo "$f: not in a git repo"; exit 2; }
+  {
+    ln=$(grep -n -m1 '^Branch:' "$f" | cut -d: -f1)
+    want=$(sed -n "${ln:-0}s/^Branch: *//p" "$f" | tr -d '`' | sed 's/ *$//')
+    cur=$(git -C "$root" branch --show-current)
+    if [ -z "$want" ]; then echo "$f:1: missing \"Branch:\" line"
+    elif [ "$cur" != "$want" ]; then echo "$f:$ln: on branch ${cur:-(detached)}, want $want"; fi
+    [ -z "$(git -C "$root" status --porcelain)" ] || echo "$root: uncommitted changes (git status --porcelain is not empty)"
+    if [ "$mode" = --final ]; then
+      [ "$(frontier "$dir/index.md" 2>&1)" = "all done" ] || echo "$dir/index.md:1: not every ticket is done (run /build)"
+    fi
+    if [ "$mode" = --build ]; then
+      for rule in 'Bash(git:*)' 'Bash(${CLAUDE_SKILL_DIR}/scripts/check-red-green.sh:*)' 'Bash(${CLAUDE_SKILL_DIR}/scripts/wf:*)'; do
+        cat "$root/.claude/settings.json" "$root/.claude/settings.local.json" 2>/dev/null | grep -qF -- "\"$rule\"" ||
+          echo "$root/.claude/settings.local.json: missing allow rule \"$rule\" (fine in auto or bypass mode)"
+      done
+      need=$(git -C "$root" ls-files -oi --exclude-standard --directory | grep -E '(^|/)(\.?venv[^/]*|node_modules|\.env[^/]*)/?$')
+      have=$( [ -r "$root/.worktreeinclude" ] && git -C "$root" ls-files -oi --exclude-from=.worktreeinclude --directory)
+      printf '%s\n' "$need" | while IFS= read -r p; do
+        [ -n "$p" ] || continue
+        printf '%s\n' "$have" | grep -qFx -- "$p" || echo "$root/.worktreeinclude: add $p (ignored, so new worktrees lack it)"
+      done
+    fi
+  } > "${tmp:=$(mktemp)}"
+  cat "$tmp"; [ ! -s "$tmp" ]; p=$?; rm -f "$tmp"; exit $p
+}
+
+base_ref() { # first word of the Base: line, so "Base: origin/staging (a86a89d5)" gives origin/staging
+  awk '/^Base:/ { gsub(/`/, ""); print $2; exit }' "$1"
+}
+
+scope() {
+  local f=$1 head=${2:-HEAD} dir root base plan changed listed
+  [ -r "$f" ] || { echo "$f: cannot read"; exit 2; }
+  dir=$(dirname "$f")
+  root=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null) || { echo "$f: not in a git repo"; exit 2; }
+  base=$(base_ref "$f")
+  [ -n "$base" ] || { echo "$f:1: missing \"Base:\" line"; exit 2; }
+  changed=$(git -C "$root" diff --name-only "$base...$head") || { echo "git diff $base...$head failed"; exit 2; }
+  plan=$(cd "$dir" && git rev-parse --show-prefix)
+  listed=$(awk '/^## / { sec=substr($0, 4); next }
+    sec == "Files" && /^- [a-z]+: / { p=$0; sub(/^- [a-z]+: */, "", p); gsub(/`/, "", p); sub(/ .*/, "", p); if (p != "") print p }' "$dir"/tickets/*.md 2>/dev/null)
+  printf '%s\n' "$changed" | awk -v plan="$plan" '
+    NR == FNR { if ($0 != "") listed[++n]=$0; next }
+    $0 == "" || index($0, plan) == 1 { next }
+    { for (i=1; i<=n; i++) if ($0 == listed[i] || (listed[i] ~ /\/$/ && index($0, listed[i]) == 1)) next
+      print $0 ": changed, but no ticket lists it under Files"; bad=1 }
+    END { exit bad }' <(printf '%s\n' "$listed") -
+}
+
+size() {
+  local f=$1 head=${2:-HEAD} root base a d p after before bad=0
+  [ -r "$f" ] || { echo "$f: cannot read"; exit 2; }
+  root=$(git -C "$(dirname "$f")" rev-parse --show-toplevel 2>/dev/null) || { echo "$f: not in a git repo"; exit 2; }
+  base=$(base_ref "$f")
+  [ -n "$base" ] || { echo "$f:1: missing \"Base:\" line"; exit 2; }
+  while read -r a d p; do
+    [ "$a" = - ] && continue
+    case $p in *test*|*.json|*.md|*.lock) continue ;; esac
+    after=$(git -C "$root" show "$head:$p" 2>/dev/null | wc -l | tr -d ' ') || continue
+    [ "$after" -gt 0 ] || continue
+    before=$((after - a + d))
+    if { [ "$before" -le 1000 ] && [ "$after" -gt 1000 ]; } || { [ "$before" -gt 1000 ] && [ $((a - d)) -gt 100 ]; }; then
+      echo "$p: $before -> $after lines"; bad=1
+    fi
+  done < <(git -C "$root" diff --numstat "$base...$head")
+  return $bad
+}
+
+red() {
+  local f=$1 head=${2:-HEAD} root base subjects
+  [ -r "$f" ] || { echo "$f: cannot read"; exit 2; }
+  root=$(git -C "$(dirname "$f")" rev-parse --show-toplevel 2>/dev/null) || { echo "$f: not in a git repo"; exit 2; }
+  base=$(base_ref "$f")
+  [ -n "$base" ] || { echo "$f:1: missing \"Base:\" line"; exit 2; }
+  subjects=$(git -C "$root" log --format=%s "$base..$head") || { echo "git log $base..$head failed"; exit 2; }
+  printf '%s\n' "$subjects" | awk -v f="$f" -v range="$base..$head" '
+    NR == FNR { have[$0]=1; next }
+    /^- US-[0-9]+[.]AC[0-9]+[a-z]?:/ { id=$2; sub(/:$/, "", id)
+      if (!(("test(" id "): red") in have) && !(("test(" id "): guard") in have)) { printf "%s:%d: %s has no \"test(%s): red\" or guard commit in %s\n", f, FNR, id, id, range; bad=1 } }
+    END { exit bad }' - "$f"
+}
+
+commit() { # commit <index> <message>: commit only the index
+  git -C "$(dirname "$1")" commit -q -m "$2" -- "$(basename "$1")" || { echo "$1: commit failed"; exit 2; }
+}
+
+set_status() { # set_status <index> <id> <status>
+  local rows tmp; load "$1"
+  printf '%s\n' "$rows" | cut -f1 | grep -qFx -- "$2" || { echo "$1: no ticket $2"; exit 2; }
+  tmp=$(mktemp) || exit 2
+  awk -F'|' -v OFS='|' -v id="$2" -v st="$3" '
+    { t=$2; gsub(/^ +| +$/, "", t) }
+    t == id && NF >= 6 { $(NF-1)=" " st " " }
+    { print }' "$1" > "$tmp" && cat "$tmp" > "$1"; rm -f "$tmp"
+  case $3 in done\ *) commit "$1" "docs(build): $2 done" ;; *) commit "$1" "docs(build): $2 $3" ;; esac
+}
+
+ruling() { # ruling <index> <text>: append "- <date>, <text>" to the Rulings section
+  local tmp
+  [ -r "$1" ] || { echo "$1: cannot read"; exit 2; }
+  grep -q '^## Rulings' "$1" || { echo "$1: no ## Rulings section"; exit 2; }
+  tmp=$(mktemp) || exit 2
+  awk -v line="- $(date +%F), $2" '
+    function add() { if (n && lines[n] == "") { n--; blank=1 }; for (i=1; i<=n; i++) print lines[i]; print line; if (blank) print ""; n=0; done_=1 }
+    /^## Rulings/ { inr=1; print; next }
+    inr && /^## / { add(); inr=0 }
+    inr { if ($0 ~ /^<Decisions made/) next; lines[++n]=$0; next }
+    { print }
+    END { if (inr) add() }' "$1" > "$tmp" && cat "$tmp" > "$1"; rm -f "$tmp"
+  commit "$1" "docs(build): ruling"
+}
+
+cmd=${1:-}; shift || true
+case $cmd in
+  frontier) [ $# -eq 1 ] || { echo "usage: wf frontier <index.md>"; exit 2; }; frontier "$1" ;;
+  chains) [ $# -eq 1 ] || { echo "usage: wf chains <index.md>"; exit 2; }; chains "$1" ;;
+  check-plan) [ $# -eq 1 ] || { echo "usage: wf check-plan <index.md>"; exit 2; }; check_plan "$1" ;;
+  check-spec) [ $# -eq 1 ] || { echo "usage: wf check-spec <spec.md>"; exit 2; }; check_spec "$1" ;;
+  gate)
+    [ $# -eq 1 ] || { [ $# -eq 2 ] && case $2 in --build|--final) true ;; *) false ;; esac; } ||
+      { echo "usage: wf gate <spec|index.md> [--build|--final]"; exit 2; }
+    gate "$@" ;;
+  scope) [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wf scope <index.md> [head]"; exit 2; }; scope "$@" ;;
+  red) [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wf red <spec.md> [head]"; exit 2; }; red "$@" ;;
+  size) [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wf size <index.md> [head]"; exit 2; }; size "$@" ;;
+  set)
+    [ $# -eq 3 ] || { echo 'usage: wf set <index.md> <id> todo|doing|"blocked: <reason>"'; exit 2; }
+    case $3 in todo|doing|"blocked: "?*) ;; *) echo "bad status: $3 (todo, doing, blocked: <reason>; use wf done for done)"; exit 2 ;; esac
+    set_status "$@" ;;
+  done)
+    [ $# -eq 3 ] || { echo "usage: wf done <index.md> <id> <merge sha>"; exit 2; }
+    sha=$(git -C "$(dirname "$1")" rev-parse -q --verify "$3^{commit}") || { echo "not a commit: $3"; exit 2; }
+    set_status "$1" "$2" "done ${sha:0:8}" ;;
+  ruling) [ $# -eq 2 ] && [ -n "$2" ] || { echo 'usage: wf ruling <index.md> "<text>"'; exit 2; }; ruling "$@" ;;
+  *) echo "usage: wf frontier|chains|check-plan|check-spec|gate|scope|red|size|set|done|ruling <index.md> ..."; exit 2 ;;
+esac
