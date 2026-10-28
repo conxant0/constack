@@ -1,11 +1,11 @@
-# Claude Code workflow
+# constack
 
 Spec-driven, test-first feature building with Claude Code: grill the idea, write a spec with numbered acceptance criteria, slice it into vertical tickets, build them in parallel worktrees with per-ticket review, then a final review against the spec.
 
 ## Install
 
 ```bash
-git clone <this repo> && cd claude-workflow && ./install.sh
+git clone <this repo> && cd constack && ./install.sh
 ```
 
 It copies into `~/.claude` and skips anything you already have. If it skipped `settings.json` or `CLAUDE.md`, merge `settings.example.json` and `CLAUDE.md` by hand.
