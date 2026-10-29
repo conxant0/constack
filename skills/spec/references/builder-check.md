@@ -8,6 +8,7 @@ Find the places where you would have to guess, and where a wrong guess would cha
 - an acceptance criterion you could not write a failing test for
 - two parts of the spec that contradict each other
 - a behaviour the stories imply but no AC states (an error case, an empty state, who is allowed to do it)
+- a Decision line stating behaviour a caller can observe (a refusal, a default, what an empty result means) that no AC shows with an example
 - an Out of Scope line that is ambiguous enough to argue about
 
 Ignore wording, style, and anything a competent builder can decide alone.

@@ -52,7 +52,10 @@ for ((r = 1; r <= rounds; r++)); do
     front=$("$wf" frontier "$idx"); code=$?
     [ "$front" = "all done" ] && break
     # exit 1 with only "doing" left = a crashed session; /build resets those, so run it
-    [ $code -ne 0 ] && echo "$front" | grep -q ' blocked' && { notify "blocked: $(echo "$front" | grep ' blocked' | tr '\n' ' ')"; exit 1; }
+    [ $code -ne 0 ] && echo "$front" | grep -q ' blocked' && {
+      notify "blocked, run /unblock: $(echo "$front" | grep ' blocked' | tr '\n' ' ')"
+      echo "afk-loop: to resolve, paste: cd $(pwd) && claude --settings '{\"worktree\":{\"baseRef\":\"head\"}}' \"/unblock $(cd "$dir" && pwd)/$(basename "$idx")\""
+      exit 1; }
     [ $code -eq 2 ] && { notify "bad index: $front"; exit 1; }
     before=$(git rev-parse HEAD)
     run "/build $idx AFK"

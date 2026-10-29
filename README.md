@@ -26,7 +26,7 @@ Needs: Claude Code, `git`, `gh` (for `/pr`), `node` (status line), `python3` (`a
 
 Every stage after `/spec` starts fresh and reads only the files. Each acceptance criterion needs a `test(US-n.ACm): red` commit that fails before the code exists; `scripts/check-red-green.sh` and `/final-review` enforce it.
 
-Extras: `/handoff` writes a resume note before `/clear`. `/bro` restates the last answer in plain words. `skills/build/scripts/afk-loop <index>` runs build and final-review headless until PASS or a blocker. For phone pushes, put an unguessable topic name in `~/.claude/afk-ntfy-topic` and subscribe to it in the ntfy app.
+Extras: `/handoff` writes a resume note before `/clear`. `/bro` restates the last answer in plain words. `skills/build/scripts/afk-loop <index>` runs build and final-review headless until PASS or a blocker; on a blocker it prints a command that opens `/unblock <index>`, which re-checks each AFK pick against the code, asks you one ticket at a time and writes the ruling into the ticket file. For phone pushes, put an unguessable topic name in `~/.claude/afk-ntfy-topic` and subscribe to it in the ntfy app.
 
 ## Things to adjust
 

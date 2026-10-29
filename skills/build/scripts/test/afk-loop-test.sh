@@ -35,6 +35,7 @@ check() { # check <name> <want exit> <want output substring> <MODE>
   if [ $rc != "$2" ] || ! grep -qF "$3" <<<"$out"; then printf 'FAIL %s: exit %s\n%s\n' "$1" $rc "$out"; fail=1; fi
 }
 check "fail then pass" 0 "afk-loop: PASS" ok
-check "blocked stops"  1 "afk-loop: blocked: T01 blocked: ask-user: q" block
+check "blocked stops"  1 "afk-loop: blocked, run /unblock: T01 blocked: ask-user: q" block
+check "unblock cmd"    1 "/unblock $d/r/docs/work/x/index.md\"" block
 check "stuck stops"    1 "afk-loop: build made no progress" stuck
 [ $fail = 0 ] && echo "afk-loop: all tests pass"; exit $fail

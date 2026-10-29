@@ -74,3 +74,13 @@ Leave on. Its SubagentStart hook injects into every subagent (~3 KB each). Skill
 
 ## Structure step (2026-10-28)
 - /final-review step 5b: advisory structure pass (wf size: file crosses 1000 lines or grows 100+ while over; duplicate helper; wrong layer; feature branch in a shared flow). Max 5 findings under ## Structure in review.md; never a fix ticket or FAIL. Taken from Cursor's thermo-nuclear-code-quality-review, minus its "restructure the codebase" ambition (conflicts with Out of Scope). Review after 3 features: switch to blocking if findings were real, delete if noise.
+
+## Decisions get an AC example (2026-10-29)
+- /spec step 3: every Decision line stating observable behaviour (refusal, default, error, meaning of an empty result) gets at least one AC example, or OPEN. Builder check also asks for Decision lines no AC shows.
+- Why: ai-search-mcp's escaped bug (PR #339, a custom org_type that reaches no tier returned 0, reading as "none exist") broke spec Decision line 69, which had no AC, so no ticket, reviewer or /final-review checked it. Same idea as Specification by Example's "rules with no examples" check. Example per rule, not the rule restated, to avoid stating it twice.
+- Review after 3 specs: count ACs added this way and whether any escape still came from a Decision line.
+
+## Trial tallies
+- Sonnet ticket reviewers, 2026-10-29: 3b, ai-search-mcp. 0 escapes blamed on the reviewer; 1 spec-gap escape (PR #339).
+- Delta final review, 2026-10-29: 1/3 features (ai-search-mcp). 0 escapes.
+- /unblock (2026-10-29): afk-loop stops on a blocked ticket and prints a paste command that opens claude on `/unblock <index>`. It re-checks the AFK pick against the code (the T18 pick would have changed app behaviour and a deliberate test), asks one ticket at a time, and writes the ruling into the ticket file, because implementers never read the index.
