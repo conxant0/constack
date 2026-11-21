@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # afk-loop <index.md> [rounds]: run from the feature worktree after /slice.
-# /build AFK then /final-review AFK, each in a fresh headless session (= /clear), until
+# /build AFK, /encode-comments <Base> AFK, then /final-review AFK, each in a fresh headless session (= /clear), until
 # review.md says PASS, a ticket blocks, a run makes no progress, or rounds (default 3) run out.
 # Prints every session's peak context per agent; logs to ~/.claude/afk-logs/.
 set -u
+export CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0  # headless -p kills background implementers 10 min after the lead idles (T05 looped 5x, 2026-11-12)
 idx=$1; rounds=${2:-3}; dir=$(dirname "$idx"); spec=$dir/spec.md
 wf=$(dirname "$0")/wf
 log=~/.claude/afk-logs/$(basename "$(pwd)")-$(date +%Y_%m_%d_%H%M); mkdir -p "$log"
 [ -r "$spec" ] || { echo "no $spec"; exit 2; }
+base=$(sed -n 's/^Base:[[:space:]]*\([^[:space:]]*\).*/\1/p' "$idx" | head -1)  # first word: "origin/main (notes)"
+[ -n "$base" ] || { echo "no Base: line in $idx"; exit 2; }
 
 notify() {
   osascript -e "display notification \"$1\" with title \"afk-loop $(basename "$(pwd)")\"" 2>/dev/null
@@ -40,9 +43,14 @@ EOF
 n=0
 run() { # one fresh headless session
   n=$((n + 1)); echo "[$n] $1"
-  # add --disallowedTools <mcp server> for any paid MCP tools you only want called by hand
+  # no AskUserQuestion: nobody is there to answer (afk.md). ~/.claude/checks/afk-disallowed-tools adds more,
+  # one tool or MCP server per line, e.g. paid tools that only run by hand (blocks subagents too, probed 2026-10-27)
+  local t extra=()
+  [ -r ~/.claude/checks/afk-disallowed-tools ] && while read -r t _; do
+    case "$t" in ''|'#'*) ;; *) extra+=("$t") ;; esac
+  done < ~/.claude/checks/afk-disallowed-tools
   claude -p "$1" --permission-mode auto --settings '{"worktree":{"baseRef":"head"}}' \
-    --output-format json < /dev/null > "$log/$n.json"
+    --disallowedTools ${extra[@]+"${extra[@]}"} AskUserQuestion --output-format json < /dev/null > "$log/$n.json"
   python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("result", ""))' "$log/$n.json" > "$log/$n.txt" 2>&1
   peaks "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("session_id", ""))' "$log/$n.json" 2>/dev/null)" | tee -a "$log/peaks.txt"
 }
@@ -62,8 +70,11 @@ for ((r = 1; r <= rounds; r++)); do
     [ "$(git rev-parse HEAD)" = "$before" ] && { notify "build made no progress, see $log/$n.txt"; exit 1; }
   done
   [ "$front" = "all done" ] || { notify "build still unfinished after 10 sessions"; exit 1; }
+  run "/encode-comments $base AFK"
+  [ -z "$(git status --porcelain)" ] || { notify "encode-comments left uncommitted changes, see $log/$n.txt"; exit 1; }
   run "/final-review $spec AFK"
   grep -q '^Verdict: PASS' "$dir/review.md" 2>/dev/null && {
+    bad=$("$wf" check-review "$dir/review.md" 2>&1) || { notify "review.md says PASS but wf check-review disagrees: $(printf '%s' "$bad" | head -n 1 | tr -d '"')"; exit 1; }
     notify "PASS. Read the (afk) rulings: $(grep -c '(afk)' "$idx") in $idx"; exit 0; }
   [ "$("$wf" frontier "$idx")" = "all done" ] && { notify "final-review FAIL with no fix tickets (OPEN items?), see review.md"; exit 1; }
 done

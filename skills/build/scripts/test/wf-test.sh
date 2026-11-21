@@ -7,7 +7,7 @@ fail=0
 
 index() { # index <name> <rows...>: write a minimal index.md with those table rows
   local f=$d/$1.md; shift
-  { printf '# X: build index\n\nBranch: b\nBase: origin/staging\nTest command: `true`\n\n'
+  { printf '# X: build index\n\nBranch: b\nBase: origin/main\nTest command: `true`\n\n'
     printf '| Ticket | Title | Blocked by | Status |\n|---|---|---|---|\n'
     printf '%s\n' "$@"; printf '\n## Rulings\n'; } > "$f"
 }
@@ -35,12 +35,12 @@ expect "unknown blocker" 2 "$d/unknown.md:9: T01 blocked by unknown ticket T09" 
 index empty
 expect "no rows" 2 "$d/empty.md: no ticket rows" frontier "$d/empty.md"
 
-# get-tech-stack shape: T05 heads a new chain because its blockers sit in two chains
+# join shape: T05 heads a new chain because its blockers sit in two chains
 index split '| T01 | a | none | todo |' '| T02 | b | T01 | todo |' '| T03 | c | none | todo |' \
   '| T04 | d | T03 | todo |' '| T05 | e | T02, T04 | todo |' '| T06 | f | T05 | todo |' '| F01 | g | none | todo |'
 expect "chains split at a join" 0 $'Chain: T01 > T02\nChain: T03 > T04\nChain: T05 > T06' chains "$d/split.md"
 
-# mcp-research-tools shape: T01 feeds two tickets so it stays out; T05/T06 have two blockers, both in the chain
+# fan shape: T01 feeds two tickets so it stays out; T05/T06 have two blockers, both in the chain
 index fan '| T01 | a | none | todo |' '| T02 | b | T01 | todo |' '| T03 | c | T02 | todo |' \
   '| T04 | d | T03 | todo |' '| T05 | e | T03, T04 | todo |' '| T06 | f | T04, T05 | todo |' \
   '| T07 | g | T06 | todo |' '| T08 | h | T01 | todo |' '| T09 | i | T08 | todo |' '| T10 | j | T07, T09 | todo |'
@@ -78,7 +78,7 @@ expect "bad sha" 2 "not a commit: deadbeef" done "$r/index.md" T01 deadbeef
 # check-plan: a clean plan, then one broken copy per rule
 plan() { # plan <dir>: spec with 2 ACs; index with T01, T02 (blocked by T01); a ticket file each
   mkdir -p "$1/tickets"
-  printf '# X: build index\n\nSpec: docs/work/x/spec.md\nBranch: b\nBase: origin/staging\nTest command: `true`\n\n| Ticket | Title | Blocked by | Status |\n|---|---|---|---|\n| T01 | a | none | todo |\n| T02 | b | T01 | todo |\n\n## Rulings\n' > "$1/index.md"
+  printf '# X: build index\n\nSpec: docs/work/x/spec.md\nBranch: b\nBase: origin/main\nTest command: `true`\n\n| Ticket | Title | Blocked by | Status |\n|---|---|---|---|\n| T01 | a | none | todo |\n| T02 | b | T01 | todo |\n\n## Rulings\n' > "$1/index.md"
   printf '# Spec\n\n- US-1.AC1: Given a, when b, then c.\n- US-1.AC2b: Given d, when e, then f.\n' > "$1/spec.md"
   ticket "$1/tickets/T01-t.md" none US-1.AC1 'Given a, when b, then c.'
   ticket "$1/tickets/T02-t.md" T01 US-1.AC2b 'Given d, when e, then f.'
@@ -124,13 +124,21 @@ broken overlap index.md 's/| T02 | b | T01 |/| T02 | b | none |/'; sed -i '' 's/
 expect "shared file, no edge" 1 "$d/overlap/tickets/T02-t.md:12: T02 shares src/shared.py with T01, but neither is blocked by the other" check-plan "$d/overlap/index.md"
 sed -i '' 's/| T01 | a | none | todo |/| T01 | a | none | done abc |/' "$d/overlap/index.md"
 expect "shared file with a done ticket" 0 "" check-plan "$d/overlap/index.md"
+plan "$d/big"; five=$'- US-1.AC3: Given g, when h, then i.\\\n- US-1.AC4: Given g, when h, then j.\\\n- US-1.AC5: Given g, when h, then k.\\\n- US-1.AC6: Given g, when h, then l.'
+sed -i '' "/^- US-1.AC1:/a\\
+$five
+" "$d/big/tickets/T01-t.md" "$d/big/spec.md"
+sed -i '' 's/^### US-1.AC1$/### US-1.AC1, US-1.AC3, US-1.AC4, US-1.AC5, US-1.AC6/' "$d/big/tickets/T01-t.md"
+expect "five ACs in one ticket" 1 "$d/big/tickets/T01-t.md:8: T01 delivers 5 ACs, max 4: split it (red-green runs Verify once per AC)" check-plan "$d/big/index.md"
+sed -i '' 's/| T01 | a | none | todo |/| T01 | a | none | done abc |/' "$d/big/index.md"
+expect "five ACs in a done ticket" 0 "" check-plan "$d/big/index.md"
 plan "$d/nofile"; rm "$d/nofile/tickets/T02-t.md"
 expect "row without ticket file" 1 "$d/nofile/index.md:11: T02 has no ticket file tickets/T02-*.md
 $d/nofile/spec.md:4: MISSING: AC in no ticket's Delivers" check-plan "$d/nofile/index.md"
 
 # check-spec: a clean spec, then one broken copy per rule
 spec() { # spec <name> [sed script]
-  printf '# X\n\nStatus: approved\nBranch: b\nBase: origin/staging\nDate: 2026-10-26\n\n## User stories\n\n### US-1 One\n\n- US-1.AC1: Given a, when b, then c.\n- US-1.AC1b: Given a, when b, then d.\n- US-1.AC2: Given a, when b, then e.\n\n### US-2 Two\n\n- US-2.AC1: Given a, when b, then the docs/work index updates.\n\n## Out of Scope\n\n- y (later)\n\n## Manual check\n\n1. z\n' > "$d/$1.md"
+  printf '# X\n\nStatus: approved\nBranch: b\nBase: origin/main\nDate: 2026-10-26\n\n## User stories\n\n### US-1 One\n\n- US-1.AC1: Given a, when b, then c.\n- US-1.AC1b: Given a, when b, then d.\n- US-1.AC2: Given a, when b, then e.\n\n### US-2 Two\n\n- US-2.AC1: Given a, when b, then the docs/work index updates.\n\n## Out of Scope\n\n- y (later)\n\n## Manual check\n\n1. z\n' > "$d/$1.md"
   [ -z "${2:-}" ] || sed -i '' "$2" "$d/$1.md"
 }
 spec sgood
@@ -174,6 +182,21 @@ expect "gate --final not done" 1 "$g/index.md:1: not every ticket is done (run /
 sed -i '' 's/| todo |/| done abc |/' "$g/index.md"; git -C "$g" commit -qam done
 expect "gate --final all done" 0 "" gate "$g/spec.md" --final
 
+# gate --slice / --direct: approved, check-spec clean, and for --direct at most 6 ACs (lettered ones count)
+spec gs 's/^Branch: b/Branch: feature\/x/'; cp "$d/gs.md" "$g/s.md"; git -C "$g" add s.md; git -C "$g" commit -qm spec
+expect "gate --slice approved" 0 "" gate "$g/s.md" --slice
+expect "gate --direct 4 ACs" 0 "" gate "$g/s.md" --direct
+sed -i '' 's/^Status: approved/Status: draft/' "$g/s.md"; git -C "$g" commit -qam draft
+expect "gate --slice draft" 1 "$g/s.md:3: Status is draft, /slice needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run." gate "$g/s.md" --slice
+sed -i '' 's/^Status: draft/Status: approved/;s/US-1.AC2:/US-1.AC3:/' "$g/s.md"; git -C "$g" commit -qam order
+expect "gate --slice check-spec" 1 "$g/s.md:14: US-1.AC3 out of order, want AC2 here
+$g/s.md:1: wf check-spec failed (lines above). Fix: correct each line in the spec, commit, re-run." gate "$g/s.md" --slice
+sed -i '' 's/US-1.AC3:/US-1.AC2:/' "$g/s.md"
+perl -i -pe 's{^(- US-2\.AC1:.*)$}{$1\n- US-2.AC2: Given a, when b, then f.\n- US-2.AC3: Given a, when b, then g.\n- US-2.AC3b: Given a, when b, then h.}' "$g/s.md"; git -C "$g" commit -qam seven
+expect "gate --slice 7 ACs" 0 "" gate "$g/s.md" --slice
+expect "gate --direct 7 ACs" 1 "$g/s.md:1: 7 ACs, /direct takes at most 6. Fix: run /slice $g/s.md instead." gate "$g/s.md" --direct
+expect "gate bad mode" 2 "usage: wf gate <spec|index.md> [--build|--final|--slice|--direct]" gate "$g/s.md" --nope
+
 # scope: changed files no ticket lists; the plan folder and dir/ entries are exempt
 c=$d/scope; mkdir -p "$c"; git -C "$c" init -q -b main; git -C "$c" config user.email t@t; git -C "$c" config user.name t
 echo a > "$c/README"; git -C "$c" add -A; git -C "$c" commit -qm base
@@ -199,6 +222,65 @@ expect "red: explicit head" 1 "$e/spec.md:13: US-1.AC1b has no \"test(US-1.AC1b)
 sed -i '' 's/^Base: .*/Base: `main` (abc1234)/' "$e/spec.md" "$c/docs/work/x/index.md"
 expect "red: annotated Base" 0 "" red "$e/spec.md"
 expect "scope: annotated Base" 1 "src/extra.py: changed, but no ticket lists it under Files" scope "$c/docs/work/x/index.md"
+
+# check-review: a PASS review agrees with itself, the spec and HEAD; a FAIL review names fix tickets or OPEN items
+v=$d/rev; mkdir -p "$v/docs/work/x" "$v/src"; git -C "$v" init -q -b main; git -C "$v" config user.email t@t; git -C "$v" config user.name t
+spec vspec; cp "$d/vspec.md" "$v/docs/work/x/spec.md"; echo a > "$v/src/a.py"; git -C "$v" add -A; git -C "$v" commit -qm base
+echo b > "$v/src/a.py"; git -C "$v" commit -qam work; end=$(git -C "$v" rev-parse HEAD)
+review() { # review <sed script or ""> : write review.md for the clean PASS case, then apply the edit
+  printf '# X: final review\n\nVerdict: PASS\nSpec: docs/work/x/spec.md\nRange: main...%s\nMode: full\nDate: 2026-11-21\n\n## Acceptance criteria\n\n| AC | Red commit | Test checks the AC | Note |\n|---|---|---|---|\n| US-1.AC1, AC1b | abc | yes | |\n| US-1.AC2 | def (guard) | yes | |\n| US-2.AC1 | none | n/a | manual check |\n\n## Full suite\n\n`true`: pass\n\n## Out of Scope\n\nnone.\n\n## Structure\n\n`wf size`: none\nnone\n\n## Security\n\nnone.\n\nSafe because: x. Proof: `y` -> ok\n\n## Behaviour\n\nnone\n\n### Notes\n\nnone\n\n## Verify\n\nnot run: no verify skill\n\n## Fix tickets\n\nnone\n\n## OPEN\n\nnone.\n' "$end" > "$v/docs/work/x/review.md"
+  [ -z "$1" ] || sed -i '' "$1" "$v/docs/work/x/review.md"
+}
+R=$v/docs/work/x/review.md
+review ""; expect "check-review clean PASS" 0 "" check-review "$R"
+git -C "$v" add -A; git -C "$v" commit -qm "docs(review): x pass"
+expect "check-review: review commit after the range is fine" 0 "" check-review "$R"
+review 's/^| US-1.AC2 | def (guard) | yes |/| US-1.AC2 | def | partly |/;s/^| US-2.AC1 .*//'
+expect "check-review: missing AC row, weak test" 1 "$R:14: US-1.AC2 says \"partly\" under Test checks the AC, but Verdict is PASS. Fix: set Verdict: FAIL and write an F ticket for it (step 8), or, if the user waived it, start the Note with \"Waived <YYYY-MM-DD> (<who>): <reason>\".
+$R:9: US-2.AC1 (spec.md:18) has no row in the AC table. Fix: judge it (step 4) and add its row; a PASS needs every AC." check-review "$R"
+review 's/^| US-1.AC1, AC1b | abc | yes | |/| US-1.AC1-AC2 | abc | yes | |/;s/^| US-1.AC2 | def (guard) | yes | |/| US-1.AC2 | def | no | Waived 2026-11-02 (F04) |/'
+expect "check-review: hyphen range and a waived row" 0 "" check-review "$R"
+review 's/^| US-1.AC2 | def (guard) | yes | |/| US-1.AC2 | def | no | waived, flaky |/'
+expect "check-review: waiver without a date does not count" 1 "$R:14: US-1.AC2 says \"no\" under Test checks the AC, but Verdict is PASS. Fix: set Verdict: FAIL and write an F ticket for it (step 8), or, if the user waived it, start the Note with \"Waived <YYYY-MM-DD> (<who>): <reason>\"." check-review "$R"
+review '/^## Fix tickets/,$d'
+expect "check-review: older review with no Fix tickets or OPEN section" 0 "" check-review "$R"
+review 's/^`true`: pass/`true`: fail (2 baseline)/;/^## Fix tickets/{n;n;s/none/F01 a: fixes US-1.AC2/;}'
+expect "check-review: baseline suite fail is not judged; fix tickets are" 1 "$R:50: Fix tickets is not none, but Verdict is PASS. Fix: set Verdict: FAIL (step 8 builds them), or mark a declined structure finding declined and remove its ticket." check-review "$R"
+review '/^## OPEN/{n;n;s/none./Should x be y?/;}'
+expect "check-review: PASS with OPEN" 1 "$R:54: OPEN is not none, but Verdict is PASS. Fix: set Verdict: FAIL and stop: OPEN items are the user's (step 8)." check-review "$R"
+review 's/^Verdict: PASS/Verdict: PASS (overruled by hand: J 2026-11-21)/;/^## OPEN/{n;n;s/none./Should x be y?/;}'
+expect "check-review: overruled PASS may keep OPEN" 0 "" check-review "$R"
+review 's/^not run: no verify skill/US-1.AC1: fail, got 3/'
+expect "check-review: PASS with a verify fail" 1 "$R:46: Verify row says fail, but Verdict is PASS. Fix: set Verdict: FAIL and write an F ticket citing this row (step 8)." check-review "$R"
+review ""; git -C "$v" add -A; git -C "$v" commit -q --allow-empty -m "docs(review): again"; echo c > "$v/src/a.py"; git -C "$v" commit -qam later
+expect "check-review: stale PASS" 1 "$R:5: src/a.py changed since the Range end ${end:0:9}. Fix: re-run /final-review docs/work/x/spec.md (a delta run covers only these)." check-review "$R"
+expect "check-review: explicit head" 0 "" check-review "$R" HEAD~1
+review 's/^Verdict: PASS/Verdict: FAIL/;/^## Fix tickets/{n;n;s/none/F01 a: fixes US-1.AC2/;}'
+expect "check-review: stale FAIL names the files too" 1 "$R:5: src/a.py changed since the Range end ${end:0:9}. Fix: re-run /final-review docs/work/x/spec.md (a delta run covers only these)." check-review "$R"
+review 's/^Range: main\.\.\..*/Range: main...HEAD/'
+expect "check-review: Range end HEAD" 1 "$R:5: Range end HEAD is not a commit sha. Fix: write Range: <BASE>...<HEAD sha> with the sha the review ran at." check-review "$R"
+git -C "$v" checkout -q -f -b rebased "$end~1"; echo z > "$v/src/z.py"; git -C "$v" add src/z.py; git -C "$v" commit -qm rebased; review ""
+expect "check-review: rebased branch" 1 "$R:5: Range end ${end:0:9} is not an ancestor of HEAD. Fix: re-run /final-review docs/work/x/spec.md at this branch." check-review "$R"
+git -C "$v" checkout -q -f main
+review 's/^Verdict: PASS/Verdict: FAIL/'
+expect "check-review: FAIL with nothing to do" 1 "$R:3: Verdict is FAIL, but Fix tickets and OPEN are both none. Fix: list the F tickets step 8 writes, or the OPEN items for the user.
+$R:5: src/a.py changed since the Range end ${end:0:9}. Fix: re-run /final-review docs/work/x/spec.md (a delta run covers only these)." check-review "$R"
+review 's/^Verdict: PASS/Verdict: FAIL/;/^## Fix tickets/{n;n;s/none/F01 a: fixes US-1.AC2/;}'
+expect "check-review: FAIL with a ticket, fresh" 0 "" check-review "$R" HEAD~1
+
+# wf base: constack.base wins, else origin/HEAD, else exit 2 with a Fix
+b=$d/base; git init -q -b main "$b"; git -C "$b" commit -q --allow-empty -m x
+git -C "$b" update-ref refs/remotes/origin/main HEAD
+here=$PWD; cd "$b" || exit 1
+expect "base: nothing set" 2 "wf base: no base branch: constack.base is unset and origin/HEAD is missing. Fix: git config constack.base <branch>, or git remote set-head origin --auto" base
+git -C "$b" symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main
+expect "base: origin/HEAD" 0 $'origin/main\nwf base: from origin/HEAD (git config constack.base <branch> overrides it)' base
+git -C "$b" config constack.base staging
+expect "base: constack.base" 0 $'origin/staging\nwf base: from git config constack.base' base
+git -C "$b" config constack.base origin/staging
+expect "base: constack.base with origin/" 0 $'origin/staging\nwf base: from git config constack.base' base
+expect "base: extra arg" 2 "usage: wf base" base x
+cd "$here" || exit 1
 
 [ $fail = 0 ] && echo "OK wf-test"
 exit $fail

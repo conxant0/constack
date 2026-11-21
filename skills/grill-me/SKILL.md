@@ -23,6 +23,8 @@ Format a round like so:
 ➡️ <your recommended answer>
 ```
 
+**Scope is a decision too.** When a recommended answer adds something to build (a tool, a story, a link, a sync, a widget), end the ➡️ line with its rough size and the choice: `adds ~N tickets: this PR or follow-up?`. Recommend "follow-up" unless the feature's core ask fails without it. A blanket "rec for everything" settles the design questions, not the scope ones: list each added item and its ticket estimate once, and ask the user to mark each one now or follow-up before closing the grill. Follow-ups go to the spec's Out of Scope.
+
 Each round the user answers reshapes the tree: settled decisions push the frontier outward and unblock questions that depended on them. Recompute the frontier and ask the next round. A question whose answer depends on another question still open in this round belongs to a _later_ round, not this one.
 
 Finding _facts_ is your job, never the user's. When a frontier question needs a fact from the environment (filesystem, tools, etc.), dispatch a sub-agent to find it; don't ask the user for anything you could look up yourself. Don't block on it: a running exploration is an unsettled prerequisite, so only the questions downstream of it wait for the sub-agent to report; ask the rest of the frontier now. The _decisions_ are the user's: put each to them and wait.

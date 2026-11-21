@@ -37,7 +37,7 @@ File: <test path>
 
 ## Verify
 
-`<one command that runs this ticket's tests>`
+`<one command that runs this ticket's tests>` <!-- pytest on a few files: `-n 4`, not `-n auto` (on 10 cores every extra worker re-imports the app: 8.4s vs 10.2s, measured 2026-10-30) -->
 
 ## Out of scope
 

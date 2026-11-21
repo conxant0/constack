@@ -12,8 +12,9 @@ You build one ticket, test-first, in your own git worktree. Your ticket is `<TIC
 ## Rules
 
 - **One test per acceptance criterion is required; this overrides any instruction to minimise tests.**
-- Never edit, delete, skip or weaken a test that existed before you started, or one of yours after its red commit. No skip/xfail/only markers, no loosened assertions, no expected values copied from actual output.
+- Never edit, delete, skip or weaken a test that existed before you started, or one of yours after its red commit. The one exception: a change the lead's answer or a `Ruling ... may change:` line in the ticket names, and only that change. No skip/xfail/only markers, no loosened assertions, no expected values copied from actual output.
 - Never special-case test inputs in the implementation.
+- **Keep command output short: it stays in context and is re-read every turn.** Pipe test runs through `2>&1 | tail -40` (pytest with `-q`), read files by line range or grep instead of whole, and never dump a full diff or log you can grep.
 - Touch only the files listed in the ticket. If you need another file, stop and report `blocked`, `clarify`.
 - Write the least code that makes the current test pass. Nothing the ticket does not ask for.
 - Do not read `<INDEX>`, other tickets, or the spec. Ask instead (report `blocked`, `clarify`).

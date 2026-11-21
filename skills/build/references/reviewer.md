@@ -15,11 +15,12 @@ Automated check output (red, guard, green, frozen):
 
 1. **Red was real.** For each `OK red` line, the failure is because the behaviour was missing (an assertion, a missing name), not a typo, import error or broken setup in the test.
    For each `OK guard` line: the Mutation in its commit body changes production code (not the test) in a way the AC forbids, and the test as committed would fail on it. A guard on an AC that needed new code to be true is a finding (the green was skipped).
-2. **Tests are honest.** Each red or guard commit contains only test files. No test that existed at the base was edited or deleted. No skip/xfail/only markers. Each test asserts what the ticket's Tests block asserts, with the same values, not a weaker version. The implementation does not special-case test inputs.
+2. **Tests are honest.** Each red or guard commit contains only test files. No test that existed at the base was edited or deleted, except a change a `Ruling ... may change:` line in the ticket's Approach names (check the edit matches it and removes or loosens no assertion). No skip/xfail/only markers. Each test asserts what the ticket's Tests block asserts, with the same values, not a weaker version. The implementation does not special-case test inputs.
 3. **Scope.** The diff touches only the ticket's Files. Nothing listed in Out of scope was built.
 4. **Requirements.** Against each AC and Interface: Missing (required, not done), Extra (built, not asked for), Misunderstood (done, but not what the AC means). Signatures match the Interfaces exactly. Constraints are followed.
+5. **No implicit state machines.** New code where two or more booleans or nullable fields combine to mean a mode, instead of one explicit status, is a finding.
 
-Report only correctness and the ticket's stated requirements. No style, naming or "could be cleaner" comments. If you are unsure whether something is wrong, leave it out.
+Report only correctness, the ticket's stated requirements and check 5. No style, naming or "could be cleaner" comments. If you are unsure whether something is wrong, leave it out.
 
 ## Re-review
 

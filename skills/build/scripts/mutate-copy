@@ -1,0 +1,165 @@
+#!/usr/bin/env python3
+"""mutate-copy: which sentences of copy would no test miss?
+
+  mutate-copy [--base REF] [--only NAME]... FILE.py [FILE.py ...] -- TEST COMMAND
+
+For every module-level string constant in each FILE, delete one sentence at a
+time, run TEST COMMAND, and report the sentences whose deletion left it green.
+Leave snapshot and golden tests out of TEST COMMAND: they fail on any edit, so
+they would hide every gap. With pytest use --deselect FILE: --ignore does nothing
+for a file the command line names (a tests/test_*.py glob names them all).
+Before the sweep one space is turned into a tab; if TEST COMMAND fails on that,
+a snapshot is still in it and the run stops. Add -x so a caught sentence stops
+its run early.
+
+  --base REF   only sentences that are new or changed against REF (a PR's own copy)
+  --only NAME  only this constant (repeatable)
+
+Prints one line per sentence, KILLED or SURVIVED, then the counts.
+Exit 0: every sentence was caught (or none changed). Exit 1: a SURVIVED line.
+Exit 2: could not run (TEST COMMAND fails before any edit or on the space-to-tab
+probe, a FILE has uncommitted changes, bad arguments). Each FILE is restored when the run ends;
+if the process is killed outright, `git checkout -- FILE` restores it.
+"""
+import ast
+import os
+import re
+import signal
+import subprocess
+import sys
+
+# ponytail: splits on . ? ! plus whitespace, so "e.g. x" counts as two sentences; swap in a real splitter if that gets noisy
+SENTENCE = re.compile(r"(?<=[.?!])\s+")
+
+
+def sentences(text):
+    return [part for part in SENTENCE.split(text) if part.strip()]
+
+
+def constants(source):
+    """(name, value, node) for each module-level NAME = "plain string literal"; plus the names skipped."""
+    found, skipped = [], []
+    for node in ast.parse(source).body:
+        if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
+            name = node.targets[0].id
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.value is not None:
+            name = node.target.id
+        else:
+            continue
+        if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+            found.append((name, node.value.value, node.value))
+        elif isinstance(node.value, (ast.JoinedStr, ast.BinOp)):
+            skipped.append(name)  # built from other names: mutate the parts it is built from instead
+    return found, skipped
+
+
+def replaced(raw, node, new_value):
+    """raw (bytes) with the literal at node swapped for new_value. ast columns are utf-8 byte offsets."""
+    starts = [0]
+    for line in raw.splitlines(keepends=True):
+        starts.append(starts[-1] + len(line))
+    begin = starts[node.lineno - 1] + node.col_offset
+    end = starts[node.end_lineno - 1] + node.end_col_offset
+    return raw[:begin] + repr(new_value).encode() + raw[end:]
+
+
+def base_values(path, ref):
+    """name -> value in the file as of ref; {} when the file is new there."""
+    top = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True, check=True).stdout.strip()
+    rel = os.path.relpath(os.path.realpath(path), os.path.realpath(top))
+    shown = subprocess.run(["git", "show", f"{ref}:{rel}"], capture_output=True, text=True)
+    if shown.returncode != 0:
+        if subprocess.run(["git", "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"], capture_output=True).returncode != 0:
+            sys.exit(f"mutate-copy: {ref} is not a commit")
+        return {}
+    return {name: value for name, value, _ in constants(shown.stdout)[0]}
+
+
+def passes(command):
+    env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
+    return subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env).returncode == 0
+
+
+def main(argv):
+    if "--" not in argv:
+        argv = argv + ["--"]  # falls through to the usage line below
+    cut = argv.index("--")
+    args, command = argv[:cut], argv[cut + 1:]
+    base, only, files = None, set(), []
+    while args:
+        arg = args.pop(0)
+        if arg == "--base" and args:
+            base = args.pop(0)
+        elif arg == "--only" and args:
+            only.add(args.pop(0))
+        else:
+            files.append(arg)
+    if not files or not command:
+        print("usage: mutate-copy [--base REF] [--only NAME]... FILE.py [FILE.py ...] -- TEST COMMAND")
+        return 2
+
+    plan = []  # (path, raw bytes, name, value, node, sentence index)
+    skipped = []
+    for path in files:
+        if subprocess.run(["git", "diff", "--quiet", "HEAD", "--", path]).returncode != 0:
+            print(f"mutate-copy: {path} has uncommitted changes (or is not tracked); commit first")
+            return 2
+        raw = open(path, "rb").read()
+        found, built = constants(raw.decode("utf-8"))
+        skipped += [f"{path}:{name}" for name in built if not only or name in only]
+        before = base_values(path, base) if base else {}
+        for name, value, node in found:
+            if only and name not in only:
+                continue
+            old = set(sentences(before.get(name, "")))
+            for index, sentence in enumerate(sentences(value)):
+                if sentence not in old:
+                    plan.append((path, raw, name, value, node, index))
+
+    if not plan:
+        print(f"0 sentences to check ({'none new against ' + base if base else 'no string constants matched'})")
+        return 0
+    if not passes(command):
+        print("mutate-copy: TEST COMMAND fails before any edit; fix that first (run it yourself to see why)")
+        return 2
+
+    def stop(*_):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, stop)
+
+    survived = 0
+    try:
+        # Instrument check: an edit that changes no word must stay green, or every KILLED below means nothing.
+        probe = next((item for item in plan if " " in item[3]), None)
+        if probe:
+            path, raw, name, value, node, _ = probe
+            try:
+                open(path, "wb").write(replaced(raw, node, value.replace(" ", "\t", 1)))
+                exact = not passes(command)
+            finally:
+                open(path, "wb").write(raw)
+            if exact:
+                print(f"mutate-copy: TEST COMMAND fails when one space in {path}:{name} becomes a tab, so a snapshot, "
+                      "golden or exact-text test is still in it; take that test out (pytest: --deselect FILE)")
+                return 2
+        for path, raw, name, value, node, index in plan:
+            parts = sentences(value)
+            sentence = parts.pop(index)
+            try:
+                open(path, "wb").write(replaced(raw, node, " ".join(parts)))
+                caught = not passes(command)
+            finally:
+                open(path, "wb").write(raw)
+            survived += not caught
+            print(f"{'KILLED  ' if caught else 'SURVIVED'} {path}:{name}: {sentence}", flush=True)
+    except KeyboardInterrupt:
+        print("mutate-copy: interrupted, files restored")
+        return 2
+    for name in skipped:
+        print(f"SKIPPED  {name}: not a plain string literal")
+    print(f"{len(plan)} sentences: {len(plan) - survived} killed, {survived} survived, {len(skipped)} constants skipped")
+    return 1 if survived else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

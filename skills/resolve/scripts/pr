@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# PR review-thread helper for /resolve. gh api only (works where `gh pr` is blocked).
+set -euo pipefail
+cmd=${1:-}; shift || true
+repo() { gh api 'repos/{owner}/{repo}' --jq '.full_name'; }
+case "$cmd" in
+  find)    # find [pr#] -> PR number for the current branch, or the given one
+    [ -n "${1:-}" ] && { echo "$1"; exit 0; }
+    b=$(git branch --show-current)
+    n=$(gh api 'repos/{owner}/{repo}/pulls?state=open&per_page=100' --jq ".[]|select(.head.ref==\"$b\")|.number" | head -1)
+    [ -n "$n" ] || { echo "no open PR for branch $b" >&2; exit 2; }
+    echo "$n" ;;
+  fetch)   # fetch <pr#> -> JSON: open threads + review bodies (latest changes-requested, then later comments), minus me and bots
+    r=$(repo); me=$(gh api user --jq .login)
+    gh api graphql -f o="${r%/*}" -f r="${r#*/}" -F n="$1" -f query='
+      query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){
+        reviewThreads(first:100){nodes{id isResolved isOutdated path line
+          comments(first:30){nodes{author{login __typename} body url}}}}
+        reviews(last:100){nodes{state body url author{login __typename}}}}}}' \
+    | jq --arg me "$me" '.data.repository.pullRequest as $p | {
+        threads: [$p.reviewThreads.nodes[] | select(.isResolved|not)
+          | select(.comments.nodes[0].author.login != $me and .comments.nodes[0].author.__typename != "Bot")
+          | {id, path, line, outdated: .isOutdated,
+             comments: [.comments.nodes[] | {who: .author.login, body, url}]}],
+        reviews: [$p.reviews.nodes   # per reviewer, since their last approval or dismissal: the latest changes-requested body, plus every commented body after it (a re-review often comes back as a plain comment)
+          | map(select(.author.login != $me and .author.__typename != "Bot"))
+          | group_by(.author.login)[]
+          | ([to_entries[] | select(.value.state | IN("APPROVED","DISMISSED")) | .key] | last // -1) as $cut | .[$cut+1:]
+          | ([to_entries[] | select(.value.state=="CHANGES_REQUESTED") | .key] | last // -1) as $cr
+          | to_entries[] | select(.value.body != "" and (.key==$cr or (.key>$cr and .value.state=="COMMENTED"))) | .value
+          | {who: .author.login, state, body, url}] }' ;;
+  reply)   # reply <thread id> <body>
+    gh api graphql -f id="$1" -f body="$2" -f query='mutation($id:ID!,$body:String!){
+      addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:$id,body:$body}){comment{url}}}' --jq '.data.addPullRequestReviewThreadReply.comment.url' ;;
+  resolve) # resolve <thread id>
+    gh api graphql -f id="$1" -f query='mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{isResolved}}}' --jq '.data.resolveReviewThread.thread.isResolved' ;;
+  comment) # comment <pr#> <body>   (answers a review summary, which has no thread)
+    gh api 'repos/{owner}/{repo}/issues/'"$1"'/comments' -f body="$2" --jq .html_url ;;
+  *) echo "usage: pr find [pr#] | fetch <pr#> | reply <thread> <body> | resolve <thread> | comment <pr#> <body>" >&2; exit 2 ;;
+esac

@@ -20,11 +20,11 @@ First run, and read in full: `git diff --name-only <BASE>...HEAD`, `git log --no
 OBJECTIVE:
 Perform a security-focused code review to identify HIGH-CONFIDENCE security vulnerabilities that could have real exploitation potential. This is not a general code review - focus ONLY on security implications newly added by this PR. Do not comment on existing security concerns.
 
-CRITICAL INSTRUCTIONS:
-1. MINIMIZE FALSE POSITIVES: Only flag issues where you're >80% confident of actual exploitability
-2. AVOID NOISE: Skip theoretical issues, style concerns, or low-impact findings
-3. FOCUS ON IMPACT: Prioritize vulnerabilities that could lead to unauthorized access, data breaches, or system compromise
-4. EXCLUSIONS: Do NOT report the following issue types:
+Rules:
+1. Few false positives: only flag issues where you're >80% confident of actual exploitability
+2. Skip theoretical issues, style concerns, or low-impact findings
+3. Prioritize vulnerabilities that could lead to unauthorized access, data breaches, or system compromise
+4. Do not report these issue types:
    - Denial of Service (DOS) vulnerabilities, even if they allow service disruption
    - Secrets or sensitive data stored on disk (these are handled by other processes)
    - Rate limiting or resource exhaustion issues

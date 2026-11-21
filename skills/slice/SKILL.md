@@ -16,20 +16,20 @@ Turn an approved spec into an index plus one file per ticket. Each ticket is a t
 3. **ACs are copied verbatim**, the whole `- US-n.ACm: ...` line, unchanged.
 4. **Tickets that share a resource never run in parallel.** Same file, same table, same route, same config key, or one modifies what the other Consumes: add a blocked-by edge between them.
 5. **No ticket files before the user approves the slice table** in step 5.
-6. **Decide, don't transcribe.** A cheaper model builds each ticket from it alone. Give exact signatures, each AC's test with its assertions, and one-line approaches for real choices. Never function bodies, except an algorithm the tests do not pin.
+6. **Decide, don't transcribe.** The implementer builds each ticket from it alone. Give exact signatures, each AC's test with its assertions, and one-line approaches for real choices. Never function bodies, except an algorithm the tests do not pin.
 
 ## Steps
 
-1. **Gate.** Read `$ARGUMENTS` (the spec). Stop unless:
-   - it says `Status: approved` and contains no `OPEN:` line
-   - `${CLAUDE_SKILL_DIR}/../build/scripts/wf gate <spec>` prints nothing
+1. **Gate.** `$ARGUMENTS` is the spec. Run `${CLAUDE_SKILL_DIR}/../build/scripts/wf gate <spec> --slice` (branch, clean tree, `Status: approved`, `wf check-spec` clean). If it prints anything, show it and stop.
 2. **Map the code.** Dispatch one `Explore` subagent (`model: "sonnet"`) with the prompt in `references/code-map.md`, filling in the spec path. Keep only its report.
 3. **Spec gaps.** If the map shows the spec cannot be built as written (an AC contradicts the code, a needed decision is missing), add `OPEN: <question>` to the spec where the answer belongs, set `Status: draft`, commit `docs(spec): open questions`, list the questions with a recommended answer each, and stop. Tell the user to resolve them in the spec, set it approved, and re-run `/slice`.
 4. **Slice.** Read `references/slicing.md` and cut the tickets.
-5. **Approve.** Show one table: ticket, title, ACs delivered, files, blocked by. Wait for explicit approval; apply edits and show it again.
+5. **Approve.** Show the wave count (the most tickets on one blocked-by path), then one table: ticket, title, ACs delivered, files, blocked by, with each edge marked `interface` (it Consumes what the blocker Produces) or `file only` (rule 4). The marks live in this table only; `Blocked by` in the index and tickets stays bare ids, which `wf` parses. Wait for explicit approval; apply edits and show it again.
 6. **Write** `docs/work/<feature>/index.md` from `assets/index-template.md` and each `tickets/T<nn>-<slug>.md` from `assets/ticket-template.md`, following `references/ticket-detail.md`. Copy into every ticket's Constraints the project rules from the map that apply to its files.
-7. **Checks.** Run the type-consistency and proportion checks in `references/ticket-detail.md`. Then run `${CLAUDE_SKILL_DIR}/../build/scripts/wf check-plan docs/work/<feature>/index.md` and fix every line it prints until it prints nothing. It checks the index header, ticket ids, blockers and cycles, each ticket's sections, shared files without a blocked-by edge (rule 4), a Tests heading per delivered AC, and AC lines MISSING from tickets or DRIFTed from the spec (rule 3).
-8. **Commit** `git add docs/work/<feature> && git commit -m "docs(plan): <feature>"`.
-9. **Hand off.** Give the user both options, with `<worktree>` as the absolute path of the current worktree:
+7. **Checks.** Run the type-consistency and proportion checks in `references/ticket-detail.md`. Then run `${CLAUDE_SKILL_DIR}/../build/scripts/wf check-plan docs/work/<feature>/index.md` and fix every line it prints until it prints nothing. It checks the index header, ticket ids, blockers and cycles, each ticket's sections, shared files without a blocked-by edge (rule 4), a Tests heading per delivered AC, more than 4 ACs in an unfinished ticket (slicing rule 4), and AC lines MISSING from tickets or DRIFTed from the spec (rule 3).
+8. **Test-strength check.** Dispatch one subagent (`general-purpose`, `model: "opus"`) with the prompt in `references/test-strength-check.md`, filling in the spec and tickets paths. Do not pass it the conversation. Check each finding against its AC line: skip one the AC does not require and name it in the hand-off. Fix the rest in the ticket's Tests block (never the spec; a finding that needs a spec change goes to the user), then re-run `wf check-plan`. One pass only.
+9. **Grounded check.** Dispatch one subagent (`general-purpose`, same model as step 8) with the prompt in `references/grounded-check.md`, filling in the spec, tickets and feature paths and the code map's one-file test command. Unlike step 8 it reads code and runs every Tests snippet. Done when its report has one row per Tests block and ends `clean`; delete any probe file it left. Fix each FINDING in the ticket (never the spec; a finding that needs a spec change goes to the user), then re-run `wf check-plan`. One pass only.
+10. **Commit** `git add docs/work/<feature> && git commit -m "docs(plan): <feature>"`.
+11. **Hand off.** Give the user both options, with `<worktree>` as the absolute path of the current worktree:
    - Manual: `/clear`, then `/build docs/work/<feature>/index.md`.
    - AFK (build, final review and fix rounds, phone push when it stops), in a plain terminal tab: `cd <worktree> && ~/.claude/skills/build/scripts/afk-loop docs/work/<feature>/index.md`

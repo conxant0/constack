@@ -2,7 +2,7 @@
 
 Status: draft
 Branch: <current branch>
-Base: <upstream, e.g. origin/staging>
+Base: <upstream, e.g. origin/main>
 Date: <YYYY-MM-DD>
 
 ## Problem

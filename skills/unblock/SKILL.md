@@ -21,7 +21,7 @@ An AFK `/build` stopped on `blocked:` rows in `$ARGUMENTS`. You turn each one in
    - The spec, if the answer changes an AC or Out of Scope (a scope change updates the spec in the same commit).
    - **The ticket file.** Implementers never read the index, so a ruling only in `## Rulings` does not reach them. Add the files the answer touches to `## Files`, fix `## Tests`/`## Approach`, and add an Approach line `Ruling <date> (<user>): <ruling>`. Name any earlier ticket's test it now legitimately changes, so review does not read it as a weakened test.
    - Partial work: if the `(afk)` line names a worktree with commits, check it still exists (`git worktree list`) and add `Earlier commits for AC<x>: <worktree> <range>; cherry-pick or redo` to the Approach line.
-   - `wf set <index> <id> todo`, then `wf ruling <index> "<id> (<user>): <ruling, why, what the ticket now does>"`, then `git commit -q --amend --no-edit -- <spec> <ticket files>` to fold the doc edits into that ruling commit.
+   - `wf set <index> <id> todo`, then `wf ruling <index> "<id> (<user>): <ruling, why, what the ticket now does>; pick: <the AFK pick>; chose: <their answer, or "pick">"`, then `git commit -q --amend --no-edit -- <spec> <ticket files>` to fold the doc edits into that ruling commit.
    - `blocked: review`, `blocked: conflict` and `blocked: post-merge suite` get the same treatment: the ruling says what the next implementer must do differently, written into the ticket.
 6. **Finish.** List each ticket: ruling, commit sha. Then print the restart command for the user to run in a plain terminal (not in this session), with absolute paths and a trailing space after each path:
    `cd <repo root> && ~/.claude/skills/build/scripts/afk-loop <abs index path> `

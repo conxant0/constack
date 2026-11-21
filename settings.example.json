@@ -1,8 +1,32 @@
 {
   "env": {
+    "CLAUDE_CODE_ENABLE_STATUSLINE": "1",
     "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet"
   },
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "includeCoAuthoredBy": false,
   "model": "opus",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "if command -v rtk >/dev/null 2>&1; then rtk hook claude; fi" }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          { "type": "command", "command": "bash ~/.claude/hooks/prune-merged-worktrees.sh", "timeout": 20 }
+        ]
+      }
+    ]
+  },
   "worktree": {
     "baseRef": "head"
   },
@@ -11,11 +35,16 @@
     "command": "node ~/.claude/statusline.js"
   },
   "enabledPlugins": {
-    "ponytail@ponytail": true,
-    "humanizer@humanizer": true
+    "ponytail@ponytail": false,
+    "cc-plugin-you-should-know@builtin": true,
+    "humanizer@humanizer": true,
+    "cc-plugin-agents-md@builtin": true,
+    "pstack@cursor-plugins": true
   },
   "extraKnownMarketplaces": {
     "ponytail": { "source": { "source": "github", "repo": "DietrichGebert/ponytail" } },
-    "humanizer": { "source": { "source": "github", "repo": "blader/humanizer" } }
+    "claude-plugins-official": { "source": { "source": "github", "repo": "anthropics/claude-plugins-official" } },
+    "humanizer": { "source": { "source": "github", "repo": "blader/humanizer" } },
+    "cursor-plugins": { "source": { "source": "github", "repo": "cursor/plugins" } }
   }
 }

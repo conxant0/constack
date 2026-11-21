@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
 # check-red-green.sh <worktree> <base-sha> "<verify command>"
-#   RED:    every `test(US-n.ACm): red` commit in base..HEAD fails the verify command
-#   GUARD:  every `test(US-n.ACm): guard` commit passes it and names a `Mutation:` in its body
+#   RED:    every `test(US-n.ACm): red` commit in base..HEAD fails its own test files (see narrowed)
+#   GUARD:  every `test(US-n.ACm): guard` commit passes them and names a `Mutation:` in its body
 #   GREEN:  HEAD passes the verify command
 #   FROZEN: no later non-red/guard commit touches a file a red or guard commit touched
+#   TESTS:  a red or guard commit touches test files only (see test_re)
 # One line per check. Exit 0 all OK, 1 any FAIL, 2 could not run.
 set -u
 wt=$1 base=$2 verify=$3
 red_re='^test\(US-[0-9]+\.AC[0-9]+[a-z]?\): (red|guard)$'
+# test dirs (tests/, test/, tests_unit/, __tests__/, fixtures/), test_*.py, *_test.py, conftest.py, *.test.ts(x), *.spec.js
+test_re='(^|/)(tests?|tests_unit|__tests__|fixtures?)/|(^|/)test_[^/]*\.py$|_test\.py$|(^|/)conftest\.py$|\.(test|spec)\.[cm]?[jt]sx?$'
 
-cd "$wt" || { echo "ERROR cannot cd to $wt"; exit 2; }
-[ -z "$(git status --porcelain --untracked-files=no)" ] || { echo "ERROR worktree has uncommitted changes"; exit 2; }
+cd "$wt" || { echo "ERROR cannot cd to $wt. Fix: pass the worktree path from the implementer's report (git worktree list shows it)."; exit 2; }
+[ -z "$(git status --porcelain --untracked-files=no)" ] || { echo "ERROR worktree has uncommitted changes. Fix: the implementer commits or discards them (git -C <worktree> status), then re-run."; exit 2; }
 head=$(git rev-parse HEAD)
 branch=$(git symbolic-ref -q --short HEAD || echo "$head")
 trap 'git checkout -q "$branch" 2>/dev/null' EXIT
@@ -22,6 +25,24 @@ last_line() { # most telling line of a test run's output
   printf '%s' "$l" | cut -c1-200
 }
 
+# The command a red/guard commit runs: only the test_*.py files it added or changed,
+# serially from their package root. The full verify when it touched anything outside a
+# tests/ or tests_unit/ dir (e.g. a frontend test) or spans two package roots.
+narrowed() {
+  local all tests roots root
+  all=$(git diff-tree --no-commit-id --name-only -r --diff-filter=AMR "$1")
+  tests=$(printf '%s\n' "$all" | grep -E '(^|/)tests(_unit)?/(.*/)?test_[^/]*\.py$')
+  roots=$(printf '%s\n' "$all" | sed -nE 's#^(.*/)?tests(_unit)?/.*#\1#p' | sort -u)
+  if [ -z "$tests" ] || [ "$(printf '%s\n' "$all" | grep -cvE '(^|/)tests(_unit)?/')" -ne 0 ] \
+     || [ "$(printf '%s\n' "$roots" | wc -l)" -ne 1 ]; then
+    printf '%s' "$verify"; return
+  fi
+  root=${roots:-.}
+  py=$(printf '%s' "$verify" | grep -oE '[^ ]*/python3?' | head -n 1)
+  printf 'cd %q && %s -m pytest -q -p no:cacheprovider -p no:xdist' "$root" "${py:-python3}"
+  printf ' %q' $(printf '%s\n' "$tests" | sed "s#^${roots}##")
+}
+
 fail=0
 reds=$(git log --reverse --format='%H %s' "$base..$head" | grep -E "^[0-9a-f]+ ${red_re#^}" | cut -d' ' -f1)
 [ -n "$reds" ] || echo "INFO no red commits in $base..$head"
@@ -29,18 +50,21 @@ reds=$(git log --reverse --format='%H %s' "$base..$head" | grep -E "^[0-9a-f]+ $
 for r in $reds; do
   ac=$(git log -1 --format=%s "$r" | sed -E 's/^test\((.*)\): (red|guard)$/\1/')
   kind=$(git log -1 --format=%s "$r" | sed -E 's/.*: //')
+  nontest=$(git diff-tree --no-commit-id --name-only -r "$r" | grep -vE "$test_re" | head -n 5 | tr '\n' ' ')
+  [ -z "$nontest" ] || { echo "FAIL $kind $ac ${r:0:8}: touches non-test files: ${nontest% }. Fix: move those changes out of the $kind commit into the next commit, so it holds test files only."; fail=1; }
   git checkout -q --detach "$r"
+  run=$(narrowed "$r")
   if [ "$kind" = guard ]; then
     mut=$(git log -1 --format=%b "$r" | grep -m1 '^Mutation: ' | cut -c1-200)
-    if ! out=$(bash -c "$verify" 2>&1); then
-      echo "FAIL guard $ac ${r:0:8}: verify failed at the guard commit: $(last_line "$out")"; fail=1
+    if ! out=$(bash -c "$run" 2>&1); then
+      echo "FAIL guard $ac ${r:0:8}: verify failed at the guard commit: $(last_line "$out"). Fix: a guard must pass on arrival; if the code is missing, make it a red commit and add a green one."; fail=1
     elif [ -z "$mut" ]; then
-      echo "FAIL guard $ac ${r:0:8}: no \"Mutation: \" line in the commit body"; fail=1
+      echo "FAIL guard $ac ${r:0:8}: no \"Mutation: \" line in the commit body. Fix: break the code the way the AC forbids, see the test fail, restore, and add \"Mutation: <change> -> <failure>\" to the guard commit body."; fail=1
     else
       echo "OK   guard $ac ${r:0:8}: $mut"
     fi
-  elif out=$(bash -c "$verify" 2>&1); then
-    echo "FAIL red $ac ${r:0:8}: verify passed at the red commit"; fail=1
+  elif out=$(bash -c "$run" 2>&1); then
+    echo "FAIL red $ac ${r:0:8}: verify passed at the red commit. Fix: strengthen the test until it fails without the code; if the code already did this, make it a guard commit with a Mutation: line."; fail=1
   else
     echo "OK   red $ac ${r:0:8}: $(last_line "$out")"
   fi
@@ -51,7 +75,7 @@ for r in $reds; do
     touched=$(git diff-tree --no-commit-id --name-only -r "$c")
     for f in $files; do
       if printf '%s\n' "$touched" | grep -qFx -- "$f"; then
-        echo "FAIL frozen $ac: ${c:0:8} \"$subj\" changed $f after its red commit"; fail=1
+        echo "FAIL frozen $ac: ${c:0:8} \"$subj\" changed $f after its red commit. Fix: revert that change to $f; a test only changes after red with a lead ruling (may change:)."; fail=1
       fi
     done
   done
@@ -61,6 +85,6 @@ git checkout -q "$branch"
 if out=$(bash -c "$verify" 2>&1); then
   echo "OK   green HEAD ${head:0:8}"
 else
-  echo "FAIL green HEAD ${head:0:8}: $(last_line "$out")"; fail=1
+  echo "FAIL green HEAD ${head:0:8}: $(last_line "$out"). Fix: make HEAD pass the verify command without editing a frozen test."; fail=1
 fi
 exit $fail
