@@ -75,7 +75,7 @@ for ((r = 1; r <= rounds; r++)); do
   run "/final-review $spec AFK"
   grep -q '^Verdict: PASS' "$dir/review.md" 2>/dev/null && {
     bad=$("$wf" check-review "$dir/review.md" 2>&1) || { notify "review.md says PASS but wf check-review disagrees: $(printf '%s' "$bad" | head -n 1 | tr -d '"')"; exit 1; }
-    notify "PASS. Read the (afk) rulings: $(grep -c '(afk)' "$idx") in $idx"; exit 0; }
+    notify "PASS. Read the Fable decisions: $(grep -cE '\((afk|fable)[,)]' "$idx" "$spec" | awk -F: '{n+=$NF} END {print n}') in $idx and $spec"; exit 0; }
   [ "$("$wf" frontier "$idx")" = "all done" ] && { notify "final-review FAIL with no fix tickets (OPEN items?), see review.md"; exit 1; }
 done
 notify "no PASS after $rounds rounds"; exit 1

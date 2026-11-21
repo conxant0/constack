@@ -13,10 +13,10 @@ An AFK `/build` stopped on `blocked:` rows in `$ARGUMENTS`. You turn each one in
 
 ## Steps
 
-1. **Read the blockers.** One Bash call: `git branch --show-current; git status --short; wf frontier <index>; grep -n '(afk)' <index> | tail -20`. Not on the index's `Branch:` or tree dirty: say so and stop. No `blocked` row: say so, print the restart command (step 6) and stop.
-2. **One ticket at a time**, in table order. For each, find its `(afk)` ruling lines (they name the evidence, the worktree and any commits already made).
+1. **Read the blockers.** One Bash call: `git branch --show-current; git status --short; wf frontier <index>; grep -nE '\((afk|fable)\)' <index> | tail -20`. Not on the index's `Branch:` or tree dirty: say so and stop. No `blocked` row: say so, print the restart command (step 6) and stop.
+2. **One ticket at a time**, in table order. For each, find its `(afk)` and `(fable)` ruling lines (they name the evidence, the worktree and any commits already made).
 3. **Check the facts before asking.** The AFK lead's question and pick are a draft, not a finding. Open every file:line it cites and the code on both sides, and run the cheap check that would prove it wrong. Label each claim measured or inferred. If the facts contradict the blocker, say so: the question may change.
-4. **Ask.** AskUserQuestion, standalone (the user may see only the dialog): what is blocked, what each side does today (measured), and 2-3 options, your recommendation first with "(Recommended)". The AFK pick is one option, not the default. Prefer the option that changes no existing product behaviour and no existing test written on purpose, unless the spec says otherwise.
+4. **Ask.** AskUserQuestion, standalone (the user may see only the dialog): what is blocked, what each side does today (measured), and 2-3 options, your recommendation first with "(Recommended)". The AFK pick (Fable's decision) is one option, not the default. Prefer the option that changes no existing product behaviour and no existing test written on purpose, unless the spec says otherwise.
 5. **Apply the answer**, then commit it all as one commit:
    - The spec, if the answer changes an AC or Out of Scope (a scope change updates the spec in the same commit).
    - **The ticket file.** Implementers never read the index, so a ruling only in `## Rulings` does not reach them. Add the files the answer touches to `## Files`, fix `## Tests`/`## Approach`, and add an Approach line `Ruling <date> (<user>): <ruling>`. Name any earlier ticket's test it now legitimately changes, so review does not read it as a weakened test.
