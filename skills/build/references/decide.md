@@ -32,7 +32,8 @@ On the reply:
 - **Could not run:** send that question back once with what it lacked (a path, a worktree, a command). A second `could not run` is escalated: an issue nobody could see is decided by the user.
 - **Does not happen:** the decision is no change; the finding or blocker was wrong.
 - **Escalate:** check each decision against the Escalate section yourself, whatever Fable answered.
-- **The rest:** act on it as if the user had answered. A SPEC line goes into the spec in the same commit as the ticket change. Log each decision with `wf ruling <index> "<id> (fable): <question>; reproduced: <one line>; decided: <DECISION>; why: <WHY>"`.
+- **The rest:** act on it as if the user had answered. A SPEC line that changes an AC's wording or an Out of Scope line goes into the spec in the same commit as the ticket change. Log each decision with `wf ruling <index> "<id> (fable): <question>; reproduced: <one line>; decided: <DECISION>; why: <WHY>"`.
+- **A SPEC line that adds an AC** is built as its own last ticket, so no other ticket builds on it. Commit the AC line and a new ticket file delivering only that AC on their own (`docs(spec): <AC id> (fable)`), add its index row blocked by every ticket not yet `done`, and put that commit's sha in the ruling line. Undoing the decision is then `git revert -m 1 <its merge sha>`, `git revert <that sha>`, and deleting its index row. In /slice the AC still gets that commit at step 3, and step 6 slices it as one ticket blocked by every other. The AC of a final-review security or behaviour finding is required, not chosen, and is exempt.
 
 ## Preferences
 
