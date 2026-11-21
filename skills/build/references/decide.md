@@ -15,15 +15,24 @@ Escalating: in AFK, follow `afk.md`'s blocked line. Otherwise, AskUserQuestion, 
 
 ## Dispatch
 
-Send every open question at this stop in one Agent call: `subagent_type: "general-purpose"`, `model: "fable"`, no isolation. Its prompt:
+Send every open question at this stop in one Agent call: `subagent_type: "general-purpose"`, `model: "fable"`, no isolation. Give Fable the problem, not a menu. Its prompt:
 
-1. Each question, numbered, in one sentence, with 2 or 3 options and what each changes in the product.
-2. The evidence as file:line references, plus the spec path. Fable opens them itself.
-3. This instruction: "Read `~/.claude/skills/build/references/decide.md`, section Preferences, then the evidence. Run any cheap check that would settle a question of fact. Answer each question in this shape:
-   `Q<n>: DECISION: <an option, or your own> | WHY: <one sentence naming the preference that settled it> | ESCALATE: yes|no | SPEC: <the AC or Out of Scope line to add or change, or none>`
+1. Each question, numbered: what happened in the source's own words (the implementer's BLOCKER, the reviewer's finding, the failing command and its output), where it happened (file:line, worktree path, commit range), and the spec path.
+2. Your pick as one line labelled `lead draft`, or none.
+3. This instruction: "Read `~/.claude/skills/build/references/decide.md`, section Preferences. For each question, in order:
+   a. Reproduce it: run the failing test, probe or command in the named worktree, or read the cited lines, and record what you saw. Probes go in the scratchpad; leave `git status --short` as you found it.
+   b. Find the options yourself from what you reproduced. The lead draft is one candidate, written by the agent that hit the problem, and may be wrong or narrow.
+   c. Decide by the Preferences.
+   Answer each question in this shape:
+   `Q<n>: REPRODUCED: <command and what it showed> | does not happen: <command and output> | could not run: <why> | n/a (nothing to run, e.g. an AC's wording) | OPTIONS: <the ones you weighed> | DECISION: <one of them> | WHY: <one sentence naming the preference that settled it> | ESCALATE: yes|no | SPEC: <the AC or Out of Scope line to add or change, or none>`
    ESCALATE is yes only for a decision the Escalate section lists."
 
-On the reply, check each decision against Escalate yourself, whatever Fable answered, and escalate any that match. Act on the rest as if the user had answered. A SPEC line goes into the spec in the same commit as the ticket change. Log each decision with `wf ruling <index> "<id> (fable): <question>; decided: <DECISION>; why: <WHY>"`.
+On the reply:
+
+- **Could not run:** send that question back once with what it lacked (a path, a worktree, a command). A second `could not run` is escalated: an issue nobody could see is decided by the user.
+- **Does not happen:** the decision is no change; the finding or blocker was wrong.
+- **Escalate:** check each decision against the Escalate section yourself, whatever Fable answered.
+- **The rest:** act on it as if the user had answered. A SPEC line goes into the spec in the same commit as the ticket change. Log each decision with `wf ruling <index> "<id> (fable): <question>; reproduced: <one line>; decided: <DECISION>; why: <WHY>"`.
 
 ## Preferences
 
@@ -32,5 +41,4 @@ Apply them in order. The first one that settles a question decides it.
 1. **Money is right now.** A bug that charges wrongly or twice, or loses what a customer paid for, is fixed in this branch.
 2. **The smaller change.** Behaviour the spec did not ask for (an edge case found in review, a bug older than the branch) gets an Out of Scope line plus a `TODOS.md` entry, not a new AC. The story's promise holds: when an Out of Scope line would leave a user story's "so that" false, choose the fix. A refactor no AC needs is declined.
 3. **Existing behaviour stays.** Choose the option that leaves current product behaviour and existing tests as they are, unless an AC says otherwise.
-4. **Facts before choices.** When the answer depends on how the code or data behaves, measure it and decide on the result.
-5. **The repo's rules bind.** The project's CLAUDE.md and `.claude/rules/` beat any option that breaks them.
+4. **The repo's rules bind.** The project's CLAUDE.md and `.claude/rules/` beat any option that breaks them.
