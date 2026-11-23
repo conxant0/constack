@@ -136,6 +136,64 @@ plan "$d/nofile"; rm "$d/nofile/tickets/T02-t.md"
 expect "row without ticket file" 1 "$d/nofile/index.md:11: T02 has no ticket file tickets/T02-*.md
 $d/nofile/spec.md:4: MISSING: AC in no ticket's Delivers" check-plan "$d/nofile/index.md"
 
+# every blocked-by edge needs a reason the script can see: Consumes names the blocker, or a shared non-test Files entry
+noreason="T02 is blocked by T01 with no stated reason. Fix: name what T02 Consumes from T01 (a ticket that runs last writes '- Consumes: the merged work of T01 (runs last: <why>)'), or add the same '- shares: <table|route|config>:<name>' line to both tickets' Files, or drop T01 from T02's Blocked by (index and ticket)."
+broken bare tickets/T02-t.md 's#src/shared.py#src/other.py#'
+expect "edge with no reason" 1 "$d/bare/tickets/T02-t.md:4: $noreason" check-plan "$d/bare/index.md"
+broken iface tickets/T02-t.md 's#src/shared.py#src/other.py#; s#^- x$#- Consumes: `f() -> int` from T01#'
+expect "edge justified by Consumes" 0 "" check-plan "$d/iface/index.md"
+broken produces tickets/T02-t.md 's#src/shared.py#src/other.py#; /^## Interfaces/{n;n;s#^- x$#- Consumes: `g()` from src/g.py\
+- Produces: `f()`, used later by T01#;}'
+expect "a Produces line naming the blocker is no reason" 1 "$d/produces/tickets/T02-t.md:4: $noreason" check-plan "$d/produces/index.md"
+broken tenth tickets/T02-t.md 's#src/shared.py#src/other.py#; s#^- x$#- Consumes: `f()` from T010#'
+expect "T010 does not name T01" 1 "$d/tenth/tickets/T02-t.md:4: $noreason" check-plan "$d/tenth/index.md"
+broken shares tickets/T02-t.md 's#src/shared.py#src/other.py#; /^- modify:/a\
+- shares: table:saved_searches'
+sed -i '' '/^- modify:/a\
+- shares: `table:saved_searches` (rows T02 deletes)' "$d/shares/tickets/T01-t.md"
+expect "edge justified by a shares line" 0 "" check-plan "$d/shares/index.md"
+expect "waves names a shares edge" 0 "Waves: 2
+Longest path: T01 > T02 (shares table:saved_searches)
+Wave 1: T01
+Wave 2: T02" waves "$d/shares/index.md"
+broken testonly tickets/T02-t.md 's#src/shared.py#src/other.py#; /^- modify:/a\
+- test: `tests/test_saved.py` (add one test)'
+sed -i '' '/^- modify:/a\
+- test: `tests/test_saved.py`' "$d/testonly/tickets/T01-t.md"
+expect "a shared test file is no reason" 1 "$d/testonly/tickets/T02-t.md:4: T02 is blocked by T01 only because both add tests to tests/test_saved.py. Fix: give T02 its own new test file, then drop T01 from T02's Blocked by (index and ticket)." check-plan "$d/testonly/index.md"
+sed -i '' 's#^- test: `tests/test_saved.py`$#- modify: `tests/test_saved.py` (one pin changes)#' "$d/testonly/tickets/T01-t.md"
+expect "a test file one ticket modifies is a reason" 0 "" check-plan "$d/testonly/index.md"
+broken prose tickets/T02-t.md 's#- modify: `src/shared.py`#- modify, only if a limit is crossed: src/a.py, `src/shared.py` (one line).#'
+expect "a path later in a prose Files line is a reason" 0 "" check-plan "$d/prose/index.md"
+broken sweep tickets/T02-t.md 's#src/shared.py#src/other.py#; s#^- x$#- Consumes: the merged work of T01 (runs last: full suite and CHANGELOG)#'
+expect "a run-last ticket names its blockers in Consumes" 0 "" check-plan "$d/sweep/index.md"
+sed -i '' 's/| T01 | a | none | todo |/| T01 | a | none | done abc |/' "$d/bare/index.md"
+expect "edge to a done ticket needs no reason" 0 "" check-plan "$d/bare/index.md"
+
+# waves: count, the longest path with each edge's kind, one line per wave, a note past 5 at once
+plan "$d/w"
+for t in T03 T04; do ticket "$d/w/tickets/$t-t.md" none US-1.AC1 'Given a, when b, then c.'; done
+sed -i '' 's#src/shared.py#src/three.py#' "$d/w/tickets/T03-t.md"
+sed -i '' 's#src/shared.py#src/four.py#; s#^Blocked by: none#Blocked by: T02, T03#; s#^- x$#- Consumes: `h()` from T03#' "$d/w/tickets/T04-t.md"
+sed -i '' 's/^| T02 | b | T01 | todo |$/&\
+| T03 | c | none | todo |\
+| T04 | d | T02, T03 | todo |/' "$d/w/index.md"
+expect "waves" 0 "Waves: 3
+Longest path: T01 > T02 (file src/shared.py) > T04 (no reason)
+Wave 1: T01 T03
+Wave 2: T02
+Wave 3: T04" waves "$d/w/index.md"
+index wide '| T01 | a | none | todo |' '| T02 | b | none | todo |' '| T03 | c | none | todo |' \
+  '| T04 | d | none | todo |' '| T05 | e | none | todo |' '| T06 | f | none | todo |' '| T07 | g | T01 | todo |'
+expect "waves past five at once" 0 "Waves: 2
+Longest path: T01 > T07 (no ticket file)
+Wave 1: T01 T02 T03 T04 T05 T06
+Wave 2: T07
+Note: wave 1 has 6 tickets and /build runs at most 5 at once, so 1 waits for a free slot." waves "$d/wide.md"
+expect "waves unknown blocker" 2 "$d/unknown.md:9: T01 blocked by unknown ticket T09" waves "$d/unknown.md"
+index loop '| T01 | a | T02 | todo |' '| T02 | b | T01 | todo |'
+expect "waves cycle" 2 "$d/loop.md: blocked-by cycle through T01. Fix: run wf check-plan and break the cycle." waves "$d/loop.md"
+
 # check-spec: a clean spec, then one broken copy per rule
 spec() { # spec <name> [sed script]
   printf '# X\n\nStatus: approved\nBranch: b\nBase: origin/main\nDate: 2026-10-26\n\n## User stories\n\n### US-1 One\n\n- US-1.AC1: Given a, when b, then c.\n- US-1.AC1b: Given a, when b, then d.\n- US-1.AC2: Given a, when b, then e.\n\n### US-2 Two\n\n- US-2.AC1: Given a, when b, then the docs/work index updates.\n\n## Out of Scope\n\n- y (later)\n\n## Manual check\n\n1. z\n' > "$d/$1.md"
