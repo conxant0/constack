@@ -8,7 +8,7 @@
    - **Out of scope keeps the story true.** If an Out of scope line would leave the user story's "so that" false (the AC fixes emails but the same charge happens on LinkedIn), that is a spec gap: step 3, never a ticket line.
 3. **Infrastructure inside the slice.** A table, migration, route, config or client appears in the first ticket that needs it, sized for that ticket only. Auth or permissions is its own later slice that changes behaviour already built.
 4. **Size.** One implementer context: roughly 100-300 changed lines, 1-4 ACs. Bigger: split again. One trivial AC: merge it into a neighbour that touches the same files.
-5. **Edges.** A ticket is blocked by the tickets whose Produces it Consumes, and by any earlier ticket that shares a resource with it: a file, a table, a route, a config key. Different files writing the same table still conflict. Everything else can run in parallel.
+5. **Edges.** A ticket is blocked by the tickets whose Produces it Consumes (its Consumes line names the blocker), and by any earlier ticket that shares a resource with it: a file, a table, a route, a config key. List a shared table, route or config key in both tickets' Files as `- shares: table:<name>` (or `route:`, `config:`). Different files writing the same table still conflict. Each ticket's new tests sit in its own test file (rule 2), so a test file is never a reason to wait. A ticket that runs last (full suite, caps, CHANGELOG, a manual check) names what it waits for: `- Consumes: the merged work of T02, T03 (runs last: <why>)`. Everything else runs in parallel: every edge carries one of these reasons where `wf check-plan` can read it.
 
 ## Ways to split a ticket that is too big
 
@@ -37,7 +37,7 @@ Vertical (right):
 | T00 prefactor: extract filter serializer used by search | none | none |
 | T01 save a search and see it in the list (table, POST, GET, list UI) | US-1.AC1 | T00 (interface) |
 | T02 empty saved-search list message | US-1.AC2 | T01 (interface) |
-| T03 delete a saved search | US-2.AC1 | T01 (interface), T02 (file only) |
+| T03 delete a saved search (DELETE route, row button in its own file) | US-2.AC1 | T01 (interface) |
 | T04 list and delete only the caller's own searches | US-3.AC1 | T01 (interface), T03 (interface) |
 
-Waves: 5. T02 and T03 both build on T01. Give them a blocked-by edge only if they share a resource: T03 deletes rows from the table T02 reads, so here T03 is blocked by T02, a `file only` edge.
+Waves: 4. T02 and T03 both build on T01 and on nothing else, so they run side by side: T02 changes only the empty state, and T03 puts its button in a new file instead of the list file T02 edits.

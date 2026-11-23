@@ -13,6 +13,7 @@ Blocked by: <T01, T02 | none>
 - create: <path>
 - modify: <path>
 - test: <path>
+- shares: <table|route|config>:<name>   <!-- one per table, route or config key another ticket also touches -->
 
 ## Interfaces
 

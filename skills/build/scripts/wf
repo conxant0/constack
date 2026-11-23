@@ -8,11 +8,19 @@
 #   wf chains <index.md>     "Chain: T02 > T03 > T04" per chain (/build rule 7): each next ticket's
 #                            blockers all sit earlier in the chain, and every ticket but the last
 #                            has no dependents outside it. Single tickets are not printed.
+#   wf waves <index.md>      Waves (the most tickets on one blocked-by path), that longest path with each
+#                            edge's reason (interface, file, shares, test file, no reason), the tickets
+#                            in each wave, and a Note for a wave wider than /build's 5 at once. Exit 0;
+#                            malformed index or cycle: exit 2.
 #   wf check-plan <index.md>  /slice output is well formed: index has Spec/Branch/Base/Test command;
 #                            ticket ids unique, blockers exist, no cycles; one tickets/<id>-*.md
 #                            per row and no extras; each ticket has Spec, Blocked by (same as the
 #                            index) and every template section with content. Two tickets listing
-#                            the same file must have a blocked-by path between them, unless one is done. Every Delivers
+#                            the same file must have a blocked-by path between them, unless one is done. Every
+#                            blocked-by edge between unfinished tickets needs a reason: a Consumes line naming the
+#                            blocker, or a Files entry both list (a "- shares: table:<name>" line counts; two test:
+#                            entries for one file do not). An unfinished ticket's Interfaces "- Consumes" line
+#                            must have the colon right after "Consumes", or the reason above is unreadable. Every Delivers
 #                            AC has a ### Tests heading naming it, and Delivers AC lines match
 #                            <index dir>/spec.md word for word (MISSING / DRIFT). One
 #                            file:line: problem per line, exit 1 on any.
@@ -131,6 +139,60 @@ chains() {
 
 SECTIONS="Delivers|Files|Interfaces|Tests|Approach|Constraints|Verify|Out of scope"
 
+edges() { # edges <index>, after load: per blocked-by edge, id blocker kind detail ticket-file line either-done (TAB-separated)
+  local dir; dir=$(dirname "$1")
+  set -- "$dir"/tickets/*.md; [ -e "$1" ] || set --
+  printf '%s\n' "$rows" | awk -F'\t' '
+    NR == FNR { if (NF) { ids[++n]=$1; bl[$1]=$2; isdone[$1]=($3 ~ /^done /) }; next }
+    FNR == 1 { id=FILENAME; sub(/.*\//, "", id); sub(/-.*/, "", id); sec=""; file[id]=FILENAME }
+    /^Blocked by:/ { bln[id]=FNR }
+    /^## / { sec=substr($0, 4); next }
+    function add(p, v) { if (p == "") return; lists[id, p]=1; if (v != "test") nontest[id, p]=v; path[id]=path[id] "\n" p }
+    sec == "Files" && /^- [a-z]/ { v=$0; sub(/^- /, "", v); sub(/[^a-z].*/, "", v)
+      if (v == "shares") { p=$0; sub(/^[^:]*: */, "", p); gsub(/`/, "", p); sub(/ .*/, "", p); add(p, v) }
+      else { m=split($0, w, /[ ,`()]+/) # every path on the line: "- modify, only if ...: a/b.py, c/d.json"
+        for (k=1; k<=m; k++) { p=w[k]; sub(/[.:;]+$/, "", p); if (p ~ /\// || p ~ /[A-Za-z0-9_]\.[A-Za-z0-9]+$/) add(p, v) } } }
+    sec == "Interfaces" && /^- / { inc=($0 ~ /^- Consumes:/) }
+    sec == "Interfaces" && inc { cons[id]=cons[id] " " $0 }
+    function kind(u, b,   m, k, p, t, ps) {
+      if (!(u in file)) return "no ticket file\t"
+      if (cons[u] ~ "(^|[^A-Za-z0-9])" b "([^0-9]|$)") return "interface\t"
+      m=split(path[u], ps, "\n")
+      for (k=2; k<=m; k++) { p=ps[k]; if (!lists[b, p]) continue
+        if ((u, p) in nontest || (b, p) in nontest) return (nontest[u, p] == "shares" ? "shares" : "file") "\t" p
+        if (t == "") t=p }
+      return t != "" ? "test file\t" t : "no reason\t"
+    }
+    END { for (i=1; i<=n; i++) { u=ids[i]; if (bl[u] == "none") continue
+      m=split(bl[u], b, ",")
+      for (j=1; j<=m; j++) if (b[j] in bl) printf "%s\t%s\t%s\t%s\t%d\t%d\n", u, b[j], kind(u, b[j]), file[u], bln[u], (isdone[u] || isdone[b[j]]) } }' - "$@"
+}
+
+waves() {
+  local rows; load "$1"
+  { printf '%s\n' "$rows"; printf '\f\n'; edges "$1"; } | awk -F'\t' -v f="$1" '
+    $0 == "\f" { e=1; next }
+    !e { if (NF) { ids[++n]=$1; bl[$1]=$2 }; next }
+    { k[$1, $2]=$3; d[$1, $2]=$4 }
+    function depth(u,   m, j, b, x, best) {
+      if (u in dp) return dp[u]
+      if (on[u]) { printf "%s: blocked-by cycle through %s. Fix: run wf check-plan and break the cycle.\n", f, u; bad=1; exit 2 }
+      on[u]=1; best=0
+      if (bl[u] != "none") { m=split(bl[u], b, ","); for (j=1; j<=m; j++) { x=depth(b[j]); if (x > best) { best=x; via[u]=b[j] } } }
+      on[u]=0; dp[u]=best + 1; return dp[u]
+    }
+    END {
+      if (bad) exit 2
+      for (i=1; i<=n; i++) { x=depth(ids[i]); if (x > w) { w=x; last=ids[i] }; at[x]=at[x] " " ids[i]; cnt[x]++ }
+      if (bad) exit 2
+      p=last
+      for (u=last; u in via; u=via[u]) p=via[u] " > " u " (" k[u, via[u]] (d[u, via[u]] != "" ? " " d[u, via[u]] : "") ")" substr(p, length(u) + 1)
+      printf "Waves: %d\nLongest path: %s\n", w, p
+      for (x=1; x<=w; x++) printf "Wave %d:%s\n", x, at[x]
+      for (x=1; x<=w; x++) if (cnt[x] > 5) printf "Note: wave %d has %d tickets and /build runs at most 5 at once, so %d waits for a free slot.\n", x, cnt[x], cnt[x] - 5
+    }'
+}
+
 check_plan() {
   local f=$1 dir rows err id n t files
   [ -r "$f" ] || { echo "$f: cannot read"; exit 2; }
@@ -210,10 +272,15 @@ check_plan() {
           printf "%s:%d: %s shares %s with %s, but neither is blocked by the other\n", ffile[j], fln[j], v, fpath[i], u
         }
       }' - $([ -r "$dir/spec.md" ] && printf '%q' "$dir/spec.md") "$@"
+    [ -z "$rows" ] || edges "$f" | awk -F'\t' '$7 == 0 && $3 == "no reason" { printf "%s:%d: %s is blocked by %s with no stated reason. Fix: name what %s Consumes from %s (a ticket that runs last writes '"'"'- Consumes: the merged work of %s (runs last: <why>)'"'"'), or add the same '"'"'- shares: <table|route|config>:<name>'"'"' line to both tickets'"'"' Files, or drop %s from %s'"'"'s Blocked by (index and ticket).\n", $5, $6, $1, $2, $1, $2, $2, $2, $1 }
+      $7 == 0 && $3 == "test file" { printf "%s:%d: %s is blocked by %s only because both add tests to %s. Fix: give %s its own new test file, then drop %s from %s'"'"'s Blocked by (index and ticket).\n", $5, $6, $1, $2, $4, $1, $2, $1 }'
     for t in "$dir"/tickets/*.md; do
       [ -e "$t" ] || continue
       id=${t##*/}; id=${id%%-*}
       printf '%s\n' "$rows" | cut -f1 | grep -qFx -- "$id" || echo "$t:1: $id is not in the index table"
+      printf '%s\n' "$rows" | awk -F'\t' -v id="$id" '$1 == id && $3 ~ /^done / { d=1 } END { exit !d }' && continue
+      awk -v t="$t" '/^## / { sec=substr($0, 4); next }
+        sec == "Interfaces" && /^- Consumes([^:]|$)/ { printf "%s:%d: a Consumes line needs a colon right after \"Consumes\", or wf cannot read which ticket it names. Fix: write it as '"'"'- Consumes: <signature> from T0n (<path>)'"'"'.\n", t, FNR }' "$t"
     done
   } > "${tmp:=$(mktemp)}"
   cat "$tmp"; [ ! -s "$tmp" ]; n=$?; rm -f "$tmp"; exit $n
@@ -459,6 +526,7 @@ case $cmd in
   base) [ $# -eq 0 ] || { echo "usage: wf base"; exit 2; }; repo_base ;;
   frontier) [ $# -eq 1 ] || { echo "usage: wf frontier <index.md>"; exit 2; }; frontier "$1" ;;
   chains) [ $# -eq 1 ] || { echo "usage: wf chains <index.md>"; exit 2; }; chains "$1" ;;
+  waves) [ $# -eq 1 ] || { echo "usage: wf waves <index.md>"; exit 2; }; waves "$1" ;;
   check-plan) [ $# -eq 1 ] || { echo "usage: wf check-plan <index.md>"; exit 2; }; check_plan "$1" ;;
   check-spec) [ $# -eq 1 ] || { echo "usage: wf check-spec <spec.md>"; exit 2; }; check_spec "$1" ;;
   gate)
@@ -478,5 +546,5 @@ case $cmd in
     sha=$(git -C "$(dirname "$1")" rev-parse -q --verify "$3^{commit}") || { echo "not a commit: $3"; exit 2; }
     set_status "$1" "$2" "done ${sha:0:8}" ;;
   ruling) [ $# -eq 2 ] && [ -n "$2" ] || { echo 'usage: wf ruling <index.md> "<text>"'; exit 2; }; ruling "$@" ;;
-  *) echo "usage: wf base|frontier|chains|check-plan|check-spec|check-review|gate|scope|red|size|set|done|ruling <index.md> ..."; exit 2 ;;
+  *) echo "usage: wf base|frontier|chains|waves|check-plan|check-spec|check-review|gate|scope|red|size|set|done|ruling <index.md> ..."; exit 2 ;;
 esac
