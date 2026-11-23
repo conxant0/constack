@@ -169,6 +169,14 @@ broken sweep tickets/T02-t.md 's#src/shared.py#src/other.py#; s#^- x$#- Consumes
 expect "a run-last ticket names its blockers in Consumes" 0 "" check-plan "$d/sweep/index.md"
 sed -i '' 's/| T01 | a | none | todo |/| T01 | a | none | done abc |/' "$d/bare/index.md"
 expect "edge to a done ticket needs no reason" 0 "" check-plan "$d/bare/index.md"
+# a Consumes line wf cannot read: the shared file still gives a reason, so only the format line prints
+consumesfix="a Consumes line needs a colon right after \"Consumes\", or wf cannot read which ticket it names. Fix: write it as '- Consumes: <signature> from T0n (<path>)'."
+broken consfrom tickets/T02-t.md 's#^- x$#- Consumes from T01 (`src/shared.py`): `f() -> int`#'
+expect "Consumes without a colon" 1 "$d/consfrom/tickets/T02-t.md:16: $consumesfix" check-plan "$d/consfrom/index.md"
+broken consbare tickets/T02-t.md 's#^- x$#- Consumes#'
+expect "a bare Consumes" 1 "$d/consbare/tickets/T02-t.md:16: $consumesfix" check-plan "$d/consbare/index.md"
+sed -i '' 's/| T02 | b | T01 | todo |/| T02 | b | T01 | done abc |/' "$d/consfrom/index.md"
+expect "Consumes format in a done ticket is not checked" 0 "" check-plan "$d/consfrom/index.md"
 
 # waves: count, the longest path with each edge's kind, one line per wave, a note past 5 at once
 plan "$d/w"

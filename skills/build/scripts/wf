@@ -19,7 +19,8 @@
 #                            the same file must have a blocked-by path between them, unless one is done. Every
 #                            blocked-by edge between unfinished tickets needs a reason: a Consumes line naming the
 #                            blocker, or a Files entry both list (a "- shares: table:<name>" line counts; two test:
-#                            entries for one file do not). Every Delivers
+#                            entries for one file do not). An unfinished ticket's Interfaces "- Consumes" line
+#                            must have the colon right after "Consumes", or the reason above is unreadable. Every Delivers
 #                            AC has a ### Tests heading naming it, and Delivers AC lines match
 #                            <index dir>/spec.md word for word (MISSING / DRIFT). One
 #                            file:line: problem per line, exit 1 on any.
@@ -277,6 +278,9 @@ check_plan() {
       [ -e "$t" ] || continue
       id=${t##*/}; id=${id%%-*}
       printf '%s\n' "$rows" | cut -f1 | grep -qFx -- "$id" || echo "$t:1: $id is not in the index table"
+      printf '%s\n' "$rows" | awk -F'\t' -v id="$id" '$1 == id && $3 ~ /^done / { d=1 } END { exit !d }' && continue
+      awk -v t="$t" '/^## / { sec=substr($0, 4); next }
+        sec == "Interfaces" && /^- Consumes([^:]|$)/ { printf "%s:%d: a Consumes line needs a colon right after \"Consumes\", or wf cannot read which ticket it names. Fix: write it as '"'"'- Consumes: <signature> from T0n (<path>)'"'"'.\n", t, FNR }' "$t"
     done
   } > "${tmp:=$(mktemp)}"
   cat "$tmp"; [ ! -s "$tmp" ]; n=$?; rm -f "$tmp"; exit $n
