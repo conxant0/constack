@@ -52,10 +52,14 @@ narrowed() {
 }
 
 finding() { # <mode> <check> <subject> <text> <fix>: FAIL and fail=1 in block mode, WARN in warn mode
-  if [ "$1" = block ]; then echo "FAIL $2 $3: $4. Fix: $5"; fail=1; else echo "WARN $2 $3: $4. Fix: $5"; fi
+  if [ "$1" = block ]; then echo "FAIL $2 $3: $4. Fix: $5"; fail=1; else
+    echo "WARN $2 $3: $4. Fix: $5"
+    [ -z "$ticket" ] || "$here/wf" warn-log "$(dirname "$(dirname "$ticket")")" "$2" "$ticket_id" "$3: $4"
+  fi
 }
 if [ -n "$ticket" ]; then
   delivers_mode=$("$here/wf" mode delivers) || { echo "$delivers_mode"; exit 2; }
+  ticket_id=$(basename "$ticket"); ticket_id=${ticket_id%%-*}
 fi
 
 fail=0
