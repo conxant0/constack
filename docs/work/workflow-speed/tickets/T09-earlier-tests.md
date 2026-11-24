@@ -1,7 +1,7 @@
 # T09 wf done warns on edits to earlier or Base tests
 
 Spec: docs/work/workflow-speed/spec.md
-Blocked by: T05, T06
+Blocked by: T06
 
 ## Delivers
 
@@ -12,7 +12,7 @@ Blocked by: T05, T06
 
 ## Files
 
-- modify: skills/build/scripts/wf
+- modify: skills/build/scripts/earlier-tests.sh
 - modify: skills/build/SKILL.md
 - modify: skills/final-review/assets/fix-ticket-template.md
 - modify: skills/direct/SKILL.md
@@ -22,7 +22,7 @@ Blocked by: T05, T06
 ## Interfaces
 
 - Consumes: `test_re` from T00 (skills/build/scripts/test-re.sh); `wf mode earlier-tests` and the finding line shape from T02; `wf warn-log` from T03
-- Consumes: `wf done <index.md> <id> <merge sha>` and `base_ref()` from skills/build/scripts/wf
+- Consumes: the empty `earlier_tests <index.md> <id> <merge sha>` hook in skills/build/scripts/earlier-tests.sh from T00, which `wf done` already calls before `set_status` (`|| exit 1`); `base_ref()` from skills/build/scripts/wf (in scope, since wf sources this file)
 - Produces: `wf done` runs the earlier-tests check before recording done:
   - `B` = `git merge-base <index Base:> <sha>`, computed only when `git rev-parse -q --verify "<Base>^{commit}"` succeeds in the index's repo. When the Base: line is missing or does not resolve, the earlier-tests check is skipped: no line on stdout or stderr, nothing logged, and the ticket is recorded done as today, in warn and in block mode alike. The existing `expect "done" 0 ""` case in wf-test.sh pins this and must pass unedited (spec Out of Scope).
   - Ticket start `S` = `<sha>^1` when `<sha>` has two parents; else the newest commit reachable from `<sha>` whose subject is exactly `docs(build): <id> doing`; else `B`.
@@ -90,7 +90,7 @@ Mutation to prove it: exit 1 after printing a WARN in `earlier_tests`, before `s
 
 ## Approach
 
-- Put the check in its own function (e.g. `earlier_tests <index> <id> <sha>`) called from the `done)` case before `set_status`; T10 adds the red/guard rewrite rule and block mode to it.
+- Fill in the body of `earlier_tests` in earlier-tests.sh; do not edit wf (T04 and T05 edit it in parallel). T10 adds the red/guard rewrite rule and block mode to the same function.
 - `wf done` without a mode file uses the built-in `earlier-tests=warn`.
 - Prose (spec Decisions on `may change:`):
   - skills/build/SKILL.md rule 8: `Ruling <date> (lead): <test file path> may change: <what changes>` (path, not test name).

@@ -12,13 +12,13 @@ Blocked by: T09
 
 ## Files
 
-- modify: skills/build/scripts/wf
+- modify: skills/build/scripts/earlier-tests.sh
 - test: skills/build/scripts/test/earlier-tests-block-test.sh
 
 ## Interfaces
 
 - Consumes: `lead <dir>` and `merge_ticket <dir> <branch> <subject> <path> <content>...` from T09 (skills/build/scripts/test/lib-lead.sh)
-- Consumes: the earlier-tests check in `wf done` (its `B`, `S`, `P`, ruling lookup, warn line and Fix) from T09; `wf mode earlier-tests` and `CHECKS_CONF` from T02
+- Consumes: the earlier-tests check in `earlier_tests` (skills/build/scripts/earlier-tests.sh; its `B`, `S`, `P`, ruling lookup, warn line and Fix) from T09; `wf mode earlier-tests` and `CHECKS_CONF` from T02
 - Produces: a red/guard commit in `S..<sha>` that deletes a file in `P` or has deletions > 0 on it (numstat) gives, once per file: `earlier-tests <file>: <id> commit <sha8> (red or guard) removed or rewrote lines` (same warn Fix and logging as T09).
 - Produces: block mode prints the finding as `FAIL earlier-tests <subject>: <text>. Fix: undo the merge (git reset --hard <merge sha8>^1), wf set <index path> <id> "blocked: earlier tests: <file>", and send this line to the implementer.`, exits 1, leaves the index untouched (no status change, no commit) and writes nothing to the log.
 
@@ -76,7 +76,7 @@ grep -q '^| T02 | b | T01 | todo |' "$idx" || bad "AC8 recorded done: $(grep '^|
 
 ## Approach
 
-- Extend T09's function; with several findings, print all of them, then in block mode exit 1 before `set_status`.
+- Extend T09's `earlier_tests` in earlier-tests.sh; with several findings, print all of them, then in block mode return 1 (wf's `|| exit 1` stops before `set_status`). Do not edit wf.
 - `--no-renames` on `git diff-tree`, so a rename shows as a delete plus an add.
 
 ## Constraints

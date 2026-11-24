@@ -9,7 +9,7 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 
 | Ticket | Title | Blocked by | Status |
 |---|---|---|---|
-| T00 | One shared test-file regex | none | todo |
+| T00 | One shared test-file regex, and an empty earlier-tests hook in wf done | none | todo |
 | T01 | Red-green check fails a Delivers AC with no red or guard commit | T00 | todo |
 | T02 | Checks read warn or block from a settings file | T01 | todo |
 | T03 | Warnings are appended once to the feature's warning log | T02 | todo |
@@ -18,7 +18,7 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 | T06 | Guard patch applied: OK, still passes, does not apply, missing | T03 | todo |
 | T07 | Guard patch: no Mutation, clean restore, test-file patch | T06 | todo |
 | T08 | Per-ticket wording check, and no ticket means no new lines | T07 | todo |
-| T09 | wf done warns on edits to earlier or Base tests | T05, T06 | todo |
+| T09 | wf done warns on edits to earlier or Base tests | T06 | todo |
 | T10 | wf done: red-commit rewrites, brand-new files, block mode | T09 | todo |
 | T11 | review-lanes runs the full and clean suites together | T00 | todo |
 | T12 | review-lanes wording lane in its own copy | T11 | todo |
