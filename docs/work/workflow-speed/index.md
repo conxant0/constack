@@ -34,4 +34,5 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 - 2026-11-24, T11 quality (logged): review-lanes usage/no-Test-command ERROR Fix: text untested; ~/.claude/checks/clean-suite-env read (lines 44-45) untested and final-review SKILL.md step 2 dropped its mention; SKILL.md 'exit 2 means apply the Fix' false for INT/TERM exit 2 with no Fix
 - 2026-11-24, T12 (afk): wording test header may export HOME=$d/home, same isolation as T11's ruling
 - 2026-11-24, T01 (afk): delivers-test.sh US-9.AC9 probe may change to a line with ':' so the Delivers-section limit is actually tested; Tests block updated
+- 2026-11-24, T12 quality (logged): review-lanes usage error text omits --only/--wording-tests flags; --diff-filter=AM untested (deleted .py would hit mutate-copy as COULD-NOT-RUN)
 
