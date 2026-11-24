@@ -20,4 +20,11 @@ CHECKS_CONF=$d/warn.conf "$s/check-red-green.sh" "$d/r1" "$base" "$FX_VERIFY" "$
 [ "$(cat "$d/feat/check-warnings.log")" = "delivers T01 US-1.AC2: no \"test(US-1.AC2): red\" or guard commit in ${base:0:8}..${head:0:8}" ] \
   || bad "AC3 log: $(cat "$d/feat/check-warnings.log" 2>&1)"
 
+# US-6.AC4
+CHECKS_CONF=$d/warn.conf "$s/check-red-green.sh" "$d/r1" "$base" "$FX_VERIFY" "$d/feat/tickets/T01-x.md" >/dev/null
+[ "$(wc -l < "$d/feat/check-warnings.log" | tr -d ' ')" = 1 ] || bad "AC4 re-run duplicated: $(cat "$d/feat/check-warnings.log")"
+# dedupe is by the exact line: a different warning from the same check and ticket still lands
+"$s/wf" warn-log "$d/feat" delivers T01 "US-1.AC3: another warning"
+[ "$(wc -l < "$d/feat/check-warnings.log" | tr -d ' ')" = 2 ] || bad "AC4 a different line from the same ticket was dropped: $(cat "$d/feat/check-warnings.log")"
+
 [ $fail = 0 ] && echo "OK warn-log-test"; exit $fail
