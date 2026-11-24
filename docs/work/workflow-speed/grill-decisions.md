@@ -1,6 +1,6 @@
 # workflow-speed: grill decisions (2026-11-24)
 
-Input for /spec. Source: /grill-me on ~/.claude/handoffs/workflow-speed-checks.md and measurements/gates.out.
+Input for /spec. Source: /grill-me on ~/.claude/handoffs/workflow-speed-checks.md and ~/.claude/handoffs/workflow-speed-measurements/gates.out (kept out of this public repo).
 
 ## Decisions
 
