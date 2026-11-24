@@ -47,4 +47,13 @@ for f in tests/t1.sh tests/t1b.sh; do
 done
 grep -q '^| T02 | b | T01 | todo |' "$idx" || bad "AC8 two findings: recorded done: $(grep '^| T02' "$idx")"
 
+for where in base t1; do
+  lead "$d/h-$where"
+  if [ $where = base ]; then f=tests/base.sh; else f=tests/t1.sh; merge_ticket "$d/h-$where" t1 'test(US-1.AC1): red' $f 'test -f app.txt' >/dev/null; fi
+  old=$(cat "$d/h-$where/$f")
+  m=$(merge_ticket "$d/h-$where" t2 'test(US-2.AC1): red' $f "$old"$'\nA=1; test -r app.txt' 'test(US-2.AC2): red' $f "$old"$'\nA=2; test -r app.txt\ntest -s app.txt')
+  out=$(CHECKS_CONF=$d/w.conf "$wf" done "$d/h-$where/docs/work/f/index.md" T02 "$m")
+  ! grep -q "earlier-tests $f" <<<"$out" || bad "AC9 [$where] warned on a rewrite of T2's own line: $out"
+done
+
 [ $fail = 0 ] && echo "OK earlier-tests-block-test"; exit $fail
