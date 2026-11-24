@@ -18,7 +18,7 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 | T06 | Guard patch applied: OK, still passes, does not apply, missing | T03 | done 1f10a65d |
 | T07 | Guard patch: no Mutation, clean restore, test-file patch | T06 | doing |
 | T08 | Per-ticket wording check, and no ticket means no new lines | T07 | todo |
-| T09 | wf done warns on edits to earlier or Base tests | T06 | todo |
+| T09 | wf done warns on edits to earlier or Base tests | T06 | doing |
 | T10 | wf done: red-commit rewrites, brand-new files, block mode | T09 | todo |
 | T11 | review-lanes runs the full and clean suites together | T00 | done fa9680ea |
 | T12 | review-lanes wording lane in its own copy | T11 | done 2c5b053e |
