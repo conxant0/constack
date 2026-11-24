@@ -447,14 +447,14 @@ check_review() {
   local f=$1 head=${2:-HEAD} root spec end ln changed out log doneids lf=()
   [ -r "$f" ] || { echo "$f: cannot read"; exit 2; }
   log=$(dirname "$f")/check-warnings.log; [ -s "$log" ] && lf=("$log")
-  doneids=$(tickets "$(dirname "$f")/index.md" 2>/dev/null | awk -F'\t' '$3 ~ /^done / {print $1}')
+  doneids=$(tickets "$(dirname "$f")/index.md" 2>/dev/null | awk -F'\t' '$3 ~ /^done / {printf "%s ", $1}')
   root=$(git -C "$(dirname "$f")" rev-parse --show-toplevel 2>/dev/null) || { echo "$f: not in a git repo"; exit 2; }
   spec=$(awk '/^Spec:/ { gsub(/`/, ""); print $2; exit }' "$f")
   out=$(awk -v f="$f" -v logf="$log" -v doneids="$doneids" -v spec="$root/$spec" -v specname="$(basename "${spec:-spec.md}")" -v AC='US-[0-9]+[.]AC[0-9]+[a-z]?' '
     function p(n, msg) { printf "%s:%d: %s\n", f, n, msg }
     function first(sec, want) { return !(sec in at) || tolower(body[sec]) ~ ("^" want) }
     FILENAME == logf { if ($0 != "") lg[++nl]=$0; next }
-    BEGIN { n=split(doneids, d, "\n"); for (i=1; i<=n; i++) done[d[i]]=1 }
+    BEGIN { n=split(doneids, d, " "); for (i=1; i<=n; i++) done[d[i]]=1 }
     NR == FNR && FILENAME == spec { if (match($0, "^- " AC ":")) { id=substr($0, 3, RLENGTH - 3); sids[++ns]=id; sln[id]=FNR }; next }
     /^Verdict:/ && !vln { vln=FNR; verdict=$2; overruled=($0 ~ /overruled by hand/) }
     /^Range:/ && !rln { rln=FNR }
