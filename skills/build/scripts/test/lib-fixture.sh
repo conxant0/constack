@@ -30,3 +30,24 @@ fx_ticket() { # <path> <delivers line>...: a ticket whose ## Delivers holds the 
   mkdir -p "$(dirname "$path")"
   { printf '# %s x\n## Delivers\n\n' "$id"; printf '%s\n' "$@"; printf '## Files\n- test: tests/x.sh\n'; } > "$path"
 }
+
+fx_guard() { # <dir> <AC id> <test path> <test content> <body file>: a guard commit with a verbatim body, prints the sha
+  local dir=$1
+  mkdir -p "$(dirname "$dir/$3")"
+  printf '%s\n' "$4" > "$dir/$3"
+  git -C "$dir" add -A
+  { printf 'test(%s): guard\n\n' "$2"; cat "$5"; } | git -C "$dir" commit -q --cleanup=verbatim -F -
+  git -C "$dir" rev-parse HEAD
+}
+
+mkguard() { # <repo> <body file>: sets the globals base and sha to a US-1.AC1 guard commit on top of <repo>
+  [ -d "$1/.git" ] || { fx_repo "$1"; fx_commit "$1" 'chore: other' other.txt a >/dev/null; }
+  base=$(git -C "$1" rev-parse HEAD)
+  sha=$(fx_guard "$1" US-1.AC1 tests/g1.sh 'grep -qx 1 app.txt' "$2")
+}
+
+patch_of() { # <repo> <file> <new content>: prints the diff that change makes, then restores the file
+  printf '%s\n' "$3" > "$1/$2"
+  git -C "$1" diff -- "$2"
+  git -C "$1" checkout -- "$2"
+}

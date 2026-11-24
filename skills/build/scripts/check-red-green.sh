@@ -23,7 +23,8 @@ cd "$wt" || { echo "ERROR cannot cd to $wt. Fix: pass the worktree path from the
 [ -z "$(git status --porcelain --untracked-files=no)" ] || { echo "ERROR worktree has uncommitted changes. Fix: the implementer commits or discards them (git -C <worktree> status), then re-run."; exit 2; }
 head=$(git rev-parse HEAD)
 branch=$(git symbolic-ref -q --short HEAD || echo "$head")
-trap 'git checkout -q "$branch" 2>/dev/null' EXIT
+patch=$(mktemp)
+trap 'git checkout -q -f "$branch" 2>/dev/null; rm -f "$patch"' EXIT
 [ -z "$ticket" ] || git merge-base --is-ancestor "$start" "$head" 2>/dev/null || { echo "ERROR ticket start $start is not an ancestor of HEAD. Fix: pass the BASE the ticket was dispatched from."; exit 2; }
 
 last_line() { # most telling line of a test run's output
@@ -57,6 +58,7 @@ finding() { # <mode> <check> <subject> <text> <fix>: FAIL and fail=1 in block mo
     [ -z "$ticket" ] || "$here/wf" warn-log "$(dirname "$(dirname "$ticket")")" "$2" "$ticket_id" "$3: $4"
   fi
 }
+guard_patch_mode=$("$here/wf" mode guard-patch) || { echo "$guard_patch_mode"; exit 2; }
 if [ -n "$ticket" ]; then
   delivers_mode=$("$here/wf" mode delivers) || { echo "$delivers_mode"; exit 2; }
   ticket_id=$(basename "$ticket"); ticket_id=${ticket_id%%-*}
@@ -81,6 +83,21 @@ for r in $reds; do
       echo "FAIL guard $ac ${r:0:8}: no \"Mutation: \" line in the commit body. Fix: break the code the way the AC forbids, see the test fail, restore, and add \"Mutation: <change> -> <failure>\" to the guard commit body."; fail=1
     else
       echo "OK   guard $ac ${r:0:8}: $mut"
+      git log -1 --format=%b "$r" | sed -n '/^Mutation: /,$p' | awk 'f && /^```$/ {exit} f {print} /^```diff$/ {f=1}' > "$patch"
+      if [ ! -s "$patch" ]; then
+        finding "$guard_patch_mode" guard-patch "$ac ${r:0:8}" "Mutation has no patch" \
+          "re-do the break, save git diff -- <file>, and put it in the guard commit body in a diff fence under the Mutation: line (git commit --amend --cleanup=verbatim -F <file>)."
+      elif ! git apply --check "$patch" 2>/dev/null; then
+        finding "$guard_patch_mode" guard-patch "$ac ${r:0:8}" "Mutation patch does not apply at the guard commit" \
+          "regenerate it with git diff at that commit and commit with --cleanup=verbatim (the default cleanup strips blank lines and trailing spaces)."
+      else
+        git apply "$patch"
+        if bash -c "$run" >/dev/null 2>&1; then
+          finding "$guard_patch_mode" guard-patch "$ac ${r:0:8}" "tests still pass with the Mutation patch applied" \
+            "strengthen the test until this patch makes it fail, or pick the break the AC forbids."
+        fi
+        git apply -R "$patch"
+      fi
     fi
   elif out=$(bash -c "$run" 2>&1); then
     echo "FAIL red $ac ${r:0:8}: verify passed at the red commit. Fix: strengthen the test until it fails without the code; if the code already did this, make it a guard commit with a Mutation: line."; fail=1
