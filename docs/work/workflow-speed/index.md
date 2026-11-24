@@ -24,7 +24,7 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 | T12 | review-lanes wording lane in its own copy | T11 | done 2c5b053e |
 | T13 | Shipped modes: delivers blocks, the other three warn | T08, T10 | done 51d8722a |
 | F01 | wf done exits 2 on a bad earlier-tests mode | none | done 29d6dbfb |
-| F02 | check-review accepts a real warning already fixed in /build | F01 | todo |
+| F02 | check-review accepts a real warning already fixed in /build | F01 | doing |
 | F03 | earlier-tests ignores a ticket rewriting its own added lines | F01 | todo |
 
 ## Rulings
