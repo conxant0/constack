@@ -26,4 +26,5 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 
 ## Rulings
 - 2026-11-24, T00 (afk): resumed interrupted doing ticket, reset to todo
+- 2026-11-24, T00 (afk): resumed interrupted doing ticket again, reset to todo
 
