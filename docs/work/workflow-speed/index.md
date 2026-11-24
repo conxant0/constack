@@ -25,5 +25,5 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 | T13 | Shipped modes: delivers blocks, the other three warn | T08, T10 | todo |
 
 ## Rulings
+- 2026-11-24, T00 (afk): resumed interrupted doing ticket, reset to todo
 
-<Decisions made during /build, one line each: date, ticket, ruling, why.>
