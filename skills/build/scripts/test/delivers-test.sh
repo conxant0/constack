@@ -67,4 +67,9 @@ other=$(git -C "$d/r3" rev-parse HEAD)
 out=$("$s/check-red-green.sh" "$r" "$reviewed" "$FX_VERIFY" "$d/feat4/tickets/T01-f.md" "$other"); rc=$?
 [ $rc = 2 ] && [ "$out" = "ERROR ticket start $other is not an ancestor of HEAD. Fix: pass the BASE the ticket was dispatched from." ] || bad "start not an ancestor (exit $rc): $out"
 
+# a relative ticket path resolves from the caller's directory, not the worktree
+r=$d/r1; base=$(git -C "$r" rev-list --max-parents=0 HEAD)
+out=$(cd "$d" && "$s/check-red-green.sh" "$r" "$base" "$FX_VERIFY" feat/tickets/T01-x.md); rc=$?
+[ $rc = 1 ] && grep -q '^FAIL delivers US-1.AC2: ' <<<"$out" || bad "relative ticket path (exit $rc): $out"
+
 [ $fail = 0 ] && echo "OK delivers-test"; exit $fail
