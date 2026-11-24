@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # review-lanes <index.md> <base-ref> [--only wording] [--wording-tests "<shell command>"]
-# Runs final review's script lanes together: full suite, clean-checkout suite, wording.
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
 . "$here/test-re.sh"
