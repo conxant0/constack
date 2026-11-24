@@ -43,4 +43,10 @@ for l in full clean; do
   awk -v l="$l:" '/^LANE /{on=($2==l)} on' <<<"$out2" | grep -qx '  FAILED tests/bad.sh' || bad "AC1 $l lane did not name tests/bad.sh: $out2"
 done
 
+# US-1.AC3
+# NEEDED=1 is exported by the caller, so only the lane's env -u makes the test fail; the full lane reads .env and passes
+grep -q '^LANE clean: FAIL .* unset=NEEDED$' <<<"$out" && grep -qx '  FAILED tests/env.sh' <<<"$out" || bad "AC3 test or variable not named: $out"
+! grep -q 'NEEDED=1' <<<"$out" || bad "AC3 printed the value"
+grep -q '^LANE full: PASS ' <<<"$out" || bad "AC3 full lane did not pass with the env file"
+
 [ $fail = 0 ] && echo "OK review-lanes-test"; exit $fail
