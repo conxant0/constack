@@ -29,4 +29,5 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 - 2026-11-24, T00 (afk): resumed interrupted doing ticket again, reset to todo
 - 2026-11-24, T00 (afk): resumed interrupted doing ticket a third time, reset to todo; prior worktrees agent-a6200908 and agent-a4c258df had no commits
 - 2026-11-24, T00 (afk): 3 prior runs lost T00 with empty worktrees, likely headless session exiting while a background implementer ran; dispatching foreground
+- 2026-11-24, T11 (afk): test header may export HOME=$d/home so the real ~/.claude/checks/clean-suite-env does not leak into unset=; fixture isolation, no assertion loosened
 
