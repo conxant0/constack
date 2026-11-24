@@ -34,4 +34,17 @@ for line in 'none' 'none (prefactor: no behaviour change, existing tests stay gr
   ! grep -q ' delivers ' <<<"$out" || bad "AC2 [$line] printed a delivers line: $out"
 done
 
+r=$d/r3; fx_repo "$r"; base=$(git -C "$r" rev-parse HEAD)
+fx_commit "$r" 'test(US-2.AC7b): red' tests/ac7b.sh 'grep -qx 2 app.txt' >/dev/null
+fx_commit "$r" 'feat: green' app.txt 2 >/dev/null
+fx_ticket "$d/feat3/tickets/T02-l.md" '- US-2.AC7b: Given a, when b, then c'
+out=$("$s/check-red-green.sh" "$r" "$base" "$FX_VERIFY" "$d/feat3/tickets/T02-l.md"); rc=$?
+[ $rc = 0 ] && ! grep -q 'delivers US-2.AC7b' <<<"$out" || bad "AC3 lettered red not matched (exit $rc): $out"
+# an unlettered red does not stand in for the lettered AC
+r=$d/r3b; fx_repo "$r"; base=$(git -C "$r" rev-parse HEAD)
+fx_commit "$r" 'test(US-2.AC7): red' tests/ac7.sh 'grep -qx 2 app.txt' >/dev/null
+fx_commit "$r" 'feat: green' app.txt 2 >/dev/null
+out=$("$s/check-red-green.sh" "$r" "$base" "$FX_VERIFY" "$d/feat3/tickets/T02-l.md"); rc=$?
+[ $rc = 1 ] && grep -q '^FAIL delivers US-2.AC7b: ' <<<"$out" || bad "AC3 AC7 red accepted for AC7b (exit $rc): $out"
+
 [ $fail = 0 ] && echo "OK delivers-test"; exit $fail
