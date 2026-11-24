@@ -34,22 +34,25 @@ last_line() { # most telling line of a test run's output
   printf '%s' "$l" | cut -c1-200
 }
 
+pytest_cmd() { # <extra flags> <files>: the narrow pytest command for the test_*.py files under a
+  # tests/ or tests_unit/ dir in <files>, run from their package root; nothing when none or two roots
+  local tests roots py
+  tests=$(printf '%s\n' "$2" | grep -E '(^|/)tests(_unit)?/(.*/)?test_[^/]*\.py$')
+  roots=$(printf '%s\n' "$2" | sed -nE 's#^(.*/)?tests(_unit)?/.*#\1#p' | sort -u)
+  [ -n "$tests" ] && [ "$(printf '%s\n' "$roots" | wc -l)" -eq 1 ] || return 0
+  py=$(printf '%s' "$verify" | grep -oE '[^ ]*/python3?' | head -n 1)
+  printf 'cd %q && %s -m pytest -q%s -p no:cacheprovider -p no:xdist' "${roots:-.}" "${py:-python3}" "$1"
+  printf ' %q' $(printf '%s\n' "$tests" | sed "s#^${roots}##")
+}
+
 # The command a red/guard commit runs: only the test_*.py files it added or changed,
 # serially from their package root. The full verify when it touched anything outside a
 # tests/ or tests_unit/ dir (e.g. a frontend test) or spans two package roots.
 narrowed() {
-  local all tests roots root
+  local all cmd
   all=$(git diff-tree --no-commit-id --name-only -r --diff-filter=AMR "$1")
-  tests=$(printf '%s\n' "$all" | grep -E '(^|/)tests(_unit)?/(.*/)?test_[^/]*\.py$')
-  roots=$(printf '%s\n' "$all" | sed -nE 's#^(.*/)?tests(_unit)?/.*#\1#p' | sort -u)
-  if [ -z "$tests" ] || [ "$(printf '%s\n' "$all" | grep -cvE '(^|/)tests(_unit)?/')" -ne 0 ] \
-     || [ "$(printf '%s\n' "$roots" | wc -l)" -ne 1 ]; then
-    printf '%s' "$verify"; return
-  fi
-  root=${roots:-.}
-  py=$(printf '%s' "$verify" | grep -oE '[^ ]*/python3?' | head -n 1)
-  printf 'cd %q && %s -m pytest -q -p no:cacheprovider -p no:xdist' "$root" "${py:-python3}"
-  printf ' %q' $(printf '%s\n' "$tests" | sed "s#^${roots}##")
+  [ "$(printf '%s\n' "$all" | grep -cvE '(^|/)tests(_unit)?/')" -eq 0 ] && cmd=$(pytest_cmd "" "$all")
+  printf '%s' "${cmd:-$verify}"
 }
 
 finding() { # <mode> <check> <subject> <text> <fix>: FAIL and fail=1 in block mode, WARN in warn mode
@@ -61,19 +64,14 @@ finding() { # <mode> <check> <subject> <text> <fix>: FAIL and fail=1 in block mo
 # WORDING: mutate-copy over the ticket's changed .py sources, with only its red and guard
 # test files as the test command (`false` when they are not under one package's tests dir).
 wording() {
-  local srcs tests roots cmd py out rc l
+  local srcs tests cmd out rc l
   srcs=$(git diff --name-only --diff-filter=AM "$start..$head" | grep -E '\.py$' | grep -vE "$test_re")
   [ -n "$srcs" ] || return 0
   tests=$(for c in $(git log --format='%H %s' "$start..$head" | grep -E "^[0-9a-f]+ ${red_re#^}" | cut -d' ' -f1); do
     git diff-tree --no-commit-id --name-only -r --diff-filter=AM "$c"
   done | grep -E '(^|/)tests(_unit)?/(.*/)?test_[^/]*\.py$' | sort -u)
-  roots=$(printf '%s\n' "$tests" | sed -nE 's#^(.*/)?tests(_unit)?/.*#\1#p' | sort -u)
-  cmd=false
-  if [ -n "$tests" ] && [ "$(printf '%s\n' "$roots" | wc -l)" -eq 1 ]; then
-    py=$(printf '%s' "$verify" | grep -oE '[^ ]*/python3?' | head -n 1)
-    cmd=$(printf 'cd %q && %s -m pytest -q -x -p no:cacheprovider -p no:xdist' "${roots:-.}" "${py:-python3}"
-      printf ' %q' $(printf '%s\n' "$tests" | sed "s#^${roots}##"))
-  fi
+  cmd=$(pytest_cmd " -x" "$tests")
+  cmd=${cmd:-false}
   out=$("$here/mutate-copy" --base "$start" $srcs -- bash -c "$cmd" 2>&1); rc=$?
   [ $rc = 0 ] && return 0
   if [ $rc = 1 ] && printf '%s\n' "$out" | grep -q '^SURVIVED '; then
