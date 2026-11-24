@@ -16,4 +16,13 @@ out=$("$s/check-red-green.sh" "$d/r1" "$base" "$FX_VERIFY"); rc=$?
 grep -qxF "OK   guard US-1.AC1 ${sha:0:8}: Mutation: app.txt: 1 -> 3 -> tests/g1.sh fails" <<<"$out" || bad "AC1 OK line: $out"
 ! grep -q 'guard-patch' <<<"$out" || bad "AC1 printed a guard-patch finding: $out"
 
+# US-4.AC2
+fx_repo "$d/r2"; fx_commit "$d/r2" 'chore: other' other.txt a >/dev/null
+{ echo 'Mutation: other.txt: a -> b -> nothing'; echo '```diff'; patch_of "$d/r2" other.txt b; echo '```'; } > "$d/b2"
+mkguard "$d/r2" "$d/b2"
+out=$("$s/check-red-green.sh" "$d/r2" "$base" "$FX_VERIFY"); rc=$?
+[ $rc = 0 ] || bad "AC2 warn mode changed the exit: $rc"
+grep -qxF "WARN guard-patch US-1.AC1 ${sha:0:8}: tests still pass with the Mutation patch applied. Fix: strengthen the test until this patch makes it fail, or pick the break the AC forbids." <<<"$out" || bad "AC2 line: $out"
+grep -q "^OK   guard US-1.AC1 ${sha:0:8}: " <<<"$out" || bad "AC2 OK guard line gone: $out"
+
 [ $fail = 0 ] && echo "OK guard-patch-test"; exit $fail
