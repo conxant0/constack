@@ -1,6 +1,5 @@
-# Lead-side fixtures for wf done tests: a repo with an index on main, and ticket branches merged into it.
 
-lead() { # <dir>: repo on main with app.txt, tests/base.sh, docs/work/f/index.md (Base: base) and tickets/T02-b.md; tags the commit base
+lead() {
   mkdir -p "$1/tests" "$1/docs/work/f/tickets"
   git -C "$1" init -q -b main
   git -C "$1" config user.email t@example.com
@@ -14,7 +13,7 @@ lead() { # <dir>: repo on main with app.txt, tests/base.sh, docs/work/f/index.md
   git -C "$1" tag base
 }
 
-merge_ticket() { # <dir> <branch> (<subject> <path> <content>)...: one commit per triple on <branch>, merged --no-ff into main; prints the merge sha
+merge_ticket() {
   local dir=$1 branch=$2; shift 2
   git -C "$dir" checkout -q -b "$branch"
   while [ $# -ge 3 ]; do

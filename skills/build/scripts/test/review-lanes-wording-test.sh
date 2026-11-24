@@ -27,7 +27,6 @@ EOF
   git -C "$r" commit -qam 'feat: wording'
 }
 
-# US-1.AC2
 pyrepo "$d/a" '    pass'; root=$(cd "$d/a" && pwd -P)
 export STATUS_LOG=$d/status.log
 out=$("$s/review-lanes" "$d/a/docs/work/f/index.md" "$base"); rc=$?
@@ -37,12 +36,10 @@ mine=$(grep -F "$root [" "$STATUS_LOG")
 [ "$(wc -l <<<"$mine" | tr -d ' ')" -ge 4 ] || bad "AC2 full lane sampled too little: $mine"
 ! grep -vxF "$root []" <<<"$mine" | grep -q . || bad "AC2 review tree had changed tracked files: $mine"
 grep -q "/wording \[" "$STATUS_LOG" || bad "AC2 wording lane did not run in its own copy: $(cat "$STATUS_LOG")"
-# the full lane's result matches a plain run of the Test command
 (cd "$d/a" && bash run.sh >/dev/null 2>&1); plain=$([ $? = 0 ] && echo PASS || echo FAIL)
 grep -q "^LANE full: $plain " <<<"$out" || bad "AC2 full lane differs from a plain run ($plain): $out"
 [ -z "$(git -C "$d/a" status --porcelain --untracked-files=no)" ] || bad "AC2 review tree left changed"
 
-# US-1.AC5
 for need in venv env; do
   if [ $need = venv ]; then ign='.venv/'; path=.venv/marker; else ign='.env'; path=.env; fi
   pyrepo "$d/b-$need" "    assert os.path.exists('$path')"
@@ -54,11 +51,9 @@ for need in venv env; do
   ! grep -q 'COULD-NOT-RUN' <<<"$out" || bad "AC5 [$need] could not run: $out"
   grep -q '1 sentences: ' <<<"$out" || bad "AC5 [$need] no sentence reported: $out"
 done
-# control: without the include file the copy lacks .env, so the lane cannot run
 pyrepo "$d/c-env" "    assert os.path.exists('.env')"; echo x > "$d/c-env/.env"
 out=$(STATUS_LOG=$d/s3.log "$s/review-lanes" "$d/c-env/docs/work/f/index.md" "$base" --only wording)
 grep -q '^LANE wording: COULD-NOT-RUN ' <<<"$out" && grep -q 'Fix: re-run review-lanes .* --only wording --wording-tests ' <<<"$out" || bad "AC5 control: missing include path did not give COULD-NOT-RUN: $out"
-# --wording-tests replaces the wording lane's command, and --only wording runs that lane alone
 out=$(STATUS_LOG=$d/s4.log "$s/review-lanes" "$d/c-env/docs/work/f/index.md" "$base" --only wording --wording-tests true)
 grep -q '^LANE wording: SURVIVED ' <<<"$out" || bad "AC5 --wording-tests not used: $out"
 grep -qx '  SURVIVED mod.py:MSG: Keep it short.' <<<"$out" || bad "AC5 SURVIVED sentence not listed: $out"

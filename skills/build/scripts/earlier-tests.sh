@@ -1,4 +1,4 @@
-earlier_tests() { # <index.md> <id> <merge sha>: warn when the ticket changed an earlier ticket's or Base's test file outside a red or guard commit
+earlier_tests() {
   local dir base b s p c f msg ok kind add del md seen= red_re='^test\\(US-[0-9]+\\.AC[0-9]+[a-z]?\\): (red|guard)$'
   dir=$(dirname "$1")
   base=$(base_ref "$1")

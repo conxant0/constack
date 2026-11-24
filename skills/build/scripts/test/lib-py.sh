@@ -1,4 +1,3 @@
-# pyrepo <dir> <test path> <test body> <new msg.py>: a Python repo with an init, a red and a green commit; sets base and head
 pyrepo() {
   local dir=$1
   mkdir -p "$dir/pkg/tests"

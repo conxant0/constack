@@ -15,11 +15,9 @@ grep -qxF "FAIL delivers US-1.AC2: no \"test(US-1.AC2): red\" or guard commit in
 fl=$(grep -n '^FAIL delivers US-1.AC2: ' <<<"$out" | cut -d: -f1); gl=$(grep -n '^OK   green ' <<<"$out" | cut -d: -f1)
 [ -n "$fl" ] && [ -n "$gl" ] && [ "$fl" -lt "$gl" ] || bad "AC1 delivers line not before the green line: $out"
 ! grep -q 'delivers US-1.AC1' <<<"$out" || bad "AC1 flagged the delivered US-1.AC1"
-# an AC named outside ## Delivers is not a promise
 printf '\n## Out of scope\n\n- US-9.AC9: Given a, when b, then c\n' >> "$d/feat/tickets/T01-x.md"
 out=$("$s/check-red-green.sh" "$r" "$base" "$FX_VERIFY" "$d/feat/tickets/T01-x.md")
 ! grep -q 'delivers US-9.AC9' <<<"$out" || bad "AC1 read an AC outside ## Delivers: $out"
-# a guard commit satisfies a delivered AC too
 r=$d/r1g; fx_repo "$r"; base=$(git -C "$r" rev-parse HEAD)
 fx_commit "$r" 'test(US-1.AC1): red' tests/ac1.sh 'grep -qx 2 app.txt' >/dev/null
 fx_commit "$r" 'feat: green' app.txt 2 >/dev/null
@@ -27,7 +25,7 @@ printf 'grep -qx 2 app.txt\n' > "$r/tests/g2.sh"; git -C "$r" add -A
 git -C "$r" commit -qm 'test(US-1.AC2): guard' -m 'Mutation: app.txt: 2 -> 3 -> tests/g2.sh fails'
 out=$("$s/check-red-green.sh" "$r" "$base" "$FX_VERIFY" "$d/feat/tickets/T01-x.md"); rc=$?
 [ $rc = 0 ] && ! grep -q 'delivers US-1.AC2' <<<"$out" || bad "AC1 guard commit not accepted (exit $rc): $out"
-r=$d/r1; base=$(git -C "$r" rev-list --max-parents=0 HEAD)   # the AC2 block reuses r1
+r=$d/r1; base=$(git -C "$r" rev-list --max-parents=0 HEAD)
 
 for line in 'none' 'none (prefactor: no behaviour change, existing tests stay green)'; do
   fx_ticket "$d/feat2/tickets/T00-p.md" "$line"
@@ -42,7 +40,6 @@ fx_commit "$r" 'feat: green' app.txt 2 >/dev/null
 fx_ticket "$d/feat3/tickets/T02-l.md" '- US-2.AC7b: Given a, when b, then c'
 out=$("$s/check-red-green.sh" "$r" "$base" "$FX_VERIFY" "$d/feat3/tickets/T02-l.md"); rc=$?
 [ $rc = 0 ] && ! grep -q 'delivers US-2.AC7b' <<<"$out" || bad "AC3 lettered red not matched (exit $rc): $out"
-# an unlettered red does not stand in for the lettered AC
 r=$d/r3b; fx_repo "$r"; base=$(git -C "$r" rev-parse HEAD)
 fx_commit "$r" 'test(US-2.AC7): red' tests/ac7.sh 'grep -qx 2 app.txt' >/dev/null
 fx_commit "$r" 'feat: green' app.txt 2 >/dev/null
@@ -56,18 +53,15 @@ fx_commit "$r" 'refactor: review fix' other.txt x >/dev/null
 fx_ticket "$d/feat4/tickets/T01-f.md" '- US-1.AC2: Given a, when b, then c'
 out=$("$s/check-red-green.sh" "$r" "$reviewed" "$FX_VERIFY" "$d/feat4/tickets/T01-f.md" "$start"); rc=$?
 [ $rc = 0 ] && ! grep -q 'delivers US-1.AC2' <<<"$out" || bad "AC4 with start (exit $rc): $out"
-# without the start, the range is reviewed..HEAD and holds no red commit
 out=$("$s/check-red-green.sh" "$r" "$reviewed" "$FX_VERIFY" "$d/feat4/tickets/T01-f.md"); rc=$?
 [ $rc = 1 ] && grep -q '^FAIL delivers US-1.AC2: ' <<<"$out" || bad "AC4 start default is not base (exit $rc): $out"
 
-# an unreadable ticket and a start that is not an ancestor of HEAD cannot run
 out=$("$s/check-red-green.sh" "$r" "$reviewed" "$FX_VERIFY" "$d/nope/T09-x.md"); rc=$?
 [ $rc = 2 ] && [ "$out" = "ERROR cannot read ticket $d/nope/T09-x.md. Fix: pass the ticket path from the index (docs/work/<feature>/tickets/<id>-*.md)." ] || bad "unreadable ticket (exit $rc): $out"
 other=$(git -C "$d/r3" rev-parse HEAD)
 out=$("$s/check-red-green.sh" "$r" "$reviewed" "$FX_VERIFY" "$d/feat4/tickets/T01-f.md" "$other"); rc=$?
 [ $rc = 2 ] && [ "$out" = "ERROR ticket start $other is not an ancestor of HEAD. Fix: pass the BASE the ticket was dispatched from." ] || bad "start not an ancestor (exit $rc): $out"
 
-# a relative ticket path resolves from the caller's directory, not the worktree
 r=$d/r1; base=$(git -C "$r" rev-list --max-parents=0 HEAD)
 out=$(cd "$d" && "$s/check-red-green.sh" "$r" "$base" "$FX_VERIFY" feat/tickets/T01-x.md); rc=$?
 [ $rc = 1 ] && grep -q '^FAIL delivers US-1.AC2: ' <<<"$out" || bad "relative ticket path (exit $rc): $out"

@@ -1,7 +1,6 @@
-# Shared fixtures for the build scripts' tests: a throwaway git repo, commits, a ticket file.
 FX_VERIFY='for t in tests/*.sh; do bash "$t" || exit 1; done'
 
-fx_repo() { # <dir>: a repo with app.txt (1) and tests/base.sh, one commit "init"
+fx_repo() {
   mkdir -p "$1/tests"
   git -C "$1" init -q
   git -C "$1" config user.email t@example.com
@@ -12,7 +11,7 @@ fx_repo() { # <dir>: a repo with app.txt (1) and tests/base.sh, one commit "init
   git -C "$1" commit -qm init
 }
 
-fx_commit() { # <dir> <subject> [<path> <content>]...: prints the new sha
+fx_commit() {
   local dir=$1 subj=$2; shift 2
   while [ $# -ge 2 ]; do
     mkdir -p "$(dirname "$dir/$1")"
@@ -24,14 +23,14 @@ fx_commit() { # <dir> <subject> [<path> <content>]...: prints the new sha
   git -C "$dir" rev-parse HEAD
 }
 
-fx_ticket() { # <path> <delivers line>...: a ticket whose ## Delivers holds the given lines
+fx_ticket() {
   local path=$1 id; shift
   id=$(basename "$path"); id=${id%%-*}
   mkdir -p "$(dirname "$path")"
   { printf '# %s x\n## Delivers\n\n' "$id"; printf '%s\n' "$@"; printf '## Files\n- test: tests/x.sh\n'; } > "$path"
 }
 
-fx_guard() { # <dir> <AC id> <test path> <test content> <body file>: a guard commit with a verbatim body, prints the sha
+fx_guard() {
   local dir=$1
   mkdir -p "$(dirname "$dir/$3")"
   printf '%s\n' "$4" > "$dir/$3"
@@ -40,13 +39,13 @@ fx_guard() { # <dir> <AC id> <test path> <test content> <body file>: a guard com
   git -C "$dir" rev-parse HEAD
 }
 
-mkguard() { # <repo> <body file>: sets the globals base and sha to a US-1.AC1 guard commit on top of <repo>
+mkguard() {
   [ -d "$1/.git" ] || { fx_repo "$1"; fx_commit "$1" 'chore: other' other.txt a >/dev/null; }
   base=$(git -C "$1" rev-parse HEAD)
   sha=$(fx_guard "$1" US-1.AC1 tests/g1.sh 'grep -qx 1 app.txt' "$2")
 }
 
-patch_of() { # <repo> <file> <new content>: prints the diff that change makes, then restores the file
+patch_of() {
   printf '%s\n' "$3" > "$1/$2"
   git -C "$1" diff -- "$2"
   git -C "$1" checkout -- "$2"

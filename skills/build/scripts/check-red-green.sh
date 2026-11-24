@@ -34,8 +34,7 @@ last_line() { # most telling line of a test run's output
   printf '%s' "$l" | cut -c1-200
 }
 
-pytest_cmd() { # <extra flags> <files>: the narrow pytest command for the test_*.py files under a
-  # tests/ or tests_unit/ dir in <files>, run from their package root; nothing when none or two roots
+pytest_cmd() {
   local tests roots py
   tests=$(printf '%s\n' "$2" | grep -E '(^|/)tests(_unit)?/(.*/)?test_[^/]*\.py$')
   roots=$(printf '%s\n' "$2" | sed -nE 's#^(.*/)?tests(_unit)?/.*#\1#p' | sort -u)
@@ -55,14 +54,12 @@ narrowed() {
   printf '%s' "${cmd:-$verify}"
 }
 
-finding() { # <mode> <check> <subject> <text> <fix>: FAIL and fail=1 in block mode, WARN in warn mode
+finding() {
   if [ "$1" = block ]; then echo "FAIL $2 $3: $4. Fix: $5"; fail=1; else
     echo "WARN $2 $3: $4. Fix: $5"
     [ -z "$ticket" ] || "$here/wf" warn-log "$(dirname "$(dirname "$ticket")")" "$2" "$ticket_id" "$3: $4"
   fi
 }
-# WORDING: mutate-copy over the ticket's changed .py sources, with only its red and guard
-# test files as the test command (`false` when they are not under one package's tests dir).
 wording() {
   local srcs tests cmd out rc l
   srcs=$(git diff --name-only --diff-filter=AM "$start..$head" | grep -E '\.py$' | grep -vE "$test_re")
