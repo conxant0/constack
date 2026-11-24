@@ -39,4 +39,5 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 - 2026-11-24, T03 quality (logged): wf warn-log wrong-argument-count usage/exit 2 (wf:577) untested; add a warn-log-test case calling it with 3 args
 - 2026-11-24, T06 quality (logged): 'first fence after the Mutation: line' rule untested (check-red-green.sh:87); add a guard-patch-test case with a non-applying diff fence above Mutation: and assert no guard-patch line
 - 2026-11-24, T05 quality (logged): wf:493-494 tests never assert the file:<n>: line-number prefix of 'not graded' / 'names no fix ticket' lines; assert exact heading/row line numbers
+- 2026-11-24, T07 quality (logged): check-red-green.sh:27 EXIT trap does not remove paths the patch created, as the Approach says; an early exit between apply and apply -R leaves untracked files; remove create-mode paths in the trap or drop the Approach sentence
 
