@@ -16,6 +16,8 @@ Blocked by: T00
 - modify: skills/build/SKILL.md
 - create: skills/build/scripts/test/lib-fixture.sh
 - test: skills/build/scripts/test/delivers-test.sh
+- create: skills/build/scripts/ac-covered.sh
+- modify: skills/build/scripts/wf
 
 ## Interfaces
 
@@ -115,6 +117,7 @@ The test file's header: `set -u`, `d=$(mktemp -d); trap 'rm -rf "$d"' EXIT`, `fa
   - Step 4: dispatch the ticket reviewer when the check reports, with its output. A check FAIL while the quality review runs: wait for both and send the FAIL lines and the quality findings in one message; after that fix the quality reviewer re-reviews the fix diff even if it said pass. A quality `fix` that arrives before the check finishes waits for the check before any message to the implementer. The ticket reviewer does not re-check fix diffs only the quality reviewer asked for.
   - Fix rounds pass `<reviewed head>` as base and the ticket's dispatch BASE as start. A chain's next ticket passes its own BASE as both.
   - Keep step 3's existing "a Delivers AC with no OK red or OK guard line" sentence (spec Out of Scope: removing prompt text a check replaces).
+- Ruling 2026-11-24 (lead): the rule "each `- US-n.ACm:` line needs a `test(<id>): red` or `test(<id>): guard` subject in the range" lives once, in a function in the new sourced file skills/build/scripts/ac-covered.sh; check-red-green.sh (Delivers section only) and `wf red` (whole file) both call it. wf's `red` output and exit codes stay byte-identical (wf-test.sh is the check).
 
 ## Constraints
 
