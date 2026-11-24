@@ -45,7 +45,7 @@ out=$("$s/check-red-green.sh" "$r" "$base" "$FX_VERIFY" "$d/feat/tickets/T01-x.m
 grep -qxF "FAIL delivers US-1.AC2: no \"test(US-1.AC2): red\" or guard commit in ${base:0:8}..${head:0:8}. Fix: add the red commit for US-1.AC2 (or a guard with a Mutation patch if the code already does it); a prefactor's Delivers says none." <<<"$out" || bad "AC1 line missing: $out"
 ! grep -q 'delivers US-1.AC1' <<<"$out" || bad "AC1 flagged the delivered US-1.AC1"
 # an AC named outside ## Delivers is not a promise
-printf '\n## Out of scope\n\n- US-9.AC9 (T09)\n' >> "$d/feat/tickets/T01-x.md"
+printf '\n## Out of scope\n\n- US-9.AC9: Given a, when b, then c\n' >> "$d/feat/tickets/T01-x.md"
 out=$("$s/check-red-green.sh" "$r" "$base" "$FX_VERIFY" "$d/feat/tickets/T01-x.md")
 ! grep -q 'delivers US-9.AC9' <<<"$out" || bad "AC1 read an AC outside ## Delivers: $out"
 # a guard commit satisfies a delivered AC too
@@ -118,6 +118,7 @@ The test file's header: `set -u`, `d=$(mktemp -d); trap 'rm -rf "$d"' EXIT`, `fa
   - Fix rounds pass `<reviewed head>` as base and the ticket's dispatch BASE as start. A chain's next ticket passes its own BASE as both.
   - Keep step 3's existing "a Delivers AC with no OK red or OK guard line" sentence (spec Out of Scope: removing prompt text a check replaces).
 - Ruling 2026-11-24 (lead): the rule "each `- US-n.ACm:` line needs a `test(<id>): red` or `test(<id>): guard` subject in the range" lives once, in a function in the new sourced file skills/build/scripts/ac-covered.sh; check-red-green.sh (Delivers section only) and `wf red` (whole file) both call it. wf's `red` output and exit codes stay byte-identical (wf-test.sh is the check).
+- Ruling 2026-11-24 (lead): delivers-test.sh may change: the US-9.AC9 probe line becomes `- US-9.AC9: Given a, when b, then c` (the old line had no `:`, so it could never match and the section limit went untested). Stronger, no assertion removed.
 
 ## Constraints
 
