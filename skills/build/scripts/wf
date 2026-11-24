@@ -344,7 +344,7 @@ gate() {
     cur=$(git -C "$root" branch --show-current)
     if [ -z "$want" ]; then echo "$f:1: missing \"Branch:\" line"
     elif [ "$cur" != "$want" ]; then echo "$f:$ln: on branch ${cur:-(detached)}, want $want"; fi
-    [ -z "$(git -C "$root" status --porcelain)" ] || echo "$root: uncommitted changes (git status --porcelain is not empty)"
+    [ -z "$(git -C "$root" status --porcelain | cut -c4- | grep -vE '(^|/)check-warnings\.log$')" ] || echo "$root: uncommitted changes (git status --porcelain is not empty)"
     if [ "$mode" = --slice ] || [ "$mode" = --direct ]; then
       ln=$(grep -n -m1 '^Status:' "$f" | cut -d: -f1)
       rule=$(sed -n "${ln:-0}s/^Status: *//p" "$f" | sed 's/ *$//')
@@ -576,6 +576,10 @@ case $cmd in
   warn-log)
     [ $# -eq 4 ] || { echo 'usage: wf warn-log <feature-dir> <check> <ticket-id> "<subject>: <text>"'; exit 2; }
     line="$2 $3 $4"
+    if gd=$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); then
+      mkdir -p "$gd/info"
+      grep -qxF check-warnings.log "$gd/info/exclude" 2>/dev/null || echo check-warnings.log >> "$gd/info/exclude"
+    fi
     grep -Fxq -- "$line" "$1/check-warnings.log" 2>/dev/null || printf '%s\n' "$line" >> "$1/check-warnings.log" ;;
   *) echo "usage: wf base|frontier|chains|waves|check-plan|check-spec|check-review|gate|scope|red|size|set|done|ruling|mode|warn-log <index.md> ..."; exit 2 ;;
 esac
