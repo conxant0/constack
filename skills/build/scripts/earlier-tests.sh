@@ -12,7 +12,8 @@ earlier_tests() { # <index.md> <id> <merge sha>: warn when the ticket changed an
   fi
   p=$(for c in $(git -C "$dir" log --format='%H%x09%s' "$b..$s" | awk -F'\t' '$2 ~ /^test\(US-[0-9]+\.AC[0-9]+[a-z]?\): (red|guard)$/ { print $1 }'); do
     git -C "$dir" diff-tree --no-commit-id --name-only --no-renames -r "$c"
-  done)
+  done
+  git -C "$dir" ls-tree -r --full-tree --name-only "$b" | grep -E "$test_re")
   ok=$({ cat "$dir/tickets/$2"-*.md 2>/dev/null
     awk -v id="$2" '/^## Rulings/ { r=1; next } /^## / { r=0 } r && $1 == "-" && $2 ~ /,$/ && $3 == id' "$1"
   } | awk '/may change:/ { sub(/may change:.*/, ""); gsub(/`/, ""); for (i=1; i<=NF; i++) print $i }')
