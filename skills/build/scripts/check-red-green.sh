@@ -58,9 +58,39 @@ finding() { # <mode> <check> <subject> <text> <fix>: FAIL and fail=1 in block mo
     [ -z "$ticket" ] || "$here/wf" warn-log "$(dirname "$(dirname "$ticket")")" "$2" "$ticket_id" "$3: $4"
   fi
 }
+# WORDING: mutate-copy over the ticket's changed .py sources, with only its red and guard
+# test files as the test command (`false` when they are not under one package's tests dir).
+wording() {
+  local srcs tests roots cmd py out rc l
+  srcs=$(git diff --name-only --diff-filter=AM "$start..$head" | grep -E '\.py$' | grep -vE "$test_re")
+  [ -n "$srcs" ] || return 0
+  tests=$(for c in $(git log --format='%H %s' "$start..$head" | grep -E "^[0-9a-f]+ ${red_re#^}" | cut -d' ' -f1); do
+    git diff-tree --no-commit-id --name-only -r --diff-filter=AM "$c"
+  done | grep -E '(^|/)tests(_unit)?/(.*/)?test_[^/]*\.py$' | sort -u)
+  roots=$(printf '%s\n' "$tests" | sed -nE 's#^(.*/)?tests(_unit)?/.*#\1#p' | sort -u)
+  cmd=false
+  if [ -n "$tests" ] && [ "$(printf '%s\n' "$roots" | wc -l)" -eq 1 ]; then
+    py=$(printf '%s' "$verify" | grep -oE '[^ ]*/python3?' | head -n 1)
+    cmd=$(printf 'cd %q && %s -m pytest -q -x -p no:cacheprovider -p no:xdist' "${roots:-.}" "${py:-python3}"
+      printf ' %q' $(printf '%s\n' "$tests" | sed "s#^${roots}##"))
+  fi
+  out=$("$here/mutate-copy" --base "$start" $srcs -- bash -c "$cmd" 2>&1); rc=$?
+  [ $rc = 0 ] && return 0
+  if [ $rc = 1 ] && printf '%s\n' "$out" | grep -q '^SURVIVED '; then
+    while read -r l; do
+      finding "$wording_mode" wording "${l%% *}" "SURVIVED ${l#* }" \
+        "add an assertion on the rule this sentence states to this ticket's test; a sentence that only describes needs none (the ticket reviewer decides)."
+    done <<<"$(printf '%s\n' "$out" | sed -n 's/^SURVIVED \([^ ]*\): /\1 /p')"
+  else
+    finding "$wording_mode" wording "$ticket_id" "could not run: $(printf '%s\n' "$out" | tail -n 1 | cut -c1-200)" \
+      "keep snapshot and golden tests out of this ticket's red and guard test files, and put its tests under one package's tests dir."
+  fi
+}
+
 guard_patch_mode=$("$here/wf" mode guard-patch) || { echo "$guard_patch_mode"; exit 2; }
 if [ -n "$ticket" ]; then
   delivers_mode=$("$here/wf" mode delivers) || { echo "$delivers_mode"; exit 2; }
+  wording_mode=$("$here/wf" mode wording) || { echo "$wording_mode"; exit 2; }
   ticket_id=$(basename "$ticket"); ticket_id=${ticket_id%%-*}
 fi
 
@@ -132,6 +162,7 @@ fi
 git checkout -q "$branch"
 if out=$(bash -c "$verify" 2>&1); then
   echo "OK   green HEAD ${head:0:8}"
+  [ -z "$ticket" ] || wording
 else
   echo "FAIL green HEAD ${head:0:8}: $(last_line "$out"). Fix: make HEAD pass the verify command without editing a frozen test."; fail=1
 fi
