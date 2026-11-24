@@ -4,7 +4,6 @@ d=$(mktemp -d); trap 'rm -rf "$d"' EXIT
 fail=0
 bad() { echo "FAIL modes-test: $*"; fail=1; }
 
-. "$(dirname "$0")/lib-lead.sh"
 . "$(dirname "$0")/lib-fixture.sh"; s=$(cd "$(dirname "$0")/.." && pwd)
 r=$d/r; fx_repo "$r"; base=$(git -C "$r" rev-parse HEAD)
 fx_commit "$r" 'test(US-1.AC1): red' tests/ac1.sh 'grep -qx 2 app.txt' >/dev/null
@@ -29,7 +28,7 @@ for conf in "$d/missing.conf" "$d/other.conf"; do
   out=$(CHECKS_CONF=$conf "$s/check-red-green.sh" "$r" "$base" "$FX_VERIFY" "$t"); rc=$?
   [ $rc = 1 ] && grep -q '^FAIL delivers US-1.AC2: ' <<<"$out" || bad "AC12 [$conf] delivers did not block (exit $rc): $out"
 done
-for c in wording guard-patch earlier-tests; do
+for c in wording guard-patch; do
   [ "$(CHECKS_CONF=$d/missing.conf "$s/wf" mode $c)" = warn ] || bad "AC12 $c default is not warn (no file)"
   [ "$(CHECKS_CONF=$d/other.conf "$s/wf" mode $c)" = "$([ $c = wording ] && echo block || echo warn)" ] || bad "AC12 $c with other.conf"
 done
@@ -40,21 +39,14 @@ out=$(CHECKS_CONF=$d/bad.conf "$s/check-red-green.sh" "$r" "$base" "$FX_VERIFY" 
 [ $rc = 2 ] || bad "AC13 exit $rc, want 2"
 grep -qxF "ERROR $d/bad.conf: delivers=maybe is not warn or block. Fix: set delivers=warn or delivers=block in $d/bad.conf." <<<"$out" || bad "AC13 line: $out"
 ! grep -q '^FAIL delivers' <<<"$out" || bad "AC13 still ran the check: $out"
-for c in wording guard-patch earlier-tests; do
+for c in wording guard-patch; do
   printf '%s=maybe\n' "$c" > "$d/bad-$c.conf"
   out=$(CHECKS_CONF=$d/bad-$c.conf "$s/wf" mode $c 2>&1); rc=$?
   [ $rc = 2 ] && [ "$out" = "ERROR $d/bad-$c.conf: $c=maybe is not warn or block. Fix: set $c=warn or $c=block in $d/bad-$c.conf." ] || bad "AC13 $c (exit $rc): $out"
 done
 for args in foo '' 'delivers extra'; do
   out=$("$s/wf" mode $args 2>&1); rc=$?
-  [ $rc = 2 ] && [ "$out" = "usage: wf mode delivers|wording|guard-patch|earlier-tests" ] || bad "AC13 usage [wf mode $args] (exit $rc): $out"
+  [ $rc = 2 ] && [ "$out" = "usage: wf mode delivers|wording|guard-patch" ] || bad "AC13 usage [wf mode $args] (exit $rc): $out"
 done
-
-lead "$d/done"; m=$(merge_ticket "$d/done" t2 'feat: x' app.txt 2)
-printf 'earlier-tests=blok\n' > "$d/et.conf"
-out=$(CHECKS_CONF=$d/et.conf "$s/wf" done "$d/done/docs/work/f/index.md" T02 "$m"); rc=$?
-[ $rc = 2 ] || bad "AC13 wf done exit $rc, want 2"
-[ "$out" = "ERROR $d/et.conf: earlier-tests=blok is not warn or block. Fix: set earlier-tests=warn or earlier-tests=block in $d/et.conf." ] || bad "AC13 wf done line: $out"
-grep -q '^| T02 | b | T01 | todo |' "$d/done/docs/work/f/index.md" || bad "AC13 wf done recorded done on a bad mode"
 
 [ $fail = 0 ] && echo "OK modes-test"; exit $fail

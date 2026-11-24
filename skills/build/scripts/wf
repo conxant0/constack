@@ -59,7 +59,7 @@
 #   wf ruling <index.md> "<ticket or stage>: <ruling, why>"
 #                            Edit the index (status cell, or a dated line under ## Rulings) and
 #                            commit only index.md. Exit 2 on a bad id, status, sha or index.
-#   wf mode delivers|wording|guard-patch|earlier-tests
+#   wf mode delivers|wording|guard-patch
 #                            The check's mode, warn or block: <check>=<mode> in $CHECKS_CONF, else
 #                            skills/build/checks.conf; missing file or name: delivers=block, others warn.
 #                            Exit 0; unknown check or a value other than warn or block: exit 2.
@@ -68,7 +68,6 @@
 #                            unless that exact line is already there. Exit 0.
 set -u
 . "$(cd "$(dirname "$0")" && pwd)/test-re.sh"
-. "$(cd "$(dirname "$0")" && pwd)/earlier-tests.sh"
 . "$(cd "$(dirname "$0")" && pwd)/ac-covered.sh"
 
 tickets() { # id<TAB>blockers<TAB>status<TAB>line, from the index's ticket table
@@ -577,11 +576,10 @@ case $cmd in
   done)
     [ $# -eq 3 ] || { echo "usage: wf done <index.md> <id> <merge sha>"; exit 2; }
     sha=$(git -C "$(dirname "$1")" rev-parse -q --verify "$3^{commit}") || { echo "not a commit: $3"; exit 2; }
-    earlier_tests "$1" "$2" "$sha" || exit $?
     set_status "$1" "$2" "done ${sha:0:8}" ;;
   ruling) [ $# -eq 2 ] && [ -n "$2" ] || { echo 'usage: wf ruling <index.md> "<text>"'; exit 2; }; ruling "$@" ;;
   mode)
-    case "$*" in delivers|wording|guard-patch|earlier-tests) ;; *) echo "usage: wf mode delivers|wording|guard-patch|earlier-tests"; exit 2 ;; esac
+    case "$*" in delivers|wording|guard-patch) ;; *) echo "usage: wf mode delivers|wording|guard-patch"; exit 2 ;; esac
     mode "$1" ;;
   warn-log)
     [ $# -eq 4 ] || { echo 'usage: wf warn-log <feature-dir> <check> <ticket-id> "<subject>: <text>"'; exit 2; }

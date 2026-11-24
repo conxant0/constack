@@ -51,25 +51,15 @@ As the lead, I want each guard commit to carry its mutation as a patch the red-g
 - US-4.AC6: Given any guard patch check, when the red-green check finishes, then the worktree has no changed file and is back on the branch it started on.
 - US-4.AC7: Given a guard commit whose patch changes a test file, when the red-green check runs, then it prints a guard-patch warning saying the patch must change production code only, with a `Fix:` line.
 
-### US-5 Later tickets do not edit earlier or pre-existing tests
+### US-5 Removed: later tickets do not edit earlier or pre-existing tests
 
-As the lead, I want `wf done` to check the whole branch for edits to tests that earlier tickets froze or that existed at Base, so that a test weakened by a later ticket is caught at merge.
-
-- US-5.AC1: Given ticket T1's red commit touched a test file and a later ticket T2 changes that file outside a red or guard commit, with no ruling line in T2 naming that file before `may change:`, when `wf done` runs for T2, then it prints a warning naming the file and T2, with a `Fix:` line.
-- US-5.AC2: Given the same change, and T2 has a ruling line naming that file before `may change:`, when `wf done` runs for T2, then it prints no warning for that file.
-- US-5.AC3: Given a test file that existed at Base and a ticket changes it outside a red or guard commit with no matching `may change:` line, when `wf done` runs for that ticket, then it prints a warning naming the file.
-- US-5.AC4: Given a ticket that adds a brand-new test file in an ordinary commit, when `wf done` runs for it, then it prints no warning for that file.
-- US-5.AC5: Given the check is in warning mode and prints a warning, when `wf done` runs, then the ticket is still recorded done.
-- US-5.AC6: Given T2's red commit removes or rewrites a line that a test file T1's red commit touched had when T2 started, with no matching `may change:` line, when `wf done` runs for T2, then it prints a warning naming the file and T2, with a `Fix:` line.
-- US-5.AC7: Given T2's red commit only adds lines to that file, when `wf done` runs for T2, then it prints no warning for that file.
-- US-5.AC8: Given the check is set to `block` and has a finding, when `wf done` runs, then it prints FAIL, exits 1 and does not record the ticket done, and its `Fix:` line says to undo the merge and send the finding to the implementer.
-- US-5.AC9: Given a test file that existed at Base or that T1's red commit touched, T2's first red commit only adds lines to it, and T2's second red commit rewrites a line the first one added and leaves every line the file had when T2 started, with no matching `may change:` line, when `wf done` runs for T2, then it prints no warning for that file.
+Removed 2026-11-24 by the owner; see Out of Scope. The number stays so US-6 keeps the ids its commits use.
 
 ### US-6 Warnings are logged, graded, and switched to blocking
 
 As the owner, I want new checks to warn first, with every warning logged and graded, so that I switch a check to blocking on evidence of few false alarms.
 
-- US-6.AC1: Given the shipped settings, when a check runs, then the delivers check (US-2) blocks, and the wording (US-3), guard patch (US-4) and earlier-tests (US-5) checks warn.
+- US-6.AC1: Given the shipped settings, when a check runs, then the delivers check (US-2) blocks, and the wording (US-3) and guard patch (US-4) checks warn.
 - US-6.AC2: Given a check set to `block` in the settings and a finding, when that check runs, then it prints FAIL and exits non-zero; set to `warn`, it prints a warning and the finding alone does not change the exit status.
 - US-6.AC3: Given a check run for a ticket, in warning mode, prints a warning, when it runs, then one line with the check name, the ticket id and the warning text is appended to the feature folder's warning log.
 - US-6.AC4: Given the same warning line is already in the log, when the check prints it again on a re-run, then the log does not get a second copy.
@@ -87,7 +77,7 @@ As the owner, I want new checks to warn first, with every warning logged and gra
 
 ## Decisions
 
-- Data: one settings file lists each check (delivers, wording, guard patch, earlier tests) as `warn` or `block`. One warning log per feature, in the feature folder, one line per warning: check name, ticket id, warning text. review.md has a `Check warnings` section that repeats each log line followed by `real: <reason> (F<nn>)`, naming the fix ticket, `real: <reason> (fixed in <ticket id>)`, or `false alarm: <reason>`. A guard's mutation is a fenced unified diff under `Mutation:` in the guard commit body.
+- Data: one settings file lists each check (delivers, wording, guard patch) as `warn` or `block`. One warning log per feature, in the feature folder, one line per warning: check name, ticket id, warning text. review.md has a `Check warnings` section that repeats each log line followed by `real: <reason> (F<nn>)`, naming the fix ticket, `real: <reason> (fixed in <ticket id>)`, or `false alarm: <reason>`. A guard's mutation is a fenced unified diff under `Mutation:` in the guard commit body.
 - Boundaries: a check in `warn` mode never stops an AFK run and never blocks a merge. The wording check covers what mutate-copy covers with `--base`: sentences in module-level string constants in Python source files that are new or changed against the base; comments, docstrings and deleted constants are not checked. A test file is whatever the red-green check already treats as one. The red-green check gets the ticket path and finds the feature folder from it. The wording check's copy gets every path the worktree include file lists, env files included; the clean-checkout copy gets none of the env files.
 - Testing seams: the red-green check's printed lines and exit status on fixture repos; `wf done` and `wf check-review` output and exit status; the final-review script lanes' output, run windows, the review tree's status and the worktree list.
 - No cap on final-review rounds: PASS still needs every AC proven, and only the user waives a weak test (because rounds 3+ wrote 5 fix tickets, only 1 test-only, and 2 were money bugs; measured).
@@ -98,7 +88,6 @@ As the owner, I want new checks to warn first, with every warning logged and gra
 - Guard patch writers: the implementer prompt, the test-only fix prompt and /direct. Final review's test judging reads the patch.
 - The delivers check reads commit subjects from the ticket's start to HEAD and re-runs nothing outside the range it was given. The lead passes the ticket's start on every run, first or fix round (because a fix round's range starts at the reviewed head and holds no red commit).
 - The warning log is written in the lead's feature folder, the one holding the ticket, never in an implementer's worktree. It is never committed (because a merge undo would wipe uncommitted lines from a tracked file, and a changed tracked file stops the red-green check); the gate does not count it as an uncommitted change, and review.md's `Check warnings` section is the committed record.
-- The earlier-tests check stays in `wf done`, after the merge. In `block` mode a finding is handled like a failed post-merge suite: the merge is undone and the finding goes to the implementer.
 - A ruling line that allows a test change keeps today's shape, the test file's path before `may change:`. A fix ticket that changes an existing test gets that line from final review when the ticket is written.
 - The ticket reviewer treats a SURVIVED sentence the way final review does: one that states a rule a delivered AC carries is a finding, any other is ignored.
 - A warning graded `real` fails the verdict and gets a fix ticket in that review round, unless /build already fixed it: that row ends `(fixed in <ticket id>)`, naming a ticket the index records done, and changes nothing. `false alarm` changes nothing, and a fixed `real` row is not a false alarm in the count for switching to blocking (fable, 2026-11-24).
@@ -126,7 +115,7 @@ As the owner, I want new checks to warn first, with every warning logged and gra
 - Product-repo checks: the paid-tool money invariant test and the zero-assertion pytest/vitest check (separate spec in the product repo).
 - Whether the ticket reviewer earns its place (0 fix verdicts in 27 rounds, 76 agent-minutes; later question).
 - A lock on the warning log (two writers adding the very same line at the same moment can leave it twice: measured in 3 of 20 runs of 40 such writers; one check runs per ticket at a time, and one `Check warnings` row grades both copies) (fable, 2026-11-24).
-- A line from `wf done` when the index Base does not resolve to a commit (the earlier-tests check is skipped there with no line and the ticket is recorded done, as today; the red check and the scope check already stop with exit 2 on such a Base) (fable, 2026-11-24).
+- A check in `wf done` that a later ticket did not edit a test an earlier ticket froze or that existed at Base (was US-5, built then removed 2026-11-24 by the owner: 2 of the 4 fix tickets of this feature and 5 of 10 behaviour notes were its false warnings, and no count shows a past weak test it would have caught; the ticket reviewer and final review still read for it).
 
 ## Manual check
 

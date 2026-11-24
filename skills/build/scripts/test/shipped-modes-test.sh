@@ -4,7 +4,7 @@ unset CHECKS_CONF
 d=$(mktemp -d); trap 'rm -rf "$d"' EXIT
 fail=0
 bad() { echo "FAIL shipped-modes-test: $*"; fail=1; }
-. "$(dirname "$0")/lib-fixture.sh"; . "$(dirname "$0")/lib-py.sh"; . "$(dirname "$0")/lib-lead.sh"
+. "$(dirname "$0")/lib-fixture.sh"; . "$(dirname "$0")/lib-py.sh"
 s=$(cd "$(dirname "$0")/.." && pwd)
 py=${1:-python3}
 
@@ -23,9 +23,5 @@ if "$py" -c 'import pytest' 2>/dev/null; then
   out=$("$s/check-red-green.sh" "$d/r3" "$base" "cd pkg && $py -m pytest -q -p no:cacheprovider" "$d/f3/tickets/T01-w.md"); rc=$?
   [ $rc = 0 ] && grep -q '^WARN wording pkg/msg.py:MSG: SURVIVED ' <<<"$out" || bad "wording does not warn (exit $rc): $out"
 else echo "SKIP shipped-modes-test wording: no python with pytest"; fi
-lead "$d/r4"; merge_ticket "$d/r4" t1 'test(US-1.AC1): red' tests/t1.sh 'test -f app.txt' >/dev/null
-m=$(merge_ticket "$d/r4" t2 'feat: T2 code' tests/t1.sh 'true')
-out=$("$s/wf" done "$d/r4/docs/work/f/index.md" T02 "$m"); rc=$?
-[ $rc = 0 ] && grep -q '^WARN earlier-tests tests/t1.sh: T02 ' <<<"$out" || bad "earlier-tests does not warn (exit $rc): $out"
 
 [ $fail = 0 ] && echo "OK shipped-modes-test"; exit $fail

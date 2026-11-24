@@ -1,3 +1,1 @@
 - Warning log: two writers adding the very same line at the same moment can leave it twice (3 of 20 runs with 40 writers). Harmless today: one Check warnings row grades both copies. Add a lock or dedupe on read if a check ever runs twice at once for one ticket.
-- wf done: when the index Base does not resolve, the earlier-tests check is skipped with no line. wf red and wf scope stop on such a Base at final review. Consider an ERROR here once the wf-test and afk-loop fixtures use a Base that resolves.
-- red/guard subject regex is defined in skills/build/scripts/check-red-green.sh:14 and skills/build/scripts/earlier-tests.sh:2; move it to test-re.sh if either changes (final review 2026-11-24, structure finding declined).
