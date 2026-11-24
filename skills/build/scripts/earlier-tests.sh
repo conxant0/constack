@@ -1,5 +1,5 @@
 earlier_tests() { # <index.md> <id> <merge sha>: warn when the ticket changed an earlier ticket's or Base's test file outside a red or guard commit
-  local dir base b s p c f msg seen=
+  local dir base b s p c f msg ok seen=
   dir=$(dirname "$1")
   base=$(base_ref "$1")
   [ -n "$base" ] && git -C "$dir" rev-parse -q --verify "$base^{commit}" >/dev/null || return 0
@@ -13,10 +13,13 @@ earlier_tests() { # <index.md> <id> <merge sha>: warn when the ticket changed an
   p=$(for c in $(git -C "$dir" log --format='%H%x09%s' "$b..$s" | awk -F'\t' '$2 ~ /^test\(US-[0-9]+\.AC[0-9]+[a-z]?\): (red|guard)$/ { print $1 }'); do
     git -C "$dir" diff-tree --no-commit-id --name-only --no-renames -r "$c"
   done)
+  ok=$({ cat "$dir/tickets/$2"-*.md 2>/dev/null
+    awk -v id="$2" '/^## Rulings/ { r=1; next } /^## / { r=0 } r && $1 == "-" && $2 ~ /,$/ && $3 == id' "$1"
+  } | awk '/may change:/ { sub(/may change:.*/, ""); gsub(/`/, ""); for (i=1; i<=NF; i++) print $i }')
   for c in $(git -C "$dir" log --no-merges --reverse --format='%H%x09%s' "$s..$3" | awk -F'\t' '$2 !~ /^test\(US-[0-9]+\.AC[0-9]+[a-z]?\): (red|guard)$/ { print $1 }'); do
     while IFS= read -r f; do
       printf '%s\n' "$p" | grep -qxF -- "$f" || continue
-      printf '%s\n' "$seen" | grep -qxF -- "$f" && continue
+      printf '%s\n' "$seen" "$ok" | grep -qxF -- "$f" && continue
       seen=$(printf '%s\n%s' "$seen" "$f")
       msg="$f: $2 commit ${c:0:8} changed it outside a red or guard commit"
       echo "WARN earlier-tests $msg. Fix: the lead adds \"Ruling <date> (lead): $f may change: <what>\" to the ticket if build rule 8 allows the change; otherwise final review grades this line."
