@@ -5,6 +5,7 @@ fail=0
 bad() { echo "FAIL review-lanes-test: $*"; fail=1; }
 s=$(cd "$(dirname "$0")/.." && pwd)
 export TMPDIR=$d/tmp; mkdir -p "$TMPDIR"
+export HOME=$d/home; mkdir -p "$HOME"
 
 mkrepo() {
   local r=$1 env=$2
