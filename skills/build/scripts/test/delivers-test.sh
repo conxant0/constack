@@ -14,7 +14,7 @@ out=$("$s/check-red-green.sh" "$r" "$base" "$FX_VERIFY" "$d/feat/tickets/T01-x.m
 grep -qxF "FAIL delivers US-1.AC2: no \"test(US-1.AC2): red\" or guard commit in ${base:0:8}..${head:0:8}. Fix: add the red commit for US-1.AC2 (or a guard with a Mutation patch if the code already does it); a prefactor's Delivers says none." <<<"$out" || bad "AC1 line missing: $out"
 ! grep -q 'delivers US-1.AC1' <<<"$out" || bad "AC1 flagged the delivered US-1.AC1"
 # an AC named outside ## Delivers is not a promise
-printf '\n## Out of scope\n\n- US-9.AC9 (T09)\n' >> "$d/feat/tickets/T01-x.md"
+printf '\n## Out of scope\n\n- US-9.AC9: Given a, when b, then c\n' >> "$d/feat/tickets/T01-x.md"
 out=$("$s/check-red-green.sh" "$r" "$base" "$FX_VERIFY" "$d/feat/tickets/T01-x.md")
 ! grep -q 'delivers US-9.AC9' <<<"$out" || bad "AC1 read an AC outside ## Delivers: $out"
 # a guard commit satisfies a delivered AC too
