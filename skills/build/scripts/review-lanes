@@ -6,6 +6,18 @@ here=$(cd "$(dirname "$0")" && pwd)
 . "$here/test-re.sh"
 
 index=${1:-}; base=${2:-}
+only="" wtests=""
+shift 2 2>/dev/null
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --only) only=${2:-}; shift 2 2>/dev/null || shift ;;
+    --wording-tests) wtests=${2:-}; shift 2 2>/dev/null || shift ;;
+    *) echo "ERROR review-lanes: unknown argument $1. Fix: use review-lanes <index.md> <base-ref> [--only wording] [--wording-tests \"<shell command>\"]."; exit 2 ;;
+  esac
+done
+if [ -n "$only" ] && [ "$only" != wording ]; then
+  echo "ERROR review-lanes: --only $only is not a lane. Fix: use --only wording."; exit 2
+fi
 if [ -z "$index" ] || [ -z "$base" ] || [ ! -f "$index" ]; then
   echo "ERROR review-lanes: usage: review-lanes <index.md> <base-ref>. Fix: pass an existing index.md and the review's BASE (or PREV)."
   exit 2
@@ -92,26 +104,38 @@ lane_wording() {
         [ -n "$p" ] || continue
         mkdir -p "$(dirname "$w/$p")"
         ln -s "$root/$p" "$w/$p"
-      done <<<"$link_paths"
-      (cd "$w" && "$here/mutate-copy" --base "$base" "${files[@]}" -- bash -c "$cmd")
+      done <<<"$link_paths$env_files"
+      (cd "$w" && "$here/mutate-copy" --base "$base" "${files[@]}" -- bash -c "${wtests:-$cmd}")
       echo $? > "$tmp/wording.rc"
     } > "$tmp/wording.out" 2>&1
   fi
   stamp wording end
 }
 
-lane_full & lane_clean & lane_wording &
-wait
+if [ "$only" = wording ]; then
+  lanes=wording
+  lane_wording
+else
+  lanes="full clean wording"
+  lane_full & lane_clean & lane_wording &
+  wait
+fi
 
 status=0
-for l in full clean wording; do
+for l in $lanes; do
   rc=$(cat "$tmp/$l.rc" 2>/dev/null || echo 2)
   if [ "$rc" = 0 ]; then r=PASS; else r=FAIL; status=1; fi
-  [ "$l" = wording ] && [ "$rc" = 1 ] && r=SURVIVED
+  if [ "$l" = wording ] && [ "$rc" != 0 ]; then
+    if [ "$rc" = 1 ]; then r=SURVIVED; else r=COULD-NOT-RUN; fi
+  fi
   h="LANE $l: $r start=$(cat "$tmp/$l.start") end=$(cat "$tmp/$l.end")"
   [ "$l" = clean ] && h="$h unset=$(printf '%s\n' "$names" | paste -sd, -)"
   echo "$h"
-  if [ "$l" = wording ] && [ -f "$tmp/$l.out" ]; then
+  if [ "$r" = COULD-NOT-RUN ]; then
+    { tail -1 "$tmp/$l.out" 2>/dev/null
+      echo "Fix: re-run review-lanes $index $base --only wording --wording-tests \"<the tests covering those files, with -x and --deselect per snapshot file>\""
+    } | sed 's/^/  /'
+  elif [ "$l" = wording ] && [ -f "$tmp/$l.out" ]; then
     grep -E '^SURVIVED |^[0-9]+ sentences' "$tmp/$l.out" | sed 's/^/  /'
   elif [ "$r" = FAIL ] && [ -f "$tmp/$l.out" ]; then
     body=$(grep -E '^(FAILED|ERROR|FAIL)[ :]' "$tmp/$l.out" | head -40)
