@@ -64,6 +64,15 @@ done <<<"$env_files"
 $(cat "$HOME/.claude/checks/clean-suite-env")"
 names=$(printf '%s\n' "$names" | sed '/^[[:space:]]*$/d' | sort -u)
 
+link_into() {
+  local p
+  while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    mkdir -p "$(dirname "$1/$p")"
+    ln -s "$root/$p" "$1/$p"
+  done <<<"$2"
+}
+
 stamp() { date +%s > "$tmp/$1.$2"; }
 
 lane_full() {
@@ -78,11 +87,7 @@ lane_clean() {
   local c=$tmp/clean unset_args=() p n
   {
     git -C "$root" worktree add -q --detach "$c" HEAD || { echo 2 > "$tmp/clean.rc"; stamp clean end; return; }
-    while IFS= read -r p; do
-      [ -n "$p" ] || continue
-      mkdir -p "$(dirname "$c/$p")"
-      ln -s "$root/$p" "$c/$p"
-    done <<<"$link_paths"
+    link_into "$c" "$link_paths"
     while IFS= read -r n; do [ -n "$n" ] && unset_args+=(-u "$n"); done <<<"$names"
     (cd "$c" && env ${unset_args[@]+"${unset_args[@]}"} bash -c "$cmd")
     echo $? > "$tmp/clean.rc"
@@ -100,11 +105,7 @@ lane_wording() {
     while IFS= read -r p; do files+=("$p"); done <<<"$changed"
     {
       git -C "$root" worktree add -q --detach "$w" HEAD || { echo 2 > "$tmp/wording.rc"; stamp wording end; return; }
-      while IFS= read -r p; do
-        [ -n "$p" ] || continue
-        mkdir -p "$(dirname "$w/$p")"
-        ln -s "$root/$p" "$w/$p"
-      done <<<"$link_paths$env_files"
+      link_into "$w" "$link_paths$env_files"
       (cd "$w" && "$here/mutate-copy" --base "$base" "${files[@]}" -- bash -c "${wtests:-$cmd}")
       echo $? > "$tmp/wording.rc"
     } > "$tmp/wording.out" 2>&1
