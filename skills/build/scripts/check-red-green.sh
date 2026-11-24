@@ -12,6 +12,7 @@ set -u
 wt=$1 base=$2 verify=$3 ticket=${4:-} start=${5:-$2}
 red_re='^test\(US-[0-9]+\.AC[0-9]+[a-z]?\): (red|guard)$'
 . "$(cd "$(dirname "$0")" && pwd)/test-re.sh"
+. "$(cd "$(dirname "$0")" && pwd)/ac-covered.sh"
 if [ -n "$ticket" ]; then
   case $ticket in /*) ;; *) ticket=$PWD/$ticket ;; esac
   [ -r "$ticket" ] || { echo "ERROR cannot read ticket $ticket. Fix: pass the ticket path from the index (docs/work/<feature>/tickets/<id>-*.md)."; exit 2; }
@@ -89,8 +90,7 @@ done
 
 if [ -n "$ticket" ]; then
   subjects=$(git log --format=%s "$start..$head")
-  for ac in $(sed -n '/^## Delivers/,/^## /p' "$ticket" | sed -nE 's/^- (US-[0-9]+\.AC[0-9]+[a-z]?):.*/\1/p'); do
-    printf '%s\n' "$subjects" | grep -qxF -e "test($ac): red" -e "test($ac): guard" && continue
+  for ac in $(sed -n '/^## Delivers/,/^## /p' "$ticket" | ac_uncovered "$subjects" - | cut -d' ' -f2); do
     echo "FAIL delivers $ac: no \"test($ac): red\" or guard commit in ${start:0:8}..${head:0:8}. Fix: add the red commit for $ac (or a guard with a Mutation patch if the code already does it); a prefactor's Delivers says none."; fail=1
   done
 fi
