@@ -84,7 +84,9 @@ for r in $reds; do
     else
       echo "OK   guard $ac ${r:0:8}: $mut"
       git log -1 --format=%b "$r" | sed -n '/^Mutation: /,$p' | awk 'f && /^```$/ {exit} f {print} /^```diff$/ {f=1}' > "$patch"
-      if [ ! -s "$patch" ]; then :
+      if [ ! -s "$patch" ]; then
+        finding "$guard_patch_mode" guard-patch "$ac ${r:0:8}" "Mutation has no patch" \
+          "re-do the break, save git diff -- <file>, and put it in the guard commit body in a diff fence under the Mutation: line (git commit --amend --cleanup=verbatim -F <file>)."
       elif ! git apply --check "$patch" 2>/dev/null; then
         finding "$guard_patch_mode" guard-patch "$ac ${r:0:8}" "Mutation patch does not apply at the guard commit" \
           "regenerate it with git diff at that commit and commit with --cleanup=verbatim (the default cleanup strips blank lines and trailing spaces)."
