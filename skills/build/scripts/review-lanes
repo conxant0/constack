@@ -2,7 +2,8 @@
 # review-lanes <index.md> <base-ref> [--only wording] [--wording-tests "<shell command>"]
 # Runs final review's script lanes together: full suite, clean-checkout suite, wording.
 set -u
-. "$(cd "$(dirname "$0")" && pwd)/test-re.sh"
+here=$(cd "$(dirname "$0")" && pwd)
+. "$here/test-re.sh"
 
 index=${1:-}; base=${2:-}
 if [ -z "$index" ] || [ -z "$base" ] || [ ! -f "$index" ]; then
@@ -79,13 +80,22 @@ lane_clean() {
 
 lane_wording() {
   stamp wording start
-  local changed
-  changed=$(git -C "$root" diff --name-only "$base"...HEAD -- '*.py' | grep -Ev "$test_re")
+  local changed w=$tmp/wording p files=()
+  changed=$(git -C "$root" diff --name-only --diff-filter=AM "$base"...HEAD -- '*.py' | grep -Ev "$test_re")
   if [ -z "$changed" ]; then
     echo 0 > "$tmp/wording.rc"
   else
-    printf '%s\n' "$changed" "wording lane for changed .py files is not built yet. Fix: run mutate-copy on these files by hand." > "$tmp/wording.out"
-    echo 1 > "$tmp/wording.rc"
+    while IFS= read -r p; do files+=("$p"); done <<<"$changed"
+    {
+      git -C "$root" worktree add -q --detach "$w" HEAD || { echo 2 > "$tmp/wording.rc"; stamp wording end; return; }
+      while IFS= read -r p; do
+        [ -n "$p" ] || continue
+        mkdir -p "$(dirname "$w/$p")"
+        ln -s "$root/$p" "$w/$p"
+      done <<<"$link_paths"
+      (cd "$w" && "$here/mutate-copy" --base "$base" "${files[@]}" -- bash -c "$cmd")
+      echo $? > "$tmp/wording.rc"
+    } > "$tmp/wording.out" 2>&1
   fi
   stamp wording end
 }
@@ -97,10 +107,13 @@ status=0
 for l in full clean wording; do
   rc=$(cat "$tmp/$l.rc" 2>/dev/null || echo 2)
   if [ "$rc" = 0 ]; then r=PASS; else r=FAIL; status=1; fi
+  [ "$l" = wording ] && [ "$rc" = 1 ] && r=SURVIVED
   h="LANE $l: $r start=$(cat "$tmp/$l.start") end=$(cat "$tmp/$l.end")"
   [ "$l" = clean ] && h="$h unset=$(printf '%s\n' "$names" | paste -sd, -)"
   echo "$h"
-  if [ "$r" = FAIL ] && [ -f "$tmp/$l.out" ]; then
+  if [ "$l" = wording ] && [ -f "$tmp/$l.out" ]; then
+    grep -E '^SURVIVED |^[0-9]+ sentences' "$tmp/$l.out" | sed 's/^/  /'
+  elif [ "$r" = FAIL ] && [ -f "$tmp/$l.out" ]; then
     body=$(grep -E '^(FAILED|ERROR|FAIL)[ :]' "$tmp/$l.out" | head -40)
     [ -n "$body" ] || body=$(tail -20 "$tmp/$l.out")
     printf '%s\n' "$body" | sed 's/^/  /'
