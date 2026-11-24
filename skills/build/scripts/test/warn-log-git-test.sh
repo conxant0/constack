@@ -20,4 +20,20 @@ git -C "$L" reset -q --hard HEAD^1
 [ "$(cat "$f/check-warnings.log")" = $'delivers T01 US-1.AC2: one\nwording T02 a.py:X: SURVIVED two' ] || bad "AC8 log after reset: $(cat "$f/check-warnings.log" 2>&1)"
 [ -z "$(git -C "$L" ls-files "$f/check-warnings.log")" ] || bad "AC8 the log is tracked"
 
+# US-6.AC9
+out=$("$wf" gate "$L/docs/work/f/index.md"); rc=$?
+[ $rc = 0 ] && [ -z "$out" ] || bad "AC9 gate with a warn-log written log (exit $rc): $out"
+[ -z "$(git -C "$L" status --porcelain)" ] || bad "AC9 git status still shows the log: $(git -C "$L" status --porcelain)"
+grep -qxF check-warnings.log "$(git -C "$L" rev-parse --path-format=absolute --git-common-dir)/info/exclude" || bad "AC9 no ignore entry"
+# a log the writer did not create (no ignore entry) is skipped by the gate too
+M=$d/lead2; git init -q -b feature/x "$M"; git -C "$M" config user.email t@t; git -C "$M" config user.name t
+mkdir -p "$M/docs/work/f"; printf 'Branch: feature/x\nBase: main\n' > "$M/docs/work/f/index.md"; git -C "$M" add -A; git -C "$M" commit -qm init
+printf 'delivers T01 US-1.AC2: x\n' > "$M/docs/work/f/check-warnings.log"
+out=$("$wf" gate "$M/docs/work/f/index.md"); rc=$?
+[ $rc = 0 ] && [ -z "$out" ] || bad "AC9 gate with a hand-written log (exit $rc): $out"
+# any other untracked file still counts
+echo x > "$M/other.txt"
+out=$("$wf" gate "$M/docs/work/f/index.md"); rc=$?
+[ $rc = 1 ] && grep -qF "uncommitted changes" <<<"$out" || bad "AC9 gate ignored other.txt (exit $rc): $out"
+
 [ $fail = 0 ] && echo "OK warn-log-git-test"; exit $fail
