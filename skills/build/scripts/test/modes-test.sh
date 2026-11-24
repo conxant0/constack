@@ -23,4 +23,15 @@ out=$(CHECKS_CONF=$d/warn.conf "$s/check-red-green.sh" "$r" "$base" "$FX_VERIFY"
 grep -q "^WARN delivers US-1.AC2: no \"test(US-1.AC2): red\" or guard commit in .*\.$fix\$" <<<"$out" || bad "AC2 warn line: $out"
 ! grep -q '^FAIL' <<<"$out" || bad "AC2 warn printed a FAIL: $out"
 
+for conf in "$d/missing.conf" "$d/other.conf"; do
+  printf 'wording=block\n' > "$d/other.conf"
+  out=$(CHECKS_CONF=$conf "$s/check-red-green.sh" "$r" "$base" "$FX_VERIFY" "$t"); rc=$?
+  [ $rc = 1 ] && grep -q '^FAIL delivers US-1.AC2: ' <<<"$out" || bad "AC12 [$conf] delivers did not block (exit $rc): $out"
+done
+for c in wording guard-patch earlier-tests; do
+  [ "$(CHECKS_CONF=$d/missing.conf "$s/wf" mode $c)" = warn ] || bad "AC12 $c default is not warn (no file)"
+  [ "$(CHECKS_CONF=$d/other.conf "$s/wf" mode $c)" = "$([ $c = wording ] && echo block || echo warn)" ] || bad "AC12 $c with other.conf"
+done
+[ "$(CHECKS_CONF=$d/missing.conf "$s/wf" mode delivers)" = block ] || bad "AC12 delivers default is not block"
+
 [ $fail = 0 ] && echo "OK modes-test"; exit $fail
