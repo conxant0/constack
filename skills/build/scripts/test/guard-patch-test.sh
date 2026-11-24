@@ -25,4 +25,13 @@ out=$("$s/check-red-green.sh" "$d/r2" "$base" "$FX_VERIFY"); rc=$?
 grep -qxF "WARN guard-patch US-1.AC1 ${sha:0:8}: tests still pass with the Mutation patch applied. Fix: strengthen the test until this patch makes it fail, or pick the break the AC forbids." <<<"$out" || bad "AC2 line: $out"
 grep -q "^OK   guard US-1.AC1 ${sha:0:8}: " <<<"$out" || bad "AC2 OK guard line gone: $out"
 
+# US-4.AC3
+fx_repo "$d/r3"; fx_commit "$d/r3" 'chore: other' other.txt a >/dev/null
+{ echo 'Mutation: app.txt: 7 -> 3 -> tests/g1.sh fails'; echo '```diff'; patch_of "$d/r3" app.txt 3 | sed 's/^-1$/-7/'; echo '```'; } > "$d/b3"
+mkguard "$d/r3" "$d/b3"
+out=$("$s/check-red-green.sh" "$d/r3" "$base" "$FX_VERIFY"); rc=$?
+[ $rc = 0 ] || bad "AC3 warn mode changed the exit: $rc"
+grep -qxF "WARN guard-patch US-1.AC1 ${sha:0:8}: Mutation patch does not apply at the guard commit. Fix: regenerate it with git diff at that commit and commit with --cleanup=verbatim (the default cleanup strips blank lines and trailing spaces)." <<<"$out" || bad "AC3 line: $out"
+[ "$(cat "$d/r3/app.txt")" = 1 ] || bad "AC3 app.txt changed"
+
 [ $fail = 0 ] && echo "OK guard-patch-test"; exit $fail
