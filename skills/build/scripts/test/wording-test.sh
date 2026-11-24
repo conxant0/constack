@@ -56,4 +56,10 @@ for r in r2 r3; do
   ! grep -q '^FAIL wording' <<<"$out" || bad "AC2 [$r] printed FAIL: $out"
 done
 
+# US-3.AC3: a ticket that changes only a comment and a docstring prints no wording line
+pyrepo "$d/r4" pkg/tests/test_msg.py $'def test_x():\n    assert msg.X == 2\n' $'"""Module docstring that says a rule."""\n# A comment that says a rule.\nX = 2\n'
+out=$("$s/check-red-green.sh" "$d/r4" "$base" "$V" "$d/f1/tickets/T01-w.md"); rc=$?
+[ $rc = 0 ] || bad "AC3 exit $rc: $out"
+! grep -q 'wording' <<<"$out" || bad "AC3 printed a wording line: $out"
+
 [ $fail = 0 ] && echo "OK wording-test"; exit $fail
