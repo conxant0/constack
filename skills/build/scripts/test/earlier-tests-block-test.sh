@@ -25,4 +25,10 @@ for kind in rewrite delete; do
   grep -qxF "WARN earlier-tests tests/t1.sh: T02 commit ${c:0:8} (red or guard) removed or rewrote lines. Fix: the lead adds \"Ruling <date> (lead): tests/t1.sh may change: <what>\" to the ticket if build rule 8 allows the change; otherwise final review grades this line." <<<"$out" || bad "AC6 [$kind] line: $out"
 done
 
+# US-5.AC7 (guard)
+lead "$d/c"; merge_ticket "$d/c" t1 'test(US-1.AC1): red' tests/t1.sh $'test -f app.txt\ntrue' >/dev/null
+m=$(merge_ticket "$d/c" t2 'test(US-1.AC2): red' tests/t1.sh $'test -f app.txt\ntrue\ntest -s app.txt')
+out=$(CHECKS_CONF=$d/w.conf "$wf" done "$d/c/docs/work/f/index.md" T02 "$m")
+! grep -q 'earlier-tests tests/t1.sh' <<<"$out" || bad "AC7 warned on an add-only red edit: $out"
+
 [ $fail = 0 ] && echo "OK earlier-tests-block-test"; exit $fail
