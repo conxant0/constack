@@ -56,4 +56,13 @@ for where in base t1; do
   ! grep -q "earlier-tests $f" <<<"$out" || bad "AC9 [$where] warned on a rewrite of T2's own line: $out"
 done
 
+lead "$d/dup"
+t1=$'t_a() {\n  run a\n  [ "$out" = ok ] || bad\n}\nt_b() {\n  run b\n  [ "$out" = ok ] || bad\n}'
+merge_ticket "$d/dup" t1 'test(US-1.AC1): red' tests/t1.sh "$t1" >/dev/null
+t2=$'t_a() {\n  run a\n  [ "$out" = ok ] || bad\n}\nt_b() {\n  run b\n}\nt_c() {\n  run c\n}'
+m=$(merge_ticket "$d/dup" t2 'test(US-2.AC1): red' tests/t1.sh "$t2")
+out=$(CHECKS_CONF=$d/w.conf "$wf" done "$d/dup/docs/work/f/index.md" T02 "$m")
+c=$(git -C "$d/dup" rev-parse "$m^2")
+grep -qxF "WARN earlier-tests tests/t1.sh: T02 commit ${c:0:8} (red or guard) removed or rewrote lines. Fix: the lead adds \"Ruling <date> (lead): tests/t1.sh may change: <what>\" to the ticket if build rule 8 allows the change; otherwise final review grades this line." <<<"$out" || bad "AC6 [repeated line] removal of one of two identical lines not flagged: $out"
+
 [ $fail = 0 ] && echo "OK earlier-tests-block-test"; exit $fail
