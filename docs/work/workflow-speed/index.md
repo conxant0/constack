@@ -50,4 +50,5 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 - 2026-11-24, final-review (fable): a warning fixed in the build fix round stays in check-warnings.log and check-review refuses a true grade; decided: new US-6.AC14/AC15, real rows may end (fixed in <ticket id>) naming a done ticket, Decisions updated; why: a forced false 'false alarm' would make US-6's switch-to-blocking evidence false
 - 2026-11-24, final-review (fable): earlier-tests warns when a red commit rewrites a line its own ticket added; decided: new US-5.AC9, US-5.AC6 Given narrowed to lines the file had when T2 started; why: a common false alarm spoils the count US-6 uses and would undo good merges in block mode
 - 2026-11-24, final-review (fable): red/guard subject regex defined twice (check-red-green.sh:14, earlier-tests.sh:2); decided: decline, TODOS.md entry; why: a refactor no AC needs is declined (preference 2)
+- 2026-11-24, F02 (final-review): skills/build/scripts/test/check-review-warnings-test.sh may change: add an index.md to the fixture and a PASS variant of review(); existing assertions unchanged
 
