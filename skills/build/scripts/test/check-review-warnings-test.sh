@@ -44,4 +44,12 @@ awk -v r="- $L1 false alarm: x" '{print} /^## OPEN/{print r}' "$f" > "$f.t" && m
 out=$("$wf" check-review "$f")
 grep -qF "check warning not graded: $L1. " <<<"$out" || bad "AC6 row outside ## Check warnings accepted: $out"
 
+# US-6.AC7 (guard)
+rm -f "$R/docs/work/f/check-warnings.log"; review
+out=$("$wf" check-review "$R/docs/work/f/review.md")
+! grep -qi 'check warning' <<<"$out" || bad "AC7 no log: $out"
+: > "$R/docs/work/f/check-warnings.log"
+out=$("$wf" check-review "$R/docs/work/f/review.md")
+! grep -qi 'check warning' <<<"$out" || bad "AC7 empty log: $out"
+
 [ $fail = 0 ] && echo "OK check-review-warnings-test"; exit $fail
