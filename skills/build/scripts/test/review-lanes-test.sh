@@ -42,6 +42,15 @@ out2=$("$s/review-lanes" "$d/f/docs/work/f/index.md" "$(git -C "$d/f" rev-parse 
 for l in full clean; do
   awk -v l="$l:" '/^LANE /{on=($2==l)} on' <<<"$out2" | grep -qx '  FAILED tests/bad.sh' || bad "AC1 $l lane did not name tests/bad.sh: $out2"
 done
+# a non-env .worktreeinclude path is symlinked into the clean copy (.git is a file only in a worktree)
+mkrepo "$d/c" no
+echo cache/ > "$d/c/.gitignore"; echo cache/ > "$d/c/.worktreeinclude"
+echo '[ -f cache/marker ]' > "$d/c/tests/cache.sh"
+echo '[ -d .git ] || [ -L cache ]' > "$d/c/tests/link.sh"
+git -C "$d/c" add -A; git -C "$d/c" commit -qm include
+mkdir -p "$d/c/cache"; touch "$d/c/cache/marker"
+out3=$("$s/review-lanes" "$d/c/docs/work/f/index.md" "$(git -C "$d/c" rev-parse HEAD)"); rc=$?
+[ $rc = 0 ] && grep -q '^LANE clean: PASS ' <<<"$out3" || bad "AC1 include path not symlinked into clean copy (exit $rc): $out3"
 
 # US-1.AC3
 # NEEDED=1 is exported by the caller, so only the lane's env -u makes the test fail; the full lane reads .env and passes
