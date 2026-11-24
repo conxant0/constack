@@ -4,6 +4,7 @@ d=$(mktemp -d); trap 'rm -rf "$d"' EXIT
 fail=0
 bad() { echo "FAIL modes-test: $*"; fail=1; }
 
+. "$(dirname "$0")/lib-lead.sh"
 . "$(dirname "$0")/lib-fixture.sh"; s=$(cd "$(dirname "$0")/.." && pwd)
 r=$d/r; fx_repo "$r"; base=$(git -C "$r" rev-parse HEAD)
 fx_commit "$r" 'test(US-1.AC1): red' tests/ac1.sh 'grep -qx 2 app.txt' >/dev/null
@@ -48,5 +49,12 @@ for args in foo '' 'delivers extra'; do
   out=$("$s/wf" mode $args 2>&1); rc=$?
   [ $rc = 2 ] && [ "$out" = "usage: wf mode delivers|wording|guard-patch|earlier-tests" ] || bad "AC13 usage [wf mode $args] (exit $rc): $out"
 done
+
+lead "$d/done"; m=$(merge_ticket "$d/done" t2 'feat: x' app.txt 2)
+printf 'earlier-tests=blok\n' > "$d/et.conf"
+out=$(CHECKS_CONF=$d/et.conf "$s/wf" done "$d/done/docs/work/f/index.md" T02 "$m"); rc=$?
+[ $rc = 2 ] || bad "AC13 wf done exit $rc, want 2"
+[ "$out" = "ERROR $d/et.conf: earlier-tests=blok is not warn or block. Fix: set earlier-tests=warn or earlier-tests=block in $d/et.conf." ] || bad "AC13 wf done line: $out"
+grep -q '^| T02 | b | T01 | todo |' "$d/done/docs/work/f/index.md" || bad "AC13 wf done recorded done on a bad mode"
 
 [ $fail = 0 ] && echo "OK modes-test"; exit $fail

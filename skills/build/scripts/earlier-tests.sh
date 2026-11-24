@@ -14,7 +14,7 @@ earlier_tests() {
     git -C "$dir" diff-tree --no-commit-id --name-only --no-renames -r "$c"
   done
   git -C "$dir" ls-tree -r --full-tree --name-only "$b" | grep -E "$test_re")
-  md=$(mode earlier-tests) || { echo "$md"; return 1; }
+  md=$(mode earlier-tests) || { echo "$md"; return 2; }
   ok=$({ cat "$dir/tickets/$2"-*.md 2>/dev/null
     awk -v id="$2" '/^## Rulings/ { r=1; next } /^## / { r=0 } r && $1 == "-" && $2 ~ /,$/ && $3 == id' "$1"
   } | awk '/may change:/ { sub(/may change:.*/, ""); gsub(/`/, ""); for (i=1; i<=NF; i++) print $i }')
