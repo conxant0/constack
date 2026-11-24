@@ -23,6 +23,9 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 | T11 | review-lanes runs the full and clean suites together | T00 | done fa9680ea |
 | T12 | review-lanes wording lane in its own copy | T11 | done 2c5b053e |
 | T13 | Shipped modes: delivers blocks, the other three warn | T08, T10 | done 51d8722a |
+| F01 | wf done exits 2 on a bad earlier-tests mode | none | todo |
+| F02 | check-review accepts a real warning already fixed in /build | none | todo |
+| F03 | earlier-tests ignores a ticket rewriting its own added lines | F01 | todo |
 
 ## Rulings
 - 2026-11-24, T00 (afk): resumed interrupted doing ticket, reset to todo
@@ -43,4 +46,5 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 - 2026-11-24, T09 (afk): quality finding 3 (red_re repeated in check-red-green.sh:14) is fixed only within earlier-tests.sh; moving red_re into test-re.sh is deferred because T08 is editing check-red-green.sh in parallel and the move would conflict; final review should dedupe it
 - 2026-11-24, T10 (afk): earlier-tests-test.sh own-red/guard fixture may change to add-only edits; AC6 makes rewrites by red commits warn, the no-WARN assertion is unchanged
 - 2026-11-24, T10 quality (logged): earlier-tests.sh:25 cat-file -e clause only matters for deleting an empty file and is untested; implementer told to drop it or test it
+- 2026-11-24, final-review (fable): five planned-red ACs landed as on-arrival guards after a same-ticket green (US-1.AC3, US-1.AC4, US-3.AC2, US-6.AC10, US-6.AC12); decided: rows stand as yes; why: each test fails on pre-green code and under its Mutation (re-run), and implementer.md:30 asks for this guard
 
