@@ -49,4 +49,15 @@ grep -q '^LANE clean: FAIL .* unset=NEEDED$' <<<"$out" && grep -qx '  FAILED tes
 ! grep -q 'NEEDED=1' <<<"$out" || bad "AC3 printed the value"
 grep -q '^LANE full: PASS ' <<<"$out" || bad "AC3 full lane did not pass with the env file"
 
+# US-1.AC4
+# after the failing run above
+[ "$(git -C "$d/a" worktree list | wc -l | tr -d ' ')" = 1 ] || bad "AC4 fail run left worktrees: $(git -C "$d/a" worktree list)"
+[ -z "$(ls "$TMPDIR" | grep '^review-lanes\.')" ] || bad "AC4 fail run left temp dirs"
+# and after a passing run
+mkrepo "$d/b" no; base=$(git -C "$d/b" rev-parse HEAD)
+out=$("$s/review-lanes" "$d/b/docs/work/f/index.md" "$base"); rc=$?
+[ $rc = 0 ] && grep -q '^LANE clean: PASS ' <<<"$out" || bad "AC4 pass run (exit $rc): $out"
+[ "$(git -C "$d/b" worktree list | wc -l | tr -d ' ')" = 1 ] || bad "AC4 pass run left worktrees: $(git -C "$d/b" worktree list)"
+[ -z "$(ls "$TMPDIR" | grep '^review-lanes\.')" ] || bad "AC4 pass run left temp dirs"
+
 [ $fail = 0 ] && echo "OK review-lanes-test"; exit $fail
