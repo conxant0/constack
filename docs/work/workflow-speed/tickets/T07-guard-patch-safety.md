@@ -16,13 +16,13 @@ Blocked by: T06
 
 ## Interfaces
 
-- Consumes: `fx_guard <dir> <AC id> <test path> <test content> <body file>` from T06, and `fx_repo`, `fx_commit`, `FX_VERIFY` from T01 (skills/build/scripts/test/lib-fixture.sh)
+- Consumes: `fx_guard <dir> <AC id> <test path> <test content> <body file>`, `mkguard <repo> <body file>` and `patch_of <repo> <file> <new content>` from T06, and `fx_repo`, `fx_commit`, `FX_VERIFY` from T01 (skills/build/scripts/test/lib-fixture.sh)
 - Consumes: the guard-patch finding lines and the guard body shape from T06
 - Produces: guard-patch finding `guard-patch <ac> <sha8>: Mutation patch changes a test file (<path>). Fix: the patch must change production code only; break the code, not the test.` when `git apply --numstat` lists a path matching `test_re`; the patch is then not applied.
 
 ## Tests
 
-The test file's header: as guard-patch-test.sh (`CHECKS_CONF` with `guard-patch=warn`, helpers `mkguard` and `patch_of` copied from guard-patch-test.sh), `bad() { echo "FAIL guard-patch-safety-test: $*"; fail=1; }`. Ends `[ $fail = 0 ] && echo "OK guard-patch-safety-test"; exit $fail`.
+The test file's header: `set -u`, `d=$(mktemp -d); trap 'rm -rf "$d"' EXIT`, `fail=0`, sources `lib-fixture.sh` (for `mkguard` and `patch_of`), `s=$(cd "$(dirname "$0")/.." && pwd)`, `printf 'guard-patch=warn\n' > "$d/c.conf"; export CHECKS_CONF=$d/c.conf`, `bad() { echo "FAIL guard-patch-safety-test: $*"; fail=1; }`. Ends `[ $fail = 0 ] && echo "OK guard-patch-safety-test"; exit $fail`.
 
 ### US-4.AC5 (guard)
 File: skills/build/scripts/test/guard-patch-safety-test.sh

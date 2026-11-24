@@ -14,6 +14,7 @@ Blocked by: T07
 
 - modify: skills/build/scripts/check-red-green.sh
 - modify: skills/build/references/reviewer.md
+- create: skills/build/scripts/test/lib-py.sh
 - test: skills/build/scripts/test/wording-test.sh
 
 ## Interfaces
@@ -23,11 +24,12 @@ Blocked by: T07
 - Consumes: `fx_ticket` from T01 (skills/build/scripts/test/lib-fixture.sh)
 - Produces: per SURVIVED sentence: `WARN wording <path>:<NAME>: SURVIVED <sentence>. Fix: add an assertion on the rule this sentence states to this ticket's test; a sentence that only describes needs none (the ticket reviewer decides).`
 - Produces: could not run: `WARN wording <ticket-id>: could not run: <mutate-copy's last output line>. Fix: keep snapshot and golden tests out of this ticket's red and guard test files, and put its tests under one package's tests dir.`
+- Produces: `pyrepo <dir> <test path> <test body> <new msg.py>` in skills/build/scripts/test/lib-py.sh (sourced): `git init -q`, user config, `pkg/msg.py` = `X = 1`, `pkg/tests/__init__.py` empty, commit `init` (sets the global `base`); then writes `<test path>` with an import of `msg` (`import os, sys; sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))); import msg`) plus `<test body>`, commits `test(US-1.AC1): red`; then writes `<new msg.py>` to `pkg/msg.py`, commits `feat: green` (sets the global `head`).
 - Both print `FAIL ...` with exit 1 in block mode, and are logged through `wf warn-log` in warn mode.
 
 ## Tests
 
-The test file's header: `set -u`, `d=$(mktemp -d); trap 'rm -rf "$d"' EXIT`, `fail=0`, `bad() { echo "FAIL wording-test: $*"; fail=1; }`, sources `lib-fixture.sh`, `s=$(cd "$(dirname "$0")/.." && pwd)`, `py=${1:-python3}`; `"$py" -c 'import pytest' 2>/dev/null || { echo "SKIP wording-test: no python with pytest"; exit 0; }`; `export PYTHONDONTWRITEBYTECODE=1`; `printf 'wording=warn\ndelivers=block\n' > "$d/c.conf"; export CHECKS_CONF=$d/c.conf`; `V="cd pkg && $py -m pytest -q -p no:cacheprovider"`. Helper `pyrepo <dir> <test path> <test body> <new msg.py>`: `git init -q`, user config, `pkg/msg.py` = `X = 1`, `pkg/tests/__init__.py` empty, commit `init` (sets `base`); then writes `<test path>` with `import os, sys; sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))`-style import of `msg` plus `<test body>`, commits `test(US-1.AC1): red`; then writes `<new msg.py>` to `pkg/msg.py`, commits `feat: green` (sets `head`). Ends `[ $fail = 0 ] && echo "OK wording-test"; exit $fail`.
+The test file's header: `set -u`, `d=$(mktemp -d); trap 'rm -rf "$d"' EXIT`, `fail=0`, `bad() { echo "FAIL wording-test: $*"; fail=1; }`, sources `lib-fixture.sh`, `s=$(cd "$(dirname "$0")/.." && pwd)`, `py=${1:-python3}`; `"$py" -c 'import pytest' 2>/dev/null || { echo "SKIP wording-test: no python with pytest"; exit 0; }`; `export PYTHONDONTWRITEBYTECODE=1`; `printf 'wording=warn\ndelivers=block\n' > "$d/c.conf"; export CHECKS_CONF=$d/c.conf`; `V="cd pkg && $py -m pytest -q -p no:cacheprovider"`. Sources `lib-py.sh` for `pyrepo` (this ticket's Produces). Ends `[ $fail = 0 ] && echo "OK wording-test"; exit $fail`.
 
 ### US-2.AC5 (guard)
 File: skills/build/scripts/test/wording-test.sh

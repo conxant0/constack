@@ -79,7 +79,7 @@ for i in $(seq 1 40); do "$s/wf" warn-log "$d/featd" wording "T$i" "x.py:A: line
 
 ## Approach
 
-- `wf warn-log` uses no lock: `grep -Fxq -- "$line" "$log" 2>/dev/null || printf '%s\n' "$line" >> "$log"`, one `printf` per line (spec Decisions). Two writers racing on the very same line may both append it (measured, about 1 run in 4 with 40 writers); no AC covers that, so it is not tested.
+- `wf warn-log` uses no lock: `grep -Fxq -- "$line" "$log" 2>/dev/null || printf '%s\n' "$line" >> "$log"`, one `printf` per line (spec Decisions). Two writers racing on the very same line may both append it (measured: 3 of 20 and 5 of 20 runs with 40 same-line writers; spec Out of Scope); no AC covers that, so it is not tested.
 - Log only when a ticket argument was given and the mode is `warn`; a FAIL is never logged.
 - `wf warn-log` creates the feature dir's log file if missing; it does not create the feature dir.
 

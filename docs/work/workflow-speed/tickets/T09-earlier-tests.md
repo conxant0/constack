@@ -13,10 +13,10 @@ Blocked by: T05, T06
 ## Files
 
 - modify: skills/build/scripts/wf
-- modify: skills/build/scripts/test/wf-test.sh
 - modify: skills/build/SKILL.md
 - modify: skills/final-review/assets/fix-ticket-template.md
 - modify: skills/direct/SKILL.md
+- create: skills/build/scripts/test/lib-lead.sh
 - test: skills/build/scripts/test/earlier-tests-test.sh
 
 ## Interfaces
@@ -24,16 +24,17 @@ Blocked by: T05, T06
 - Consumes: `test_re` from T00 (skills/build/scripts/test-re.sh); `wf mode earlier-tests` and the finding line shape from T02; `wf warn-log` from T03
 - Consumes: `wf done <index.md> <id> <merge sha>` and `base_ref()` from skills/build/scripts/wf
 - Produces: `wf done` runs the earlier-tests check before recording done:
-  - `B` = `git merge-base <index Base:> <sha>`. Base does not resolve: print `WARN earlier-tests <id>: Base <ref> is not a commit, check skipped. Fix: git fetch, or correct the index's Base: line.` (not logged) and go on.
+  - `B` = `git merge-base <index Base:> <sha>`, computed only when `git rev-parse -q --verify "<Base>^{commit}"` succeeds in the index's repo. When the Base: line is missing or does not resolve, the earlier-tests check is skipped: no line on stdout or stderr, nothing logged, and the ticket is recorded done as today, in warn and in block mode alike. The existing `expect "done" 0 ""` case in wf-test.sh pins this and must pass unedited (spec Out of Scope).
   - Ticket start `S` = `<sha>^1` when `<sha>` has two parents; else the newest commit reachable from `<sha>` whose subject is exactly `docs(build): <id> doing`; else `B`.
   - Protected files `P` = files touched by commits in `B..S` whose subject matches `^test\(US-[0-9]+\.AC[0-9]+[a-z]?\): (red|guard)$`, plus paths in `git ls-tree -r --name-only B` matching `test_re`.
   - For each non-merge commit in `S..<sha>` (`git diff-tree --no-commit-id --numstat --no-renames -r`), a non-red/guard commit touching a file in `P` gives, once per file: `earlier-tests <file>: <id> commit <sha8> changed it outside a red or guard commit`.
 - Produces: warn-mode line `WARN earlier-tests <file>: <id> commit <sha8> changed it outside a red or guard commit. Fix: the lead adds "Ruling <date> (lead): <file> may change: <what>" to the ticket if build rule 8 allows the change; otherwise final review grades this line.`, logged with `wf warn-log <index dir> earlier-tests <id> "<file>: <id> commit <sha8> changed it outside a red or guard commit"`; then the ticket is recorded done as today.
+- Produces: `lead <dir>` and `merge_ticket <dir> <branch> <subject> <path> <content>...` in skills/build/scripts/test/lib-lead.sh (sourced), as the Tests section describes.
 - Produces: a file is skipped when a `may change:` line allows it. Lines read: every line of `<index dir>/tickets/<id>-*.md` when it exists, and lines under `## Rulings` in the index that start `- <date>, <id> `. A line allows file F when it contains `may change:` and, with backticks removed, a whitespace-separated token before `may change:` equals F's repo-relative path exactly.
 
 ## Tests
 
-The test file's header: `set -u`, `d=$(mktemp -d); trap 'rm -rf "$d"' EXIT`, `fail=0`, `bad() { echo "FAIL earlier-tests-test: $*"; fail=1; }`, `wf=$(cd "$(dirname "$0")/.." && pwd)/wf`, `printf 'earlier-tests=warn\n' > "$d/c.conf"; export CHECKS_CONF=$d/c.conf`. Helper `lead <dir>`: `git init -q -b main`, user config, commits `app.txt` (`1`), `tests/base.sh` (`test -f app.txt`) and `docs/work/f/index.md` (lines `Branch: main`, `Base: base`, where `base` is a tag `lead` puts on this init commit; rows `| T01 | a | none | done x |` and `| T02 | b | T01 | todo |`, then `## Rulings`), and `docs/work/f/tickets/T02-b.md` (`# T02 b`, `## Approach`, `- none`). Helper `merge_ticket <dir> <branch> <subject> <path> <content>...`: `git checkout -q -b <branch>`, one commit per (subject, path, content) triple, `git checkout -q main`, `git merge -q --no-ff <branch> -m "merge <branch>"`, prints the merge sha. Setup for every block: T1 merged first with `test(US-1.AC1): red` adding `tests/t1.sh` (`test -f app.txt`). Ends `[ $fail = 0 ] && echo "OK earlier-tests-test"; exit $fail`.
+The test file's header: `set -u`, `d=$(mktemp -d); trap 'rm -rf "$d"' EXIT`, `fail=0`, `bad() { echo "FAIL earlier-tests-test: $*"; fail=1; }`, `wf=$(cd "$(dirname "$0")/.." && pwd)/wf`, `printf 'earlier-tests=warn\n' > "$d/c.conf"; export CHECKS_CONF=$d/c.conf`. Sources `lib-lead.sh` for `lead` and `merge_ticket` (this ticket's Produces). `lead <dir>`: `git init -q -b main`, user config, commits `app.txt` (`1`), `tests/base.sh` (`test -f app.txt`) and `docs/work/f/index.md` (lines `Branch: main`, `Base: base`, where `base` is a tag `lead` puts on this init commit; rows `| T01 | a | none | done x |` and `| T02 | b | T01 | todo |`, then `## Rulings`), and `docs/work/f/tickets/T02-b.md` (`# T02 b`, `## Approach`, `- none`). `merge_ticket <dir> <branch> <subject> <path> <content>...`: `git checkout -q -b <branch>`, one commit per (subject, path, content) triple, `git checkout -q main`, `git merge -q --no-ff <branch> -m "merge <branch>"`, prints the merge sha. Setup for every block: T1 merged first with `test(US-1.AC1): red` adding `tests/t1.sh` (`test -f app.txt`). Ends `[ $fail = 0 ] && echo "OK earlier-tests-test"; exit $fail`.
 
 ### US-5.AC1
 File: skills/build/scripts/test/earlier-tests-test.sh
@@ -91,7 +92,6 @@ Mutation to prove it: exit 1 after printing a WARN in `earlier_tests`, before `s
 
 - Put the check in its own function (e.g. `earlier_tests <index> <id> <sha>`) called from the `done)` case before `set_status`; T10 adds the red/guard rewrite rule and block mode to it.
 - `wf done` without a mode file uses the built-in `earlier-tests=warn`.
-- Ruling 2026-11-24 (slice): skills/build/scripts/test/wf-test.sh may change: its "done" expectation (fixture index `Base: origin/main`, which does not resolve there) gains the line `WARN earlier-tests T02: Base origin/main is not a commit, check skipped. Fix: git fetch, or correct the index's Base: line.`; nothing is removed.
 - Prose (spec Decisions on `may change:`):
   - skills/build/SKILL.md rule 8: `Ruling <date> (lead): <test file path> may change: <what changes>` (path, not test name).
   - fix-ticket-template.md Approach gains: `Ruling <date> (final-review): <test file path> may change: <what>` for a fix that edits an existing test.

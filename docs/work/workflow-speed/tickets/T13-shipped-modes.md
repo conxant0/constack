@@ -15,11 +15,12 @@ Blocked by: T08, T10
 
 - Consumes: skills/build/checks.conf and `wf mode` from T02; the delivers finding from T01; the wording finding from T08; the guard-patch "Mutation has no patch" finding from T06; the earlier-tests finding from T09
 - Consumes: the merged work of T10 (runs last: the earlier-tests check in `wf done` is complete only after T10, and this test runs `wf done`)
+- Consumes: `pyrepo` from T08 (skills/build/scripts/test/lib-py.sh); `lead` and `merge_ticket` from T09 (skills/build/scripts/test/lib-lead.sh)
 - Consumes: `fx_repo`, `fx_commit`, `fx_ticket`, `fx_guard`, `FX_VERIFY` from skills/build/scripts/test/lib-fixture.sh (T01, T06)
 
 ## Tests
 
-The test file's header: `set -u`, `unset CHECKS_CONF` (the shipped skills/build/checks.conf is what runs), `d=$(mktemp -d); trap 'rm -rf "$d"' EXIT`, `fail=0`, `bad() { echo "FAIL shipped-modes-test: $*"; fail=1; }`, sources `lib-fixture.sh`, `s=$(cd "$(dirname "$0")/.." && pwd)`, `py=${1:-python3}`. Copy the `pyrepo` helper from wording-test.sh (T08) and the `lead` and `merge_ticket` helpers from earlier-tests-test.sh (T09). Ends `[ $fail = 0 ] && echo "OK shipped-modes-test"; exit $fail`.
+The test file's header: `set -u`, `unset CHECKS_CONF` (the shipped skills/build/checks.conf is what runs), `d=$(mktemp -d); trap 'rm -rf "$d"' EXIT`, `fail=0`, `bad() { echo "FAIL shipped-modes-test: $*"; fail=1; }`, sources `lib-fixture.sh`, `s=$(cd "$(dirname "$0")/.." && pwd)`, `py=${1:-python3}`. Also sources `lib-py.sh` (for `pyrepo`, T08) and `lib-lead.sh` (for `lead` and `merge_ticket`, T09). Ends `[ $fail = 0 ] && echo "OK shipped-modes-test"; exit $fail`.
 
 ### US-6.AC1 (guard)
 File: skills/build/scripts/test/shipped-modes-test.sh

@@ -17,13 +17,14 @@ Blocked by: T09
 
 ## Interfaces
 
+- Consumes: `lead <dir>` and `merge_ticket <dir> <branch> <subject> <path> <content>...` from T09 (skills/build/scripts/test/lib-lead.sh)
 - Consumes: the earlier-tests check in `wf done` (its `B`, `S`, `P`, ruling lookup, warn line and Fix) from T09; `wf mode earlier-tests` and `CHECKS_CONF` from T02
 - Produces: a red/guard commit in `S..<sha>` that deletes a file in `P` or has deletions > 0 on it (numstat) gives, once per file: `earlier-tests <file>: <id> commit <sha8> (red or guard) removed or rewrote lines` (same warn Fix and logging as T09).
 - Produces: block mode prints the finding as `FAIL earlier-tests <subject>: <text>. Fix: undo the merge (git reset --hard <merge sha8>^1), wf set <index path> <id> "blocked: earlier tests: <file>", and send this line to the implementer.`, exits 1, leaves the index untouched (no status change, no commit) and writes nothing to the log.
 
 ## Tests
 
-The test file's header and helpers: copy `lead` and `merge_ticket` from earlier-tests-test.sh (T09); `bad() { echo "FAIL earlier-tests-block-test: $*"; fail=1; }`; `printf 'earlier-tests=warn\n' > "$d/w.conf"; printf 'earlier-tests=block\n' > "$d/b.conf"`. Every block starts with T1 merged: `test(US-1.AC1): red` adding `tests/t1.sh` with two lines `test -f app.txt` and `true`. Ends `[ $fail = 0 ] && echo "OK earlier-tests-block-test"; exit $fail`.
+The test file's header: `set -u`, `d=$(mktemp -d); trap 'rm -rf "$d"' EXIT`, `fail=0`, `wf=$(cd "$(dirname "$0")/.." && pwd)/wf`, sources `lib-lead.sh` (for `lead` and `merge_ticket`, T09); `bad() { echo "FAIL earlier-tests-block-test: $*"; fail=1; }`; `printf 'earlier-tests=warn\n' > "$d/w.conf"; printf 'earlier-tests=block\n' > "$d/b.conf"`. Every block starts with T1 merged: `test(US-1.AC1): red` adding `tests/t1.sh` with two lines `test -f app.txt` and `true`. Ends `[ $fail = 0 ] && echo "OK earlier-tests-block-test"; exit $fail`.
 
 ### US-5.AC4 (guard)
 File: skills/build/scripts/test/earlier-tests-block-test.sh

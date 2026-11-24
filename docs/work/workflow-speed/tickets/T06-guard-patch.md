@@ -24,6 +24,8 @@ Blocked by: T03
 - Consumes: `wf mode guard-patch`, `CHECKS_CONF` and the finding line shape `<WARN|FAIL> <check> <subject>: <text>. Fix: <fix>` from T02; `wf warn-log` from T03 (a WARN is logged only when a ticket argument was given)
 - Consumes: `fx_repo`, `fx_commit`, `fx_ticket`, `FX_VERIFY` from T01 (skills/build/scripts/test/lib-fixture.sh)
 - Produces: `fx_guard <dir> <AC id> <test path> <test content> <body file>` in skills/build/scripts/test/lib-fixture.sh: writes the test file, `git add -A`, commits with subject `test(<AC id>): guard` and the body file's text via `git commit --cleanup=verbatim -F` (subject line plus a blank line plus the body), prints the new sha.
+- Produces: `mkguard <repo> <body file>` in skills/build/scripts/test/lib-fixture.sh: when `<repo>/.git` is missing, `fx_repo <repo>` and `fx_commit <repo> 'chore: other' other.txt a`; then sets the globals `base=$(git -C <repo> rev-parse HEAD)` and `sha=$(fx_guard <repo> US-1.AC1 tests/g1.sh 'grep -qx 1 app.txt' <body file>)`.
+- Produces: `patch_of <repo> <file> <new content>` in skills/build/scripts/test/lib-fixture.sh: writes the new content to `<repo>/<file>`, prints `git -C <repo> diff -- <file>`, then `git -C <repo> checkout -- <file>`.
 - Produces: guard body shape: the prose line `Mutation: <file>: <what changed> -> <failing line>`, directly followed by a fence opened by a line of exactly three backticks plus `diff` and closed by a line of exactly three backticks, holding `git diff -- <production files>` taken while the break is in place.
 - Produces: after the unchanged `OK   guard <ac> <sha8>: <Mutation line>` line, at most one guard-patch finding line, subject `<ac> <sha8>`:
   - no fence: `guard-patch <ac> <sha8>: Mutation has no patch. Fix: re-do the break, save git diff -- <file>, and put it in the guard commit body in a diff fence under the Mutation: line (git commit --amend --cleanup=verbatim -F <file>).`
@@ -34,7 +36,7 @@ Blocked by: T03
 
 ## Tests
 
-The test file's header: `set -u`, `d=$(mktemp -d); trap 'rm -rf "$d"' EXIT`, `fail=0`, `bad() { echo "FAIL guard-patch-test: $*"; fail=1; }`, sources `lib-fixture.sh`, `s=$(cd "$(dirname "$0")/.." && pwd)`, `printf 'guard-patch=warn\n' > "$d/c.conf"; export CHECKS_CONF=$d/c.conf`. Helper `mkguard <repo> <body file>`: `fx_repo <repo>`, `fx_commit <repo> 'chore: other' other.txt a`, sets `base`, then `sha=$(fx_guard <repo> US-1.AC1 tests/g1.sh 'grep -qx 1 app.txt' <body file>)`. Helper `patch_of <repo> <file> <new content>`: writes the new content, prints `git -C <repo> diff -- <file>`, then `git -C <repo> checkout -- <file>`. Ends `[ $fail = 0 ] && echo "OK guard-patch-test"; exit $fail`.
+The test file's header: `set -u`, `d=$(mktemp -d); trap 'rm -rf "$d"' EXIT`, `fail=0`, `bad() { echo "FAIL guard-patch-test: $*"; fail=1; }`, sources `lib-fixture.sh`, `s=$(cd "$(dirname "$0")/.." && pwd)`, `printf 'guard-patch=warn\n' > "$d/c.conf"; export CHECKS_CONF=$d/c.conf`. Uses `mkguard` and `patch_of` from lib-fixture.sh (this ticket's Produces). Ends `[ $fail = 0 ] && echo "OK guard-patch-test"; exit $fail`.
 
 ### US-4.AC1 (guard)
 File: skills/build/scripts/test/guard-patch-test.sh
@@ -92,7 +94,6 @@ printf 'guard-patch=block\n' > "$d/gb.conf"
 out=$(CHECKS_CONF=$d/gb.conf "$s/check-red-green.sh" "$d/r4" "$base" "$FX_VERIFY"); rc=$?
 [ $rc = 1 ] && grep -q "^FAIL guard-patch US-1.AC1 ${sha:0:8}: Mutation has no patch\. Fix: " <<<"$out" || bad "guard-patch block (exit $rc): $out"
 ```
-`mkguard` must not re-create a repo that exists: write it as `[ -d <repo>/.git ] || { fx_repo <repo>; fx_commit <repo> 'chore: other' other.txt a >/dev/null; }; base=$(git -C <repo> rev-parse HEAD); sha=$(fx_guard ...)`.
 
 ## Approach
 

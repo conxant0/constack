@@ -122,6 +122,8 @@ As the owner, I want new checks to warn first, with every warning logged and gra
 - Removing prompt text a check replaces (done in the change that flips that check to blocking).
 - Product-repo checks: the paid-tool money invariant test and the zero-assertion pytest/vitest check (separate spec in the product repo).
 - Whether the ticket reviewer earns its place (0 fix verdicts in 27 rounds, 76 agent-minutes; later question).
+- A lock on the warning log (two writers adding the very same line at the same moment can leave it twice: measured in 3 of 20 runs of 40 such writers; one check runs per ticket at a time, and one `Check warnings` row grades both copies) (fable, 2026-11-24).
+- A line from `wf done` when the index Base does not resolve to a commit (the earlier-tests check is skipped there with no line and the ticket is recorded done, as today; the red check and the scope check already stop with exit 2 on such a Base) (fable, 2026-11-24).
 
 ## Manual check
 
