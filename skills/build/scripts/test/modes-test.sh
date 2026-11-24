@@ -34,4 +34,15 @@ for c in wording guard-patch earlier-tests; do
 done
 [ "$(CHECKS_CONF=$d/missing.conf "$s/wf" mode delivers)" = block ] || bad "AC12 delivers default is not block"
 
+printf 'delivers=maybe\n' > "$d/bad.conf"
+out=$(CHECKS_CONF=$d/bad.conf "$s/check-red-green.sh" "$r" "$base" "$FX_VERIFY" "$t"); rc=$?
+[ $rc = 2 ] || bad "AC13 exit $rc, want 2"
+grep -qxF "ERROR $d/bad.conf: delivers=maybe is not warn or block. Fix: set delivers=warn or delivers=block in $d/bad.conf." <<<"$out" || bad "AC13 line: $out"
+! grep -q '^FAIL delivers' <<<"$out" || bad "AC13 still ran the check: $out"
+for c in wording guard-patch earlier-tests; do
+  printf '%s=maybe\n' "$c" > "$d/bad-$c.conf"
+  out=$(CHECKS_CONF=$d/bad-$c.conf "$s/wf" mode $c 2>&1); rc=$?
+  [ $rc = 2 ] && [ "$out" = "ERROR $d/bad-$c.conf: $c=maybe is not warn or block. Fix: set $c=warn or $c=block in $d/bad-$c.conf." ] || bad "AC13 $c (exit $rc): $out"
+done
+
 [ $fail = 0 ] && echo "OK modes-test"; exit $fail
