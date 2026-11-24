@@ -69,4 +69,11 @@ out=$("$wf" check-review "$R/docs/work/f/review.md"); rc=$?
 [ $rc = 0 ] || bad "AC14 exit $rc, want 0: $out"
 ! grep -qi 'check warning' <<<"$out" || bad "AC14 flagged a fixed-in row: $out"
 
+for t in T09 T05; do
+  review_pass "- $L1 real: states the length rule US-3.AC1 carries (fixed in $t)"
+  out=$("$wf" check-review "$R/docs/work/f/review.md"); rc=$?
+  [ $rc = 1 ] || bad "AC15 [$t] exit $rc, want 1"
+  grep -qF "check warning fixed-in names no done ticket: $L1. Fix: name a ticket the index records done, or grade it real: <reason> (F<nn>) with a fix ticket." <<<"$out" || bad "AC15 [$t] line: $out"
+done
+
 [ $fail = 0 ] && echo "OK check-review-warnings-test"; exit $fail
