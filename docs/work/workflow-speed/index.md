@@ -14,7 +14,7 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 | T02 | Checks read warn or block from a settings file | T01 | done 2ab7528a |
 | T03 | Warnings are appended once to the feature's warning log | T02 | done 9fb2126f |
 | T04 | Warning log survives resets and the gate ignores it | T03 | done b4515662 |
-| T05 | check-review grades every logged warning | T04, T12 | todo |
+| T05 | check-review grades every logged warning | T04, T12 | doing |
 | T06 | Guard patch applied: OK, still passes, does not apply, missing | T03 | done 1f10a65d |
 | T07 | Guard patch: no Mutation, clean restore, test-file patch | T06 | todo |
 | T08 | Per-ticket wording check, and no ticket means no new lines | T07 | todo |
