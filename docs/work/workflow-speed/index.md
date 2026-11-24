@@ -37,4 +37,5 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 - 2026-11-24, T12 quality (logged): review-lanes usage error text omits --only/--wording-tests flags; --diff-filter=AM untested (deleted .py would hit mutate-copy as COULD-NOT-RUN)
 - 2026-11-24, T02 quality (logged): wf catch-all usage line lists mode under <index.md> though it takes a check name (wf:573); move mode ahead of the <index.md> part
 - 2026-11-24, T03 quality (logged): wf warn-log wrong-argument-count usage/exit 2 (wf:577) untested; add a warn-log-test case calling it with 3 args
+- 2026-11-24, T06 quality (logged): 'first fence after the Mutation: line' rule untested (check-red-green.sh:87); add a guard-patch-test case with a non-applying diff fence above Mutation: and assert no guard-patch line
 
