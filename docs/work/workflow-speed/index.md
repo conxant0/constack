@@ -23,10 +23,10 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 | T11 | review-lanes runs the full and clean suites together | T00 | done fa9680ea |
 | T12 | review-lanes wording lane in its own copy | T11 | done 2c5b053e |
 | T13 | Shipped modes: delivers blocks, the other three warn | T08, T10 | done 51d8722a |
-| F01 | wf done exits 2 on a bad earlier-tests mode | none | done 29d6dbfb |
-| F02 | check-review accepts a real warning already fixed in /build | F01 | done 03f1dee5 |
-| F03 | earlier-tests ignores a ticket rewriting its own added lines | F01 | done a883a0d3 |
-| F04 | earlier-tests compares red commits with the ticket's real start, counting repeated lines | none | done 4985ffe9 |
+| F01 | wf done exits 2 on a bad earlier-tests mode | none | done 9cf02e46 |
+| F02 | check-review accepts a real warning already fixed in /build | F01 | done cdbd5a58 |
+| F03 | earlier-tests ignores a ticket rewriting its own added lines | F01 | done 0d4bf643 |
+| F04 | earlier-tests compares red commits with the ticket's real start, counting repeated lines | none | done 85c72fc6 |
 
 ## Rulings
 - 2026-11-24, T00 (afk): resumed interrupted doing ticket, reset to todo
