@@ -47,4 +47,5 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 - 2026-11-24, T10 (afk): earlier-tests-test.sh own-red/guard fixture may change to add-only edits; AC6 makes rewrites by red commits warn, the no-WARN assertion is unchanged
 - 2026-11-24, T10 quality (logged): earlier-tests.sh:25 cat-file -e clause only matters for deleting an empty file and is untested; implementer told to drop it or test it
 - 2026-11-24, final-review (fable): five planned-red ACs landed as on-arrival guards after a same-ticket green (US-1.AC3, US-1.AC4, US-3.AC2, US-6.AC10, US-6.AC12); decided: rows stand as yes; why: each test fails on pre-green code and under its Mutation (re-run), and implementer.md:30 asks for this guard
+- 2026-11-24, final-review (fable): a warning fixed in the build fix round stays in check-warnings.log and check-review refuses a true grade; decided: new US-6.AC14/AC15, real rows may end (fixed in <ticket id>) naming a done ticket, Decisions updated; why: a forced false 'false alarm' would make US-6's switch-to-blocking evidence false
 
