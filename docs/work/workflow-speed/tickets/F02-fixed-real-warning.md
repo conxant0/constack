@@ -1,7 +1,7 @@
 # F02 check-review accepts a real warning already fixed in /build
 
 Spec: docs/work/workflow-speed/spec.md
-Blocked by: none
+Blocked by: F01
 Fixes: review.md Behaviour finding 1 (a warning fixed in the build fix round stays in check-warnings.log; check-review accepts only an F ticket or a false `false alarm`; probes /tmp/fr-beh/p9-stale-wording.sh, /tmp/fr-beh/p8-stale-warning.sh)
 
 ## Delivers

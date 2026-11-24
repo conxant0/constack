@@ -6,7 +6,7 @@ Blocked by: T09
 ## Delivers
 
 - US-5.AC4: Given a ticket that adds a brand-new test file in an ordinary commit, when `wf done` runs for it, then it prints no warning for that file.
-- US-5.AC6: Given T2's red commit removes or rewrites a line in a test file T1's red commit touched, with no matching `may change:` line, when `wf done` runs for T2, then it prints a warning naming the file and T2, with a `Fix:` line.
+- US-5.AC6: Given T2's red commit removes or rewrites a line that a test file T1's red commit touched had when T2 started, with no matching `may change:` line, when `wf done` runs for T2, then it prints a warning naming the file and T2, with a `Fix:` line.
 - US-5.AC7: Given T2's red commit only adds lines to that file, when `wf done` runs for T2, then it prints no warning for that file.
 - US-5.AC8: Given the check is set to `block` and has a finding, when `wf done` runs, then it prints FAIL, exits 1 and does not record the ticket done, and its `Fix:` line says to undo the merge and send the finding to the implementer.
 
