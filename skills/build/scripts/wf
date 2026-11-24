@@ -64,8 +64,8 @@
 #                            skills/build/checks.conf; missing file or name: delivers=block, others warn.
 #                            Exit 0; unknown check or a value other than warn or block: exit 2.
 #   wf warn-log <feature-dir> <check> <ticket-id> "<subject>: <text>"
-#                            Append "<check> <ticket-id> <subject>: <text>" to <feature-dir>/check-warnings.log.
-#                            One printf per line, no lock. Exit 0.
+#                            Append "<check> <ticket-id> <subject>: <text>" to <feature-dir>/check-warnings.log
+#                            unless that exact line is already there. No lock: one printf per line. Exit 0.
 set -u
 . "$(cd "$(dirname "$0")" && pwd)/test-re.sh"
 . "$(cd "$(dirname "$0")" && pwd)/earlier-tests.sh"
@@ -576,6 +576,6 @@ case $cmd in
   warn-log)
     [ $# -eq 4 ] || { echo 'usage: wf warn-log <feature-dir> <check> <ticket-id> "<subject>: <text>"'; exit 2; }
     line="$2 $3 $4"
-    printf '%s\n' "$line" >> "$1/check-warnings.log" ;;
+    grep -Fxq -- "$line" "$1/check-warnings.log" 2>/dev/null || printf '%s\n' "$line" >> "$1/check-warnings.log" ;;
   *) echo "usage: wf base|frontier|chains|waves|check-plan|check-spec|check-review|gate|scope|red|size|set|done|ruling|mode|warn-log <index.md> ..."; exit 2 ;;
 esac
