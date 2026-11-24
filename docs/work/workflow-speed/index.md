@@ -10,7 +10,7 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 | Ticket | Title | Blocked by | Status |
 |---|---|---|---|
 | T00 | One shared test-file regex, and an empty earlier-tests hook in wf done | none | done bf1229bc |
-| T01 | Red-green check fails a Delivers AC with no red or guard commit | T00 | todo |
+| T01 | Red-green check fails a Delivers AC with no red or guard commit | T00 | doing |
 | T02 | Checks read warn or block from a settings file | T01 | todo |
 | T03 | Warnings are appended once to the feature's warning log | T02 | todo |
 | T04 | Warning log survives resets and the gate ignores it | T03 | todo |
