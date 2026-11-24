@@ -69,6 +69,7 @@ grep -q '^LANE wording: COULD-NOT-RUN ' <<<"$out" && grep -q 'Fix: re-run review
 - mutate-copy edits files in place, so it must only ever run inside `<tmp>/wording`; never in root.
 - `--wording-tests` replaces only the wording lane's command; the full and clean lanes always use the Test command.
 - skills/final-review/SKILL.md step 4's **Copy** paragraph: the wording check is review-lanes' wording lane; on `COULD-NOT-RUN` re-run it with `--only wording --wording-tests "<tests covering those files, -x, a --deselect per snapshot file>"`; never run mutate-copy in the review's own tree.
+- Ruling 2026-11-24 (lead): the wording test header also exports `HOME=$d/home` (mkdir'd) so the real ~/.claude/checks/clean-suite-env does not leak into the lanes; same isolation as T11's ruling.
 
 ## Constraints
 
