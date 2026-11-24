@@ -12,7 +12,7 @@ git -C "$R" config user.email t@t; git -C "$R" config user.name t
 echo '- US-1.AC1: Given a, when b, then c' > "$R/docs/work/f/spec.md"
 git -C "$R" add -A; git -C "$R" commit -q -m init
 head=$(git -C "$R" rev-parse HEAD)
-printf '| T03 | x | none | done abc12345 |\n| T05 | y | none | todo |\n' > "$R/docs/work/f/index.md"
+printf '| T03 | x | none | done abc12345 |\n| T04 | z | none | done def67890 |\n| T05 | y | none | todo |\n' > "$R/docs/work/f/index.md"
 review() {
   { echo 'Verdict: FAIL'; echo 'Spec: docs/work/f/spec.md'; echo "Range: $head...$head"
     echo; echo '## Fix tickets'; echo 'F01 x: fixes US-1.AC1'
