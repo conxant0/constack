@@ -444,15 +444,17 @@ red() {
 }
 
 check_review() {
-  local f=$1 head=${2:-HEAD} root spec end ln changed out log lf=()
+  local f=$1 head=${2:-HEAD} root spec end ln changed out log idx lf=()
   [ -r "$f" ] || { echo "$f: cannot read"; exit 2; }
   log=$(dirname "$f")/check-warnings.log; [ -s "$log" ] && lf=("$log")
+  idx=$(dirname "$f")/index.md; [ -s "$log" ] && [ -r "$idx" ] && lf+=("$idx")
   root=$(git -C "$(dirname "$f")" rev-parse --show-toplevel 2>/dev/null) || { echo "$f: not in a git repo"; exit 2; }
   spec=$(awk '/^Spec:/ { gsub(/`/, ""); print $2; exit }' "$f")
-  out=$(awk -v f="$f" -v logf="$log" -v spec="$root/$spec" -v specname="$(basename "${spec:-spec.md}")" -v AC='US-[0-9]+[.]AC[0-9]+[a-z]?' '
+  out=$(awk -v f="$f" -v logf="$log" -v idxf="$idx" -v spec="$root/$spec" -v specname="$(basename "${spec:-spec.md}")" -v AC='US-[0-9]+[.]AC[0-9]+[a-z]?' '
     function p(n, msg) { printf "%s:%d: %s\n", f, n, msg }
     function first(sec, want) { return !(sec in at) || tolower(body[sec]) ~ ("^" want) }
     FILENAME == logf { if ($0 != "") lg[++nl]=$0; next }
+    FILENAME == idxf { split($0, c, "|"); id=c[2]; gsub(/^ +| +$/, "", id); if (c[5] ~ /^ *done/) done[id]=1; next }
     NR == FNR && FILENAME == spec { if (match($0, "^- " AC ":")) { id=substr($0, 3, RLENGTH - 3); sids[++ns]=id; sln[id]=FNR }; next }
     /^Verdict:/ && !vln { vln=FNR; verdict=$2; overruled=($0 ~ /overruled by hand/) }
     /^Range:/ && !rln { rln=FNR }
@@ -491,6 +493,7 @@ check_review() {
       for (i=1; i<=nl; i++) { L=lg[i]; g=0
         for (j=1; j<=ncw && !g; j++) if (index(cw[j], L) == 1 && substr(cw[j], length(L) + 1) ~ /^ (real|false alarm): .+/) g=j
         if (!g) p(at["Check warnings"] ? at["Check warnings"] : 1, "check warning not graded: " L ". Fix: add \"- " L " real: <reason> (F<nn>)\" or \"- " L " false alarm: <reason>\" under ## Check warnings.")
+        else if (substr(cw[g], length(L) + 1) ~ /^ real: / && match(cw[g], /\(fixed in [^)]+\)$/) && (substr(cw[g], RSTART + 10, RLENGTH - 11) in done)) {}
         else if (substr(cw[g], length(L) + 1) ~ /^ real: / && substr(cw[g], length(L) + 1) !~ /^ real: .+\(F[0-9]+\)/) p(cwln[g], "check warning graded real names no fix ticket: " L ". Fix: end the row with (F<nn>), the fix ticket step 8 writes for it.") }
     }' $([ -n "$spec" ] && [ -r "$root/$spec" ] && printf '%q' "$root/$spec") ${lf[@]+"${lf[@]}"} "$f")
   [ -n "$spec" ] && [ -r "$root/$spec" ] || out="$out${out:+$'\n'}$f:1: Spec: ${spec:-(none)} cannot be read from $root. Fix: set Spec: to the spec path from the repo root."
