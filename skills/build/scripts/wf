@@ -536,7 +536,9 @@ mode() { # <check>: warn or block, from $CHECKS_CONF or skills/build/checks.conf
     line=$(grep -E "^$1=" "$conf" | tail -n 1)
     [ -z "$line" ] || v=${line#*=}
   fi
-  echo "$v"
+  case $v in warn|block) echo "$v" ;;
+    *) echo "ERROR $conf: $1=$v is not warn or block. Fix: set $1=warn or $1=block in $conf."; exit 2 ;;
+  esac
 }
 
 cmd=${1:-}; shift || true
