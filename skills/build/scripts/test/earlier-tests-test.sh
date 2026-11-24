@@ -17,4 +17,22 @@ out=$("$wf" done "$d/a/docs/work/f/index.md" T02 "$m"); rc=$?
 grep -qxF "WARN earlier-tests tests/t1.sh: T02 commit ${c:0:8} changed it outside a red or guard commit. Fix: the lead adds \"Ruling <date> (lead): tests/t1.sh may change: <what>\" to the ticket if build rule 8 allows the change; otherwise final review grades this line." <<<"$out" || bad "AC1 line: $out"
 grep -qxF "earlier-tests T02 tests/t1.sh: T02 commit ${c:0:8} changed it outside a red or guard commit" "$d/a/docs/work/f/check-warnings.log" || bad "AC1 not logged"
 
+# US-5.AC2
+for where in ticket index; do
+  lead "$d/b-$where"; merge_ticket "$d/b-$where" t1 'test(US-1.AC1): red' tests/t1.sh 'test -f app.txt' >/dev/null
+  if [ $where = ticket ]; then echo '- Ruling 2026-11-24 (lead): `tests/t1.sh` may change: one more check' >> "$d/b-$where/docs/work/f/tickets/T02-b.md"
+  else "$wf" ruling "$d/b-$where/docs/work/f/index.md" "T02 (lead): tests/t1.sh may change: one more check" >/dev/null; fi
+  git -C "$d/b-$where" commit -qam ruling >/dev/null 2>&1
+  m=$(merge_ticket "$d/b-$where" t2 'feat: T2 code' tests/t1.sh 'true')
+  out=$("$wf" done "$d/b-$where/docs/work/f/index.md" T02 "$m")
+  ! grep -q 'earlier-tests tests/t1.sh' <<<"$out" || bad "AC2 [$where] warned despite the ruling: $out"
+done
+# a ruling for another path, or for another ticket, does not allow it
+lead "$d/b2"; merge_ticket "$d/b2" t1 'test(US-1.AC1): red' tests/t1.sh 'test -f app.txt' >/dev/null
+"$wf" ruling "$d/b2/docs/work/f/index.md" "T01 (lead): tests/t1.sh may change: x" >/dev/null
+echo '- Ruling 2026-11-24 (lead): tests/t1.sh.bak may change: x' >> "$d/b2/docs/work/f/tickets/T02-b.md"; git -C "$d/b2" commit -qam r
+m=$(merge_ticket "$d/b2" t2 'feat: T2 code' tests/t1.sh 'true')
+out=$("$wf" done "$d/b2/docs/work/f/index.md" T02 "$m")
+grep -q '^WARN earlier-tests tests/t1.sh: T02 ' <<<"$out" || bad "AC2 a non-matching ruling allowed it: $out"
+
 [ $fail = 0 ] && echo "OK earlier-tests-test"; exit $fail
