@@ -58,5 +58,10 @@ done
 pyrepo "$d/c-env" "    assert os.path.exists('.env')"; echo x > "$d/c-env/.env"
 out=$(STATUS_LOG=$d/s3.log "$s/review-lanes" "$d/c-env/docs/work/f/index.md" "$base" --only wording)
 grep -q '^LANE wording: COULD-NOT-RUN ' <<<"$out" && grep -q 'Fix: re-run review-lanes .* --only wording --wording-tests ' <<<"$out" || bad "AC5 control: missing include path did not give COULD-NOT-RUN: $out"
+# --wording-tests replaces the wording lane's command, and --only wording runs that lane alone
+out=$(STATUS_LOG=$d/s4.log "$s/review-lanes" "$d/c-env/docs/work/f/index.md" "$base" --only wording --wording-tests true)
+grep -q '^LANE wording: SURVIVED ' <<<"$out" || bad "AC5 --wording-tests not used: $out"
+grep -qx '  SURVIVED mod.py:MSG: Keep it short.' <<<"$out" || bad "AC5 SURVIVED sentence not listed: $out"
+! grep -q '^LANE \(full\|clean\):' <<<"$out" || bad "AC5 --only wording ran other lanes: $out"
 
 [ $fail = 0 ] && echo "OK review-lanes-wording-test"; exit $fail
