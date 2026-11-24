@@ -16,7 +16,7 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 | T04 | Warning log survives resets and the gate ignores it | T03 | done b4515662 |
 | T05 | check-review grades every logged warning | T04, T12 | doing |
 | T06 | Guard patch applied: OK, still passes, does not apply, missing | T03 | done 1f10a65d |
-| T07 | Guard patch: no Mutation, clean restore, test-file patch | T06 | todo |
+| T07 | Guard patch: no Mutation, clean restore, test-file patch | T06 | doing |
 | T08 | Per-ticket wording check, and no ticket means no new lines | T07 | todo |
 | T09 | wf done warns on edits to earlier or Base tests | T06 | todo |
 | T10 | wf done: red-commit rewrites, brand-new files, block mode | T09 | todo |
