@@ -40,6 +40,11 @@ out=$("$s/check-red-green.sh" "$d/r5" "$base" "$V" "$d/f1/tickets/T01-w.md")
 pyrepo "$d/r6" pkg/tests/test_msg.py $'NOTE = "Not copy."\ndef test_x():\n    assert "short" in msg.MSG\n' $'X = 2\nMSG = "Keep it short."\n'
 out=$("$s/check-red-green.sh" "$d/r6" "$base" "$V" "$d/f1/tickets/T01-w.md")
 ! grep -q '^WARN wording pkg/tests/test_msg.py:NOTE' <<<"$out" || bad "AC1 checked a test file's constant: $out"
+pyrepo "$d/r7" pkg/tests/test_msg.py $'def test_x():\n    assert msg.X == 2\n' $'X = 2\nMSG = "Keep it short."\n'
+printf 'import os, sys\nsys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))\nimport msg\ndef test_o():\n    assert "short" in msg.MSG\n' > "$d/r7/pkg/tests/test_other.py"
+git -C "$d/r7" add -A; git -C "$d/r7" commit -qm 'test: other'
+out=$("$s/check-red-green.sh" "$d/r7" "$base" "$V" "$d/f1/tickets/T01-w.md")
+grep -q '^WARN wording pkg/msg.py:MSG: SURVIVED ' <<<"$out" || bad "AC1 a test file from a commit that is neither red nor guard joined the wording command. Fix: build the wording test command only from files added or changed in test(<id>): red and guard commits. Output: $out"
 
 fix=" Fix: keep snapshot and golden tests out of this ticket's red and guard test files, and put its tests under one package's tests dir."
 pyrepo "$d/r2" pkg/tests/test_msg.py $'def test_x():\n    assert msg.MSG == "Keep it short."\n' $'X = 2\nMSG = "Keep it short."\n'
