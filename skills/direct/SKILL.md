@@ -13,7 +13,7 @@ The light lane: spec, this session, `/final-review`. It writes no ticket files a
 
 1. **Fit, or stop and say `/slice <spec>`.** `WF gate --direct` holds approved and at most 6 ACs; you judge that no AC needs a new route, table, migration, tool input, or a paid or auth path. If the work turns out to need one of those, or passes about 150 changed non-test lines, stop where you are, commit what is green, and say `/slice`.
 2. **One red or guard commit per AC, subject exactly `test(US-n.ACm): red` or `test(US-n.ACm): guard`.** `/final-review` finds them by subject.
-3. **Never edit, skip or weaken a test that existed before this session, or one of yours after its red commit.** The one exception is an existing test that pins a count, set, list or contract an AC changes: change only that, and say so in the commit body.
+3. **Never edit, skip or weaken a test that existed before this session, or one of yours after its red commit.** The one exception is an existing test that pins a count, set, list or contract an AC changes: change only that, say so in the commit body, and log it with `WF ruling <index> "T01 (direct): <test file path> may change: <what>"`.
 4. **Least code that turns the current test green.** Nothing the spec does not ask for; Out of Scope lines bind.
 5. **Keep command output short.** Pipe test runs through `2>&1 | tail -40` (pytest with `-q`), read by line range or grep.
 

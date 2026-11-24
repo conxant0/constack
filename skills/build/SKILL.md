@@ -29,7 +29,7 @@ You are the lead. You hold only the index and the subagents' short reports. You 
    - an existing test that pins a count, set, list or contract the ticket's ACs change (an expected tool list, a golden output, fixture setup the new behaviour needs), when no assertion is removed or loosened
    - an environment fix in Verify or the Test command (e.g. `python` to `python3`)
 
-   Add the file to the ticket's Files; for an existing test, also add an Approach line `Ruling <date> (lead): <test> may change: <what changes>`, so review accepts it. Commit the ticket, log `wf ruling <index> "<id> (lead): <ruling, why>"` (`(afk)` in AFK mode), SendMessage the answer. Everything else goes to rule 6.
+   Add the file to the ticket's Files; for an existing test, also add an Approach line `Ruling <date> (lead): <test file path> may change: <what changes>` (the path, not the test name), so review accepts it. Commit the ticket, log `wf ruling <index> "<id> (lead): <ruling, why>"` (`(afk)` in AFK mode), SendMessage the answer. Everything else goes to rule 6.
 9. **Keep command output short: it stays in context and is re-read every turn.** Pipe test runs through `2>&1 | tail -40` (pytest with `-q`), read files by line range or grep, and never dump a full diff or log you can grep.
 
 ## Setup (stop if any fails)

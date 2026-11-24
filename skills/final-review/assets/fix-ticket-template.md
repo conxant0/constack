@@ -30,6 +30,7 @@ File: <test path>
 ## Approach
 
 <One line per real choice. "none" if nothing is open.>
+A fix that edits an existing test adds `Ruling <date> (final-review): <test file path> may change: <what>`.
 
 ## Constraints
 
