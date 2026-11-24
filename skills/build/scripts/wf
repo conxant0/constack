@@ -62,6 +62,7 @@
 set -u
 . "$(cd "$(dirname "$0")" && pwd)/test-re.sh"
 . "$(cd "$(dirname "$0")" && pwd)/earlier-tests.sh"
+. "$(cd "$(dirname "$0")" && pwd)/ac-covered.sh"
 
 tickets() { # id<TAB>blockers<TAB>status<TAB>line, from the index's ticket table
   awk -F'|' -v f="$1" '
@@ -427,11 +428,12 @@ red() {
   base=$(base_ref "$f")
   [ -n "$base" ] || { echo "$f:1: missing \"Base:\" line"; exit 2; }
   subjects=$(git -C "$root" log --format=%s "$base..$head") || { echo "git log $base..$head failed"; exit 2; }
-  printf '%s\n' "$subjects" | awk -v f="$f" -v range="$base..$head" '
-    NR == FNR { have[$0]=1; next }
-    /^- US-[0-9]+[.]AC[0-9]+[a-z]?:/ { id=$2; sub(/:$/, "", id)
-      if (!(("test(" id "): red") in have) && !(("test(" id "): guard") in have)) { printf "%s:%d: %s has no \"test(%s): red\" or guard commit in %s\n", f, FNR, id, id, range; bad=1 } }
-    END { exit bad }' - "$f"
+  local n id out
+  out=$(ac_uncovered "$subjects" "$f") && return 0
+  while read -r n id; do
+    printf '%s:%d: %s has no "test(%s): red" or guard commit in %s\n' "$f" "$n" "$id" "$id" "$base..$head"
+  done <<<"$out"
+  return 1
 }
 
 check_review() {

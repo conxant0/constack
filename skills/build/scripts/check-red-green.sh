@@ -1,21 +1,29 @@
 #!/usr/bin/env bash
-# check-red-green.sh <worktree> <base-sha> "<verify command>"
-#   RED:    every `test(US-n.ACm): red` commit in base..HEAD fails its own test files (see narrowed)
+# check-red-green.sh <worktree> <base-sha> "<verify command>" [<ticket.md> [<ticket-start-sha>]]
+#   DELIVERS: every `- US-n.ACm:` line under the ticket's ## Delivers has a red or guard
+#           commit in <ticket-start>..HEAD (start defaults to base; fix rounds pass the dispatch BASE)
+#   RED:   every `test(US-n.ACm): red` commit in base..HEAD fails its own test files (see narrowed)
 #   GUARD:  every `test(US-n.ACm): guard` commit passes them and names a `Mutation:` in its body
 #   GREEN:  HEAD passes the verify command
 #   FROZEN: no later non-red/guard commit touches a file a red or guard commit touched
 #   TESTS:  a red or guard commit touches test files only (see test_re)
 # One line per check. Exit 0 all OK, 1 any FAIL, 2 could not run.
 set -u
-wt=$1 base=$2 verify=$3
+wt=$1 base=$2 verify=$3 ticket=${4:-} start=${5:-$2}
 red_re='^test\(US-[0-9]+\.AC[0-9]+[a-z]?\): (red|guard)$'
 . "$(cd "$(dirname "$0")" && pwd)/test-re.sh"
+. "$(cd "$(dirname "$0")" && pwd)/ac-covered.sh"
+if [ -n "$ticket" ]; then
+  case $ticket in /*) ;; *) ticket=$PWD/$ticket ;; esac
+  [ -r "$ticket" ] || { echo "ERROR cannot read ticket $ticket. Fix: pass the ticket path from the index (docs/work/<feature>/tickets/<id>-*.md)."; exit 2; }
+fi
 
 cd "$wt" || { echo "ERROR cannot cd to $wt. Fix: pass the worktree path from the implementer's report (git worktree list shows it)."; exit 2; }
 [ -z "$(git status --porcelain --untracked-files=no)" ] || { echo "ERROR worktree has uncommitted changes. Fix: the implementer commits or discards them (git -C <worktree> status), then re-run."; exit 2; }
 head=$(git rev-parse HEAD)
 branch=$(git symbolic-ref -q --short HEAD || echo "$head")
 trap 'git checkout -q "$branch" 2>/dev/null' EXIT
+[ -z "$ticket" ] || git merge-base --is-ancestor "$start" "$head" 2>/dev/null || { echo "ERROR ticket start $start is not an ancestor of HEAD. Fix: pass the BASE the ticket was dispatched from."; exit 2; }
 
 last_line() { # most telling line of a test run's output
   local l
@@ -79,6 +87,13 @@ for r in $reds; do
     done
   done
 done
+
+if [ -n "$ticket" ]; then
+  subjects=$(git log --format=%s "$start..$head")
+  for ac in $(sed -n '/^## Delivers/,/^## /p' "$ticket" | ac_uncovered "$subjects" - | cut -d' ' -f2); do
+    echo "FAIL delivers $ac: no \"test($ac): red\" or guard commit in ${start:0:8}..${head:0:8}. Fix: add the red commit for $ac (or a guard with a Mutation patch if the code already does it); a prefactor's Delivers says none."; fail=1
+  done
+fi
 
 git checkout -q "$branch"
 if out=$(bash -c "$verify" 2>&1); then
