@@ -490,7 +490,8 @@ check_review() {
         p(vln, "Verdict is FAIL, but Fix tickets and OPEN are both none. Fix: list the F tickets step 8 writes, or the OPEN items for the user.")
       for (i=1; i<=nl; i++) { L=lg[i]; g=0
         for (j=1; j<=ncw && !g; j++) if (index(cw[j], L) == 1 && substr(cw[j], length(L) + 1) ~ /^ (real|false alarm): .+/) g=j
-        if (!g) p(at["Check warnings"] ? at["Check warnings"] : 1, "check warning not graded: " L ". Fix: add \"- " L " real: <reason> (F<nn>)\" or \"- " L " false alarm: <reason>\" under ## Check warnings.") }
+        if (!g) p(at["Check warnings"] ? at["Check warnings"] : 1, "check warning not graded: " L ". Fix: add \"- " L " real: <reason> (F<nn>)\" or \"- " L " false alarm: <reason>\" under ## Check warnings.")
+        else if (substr(cw[g], length(L) + 1) ~ /^ real: / && substr(cw[g], length(L) + 1) !~ /^ real: .+\(F[0-9]+\)/) p(cwln[g], "check warning graded real names no fix ticket: " L ". Fix: end the row with (F<nn>), the fix ticket step 8 writes for it.") }
     }' $([ -n "$spec" ] && [ -r "$root/$spec" ] && printf '%q' "$root/$spec") ${lf[@]+"${lf[@]}"} "$f")
   [ -n "$spec" ] && [ -r "$root/$spec" ] || out="$out${out:+$'\n'}$f:1: Spec: ${spec:-(none)} cannot be read from $root. Fix: set Spec: to the spec path from the repo root."
   if grep -q '^Verdict:' "$f"; then
