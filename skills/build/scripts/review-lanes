@@ -32,15 +32,21 @@ includes=""
 [ -f "$root/.worktreeinclude" ] &&
   includes=$(cd "$root" && git ls-files -oi --exclude-from=.worktreeinclude --directory)
 
-names=""
+env_files="" link_paths=""
 while IFS= read -r p; do
   [ -n "$p" ] || continue
   p=${p%/}
   case "$(basename "$p")" in
-    .env*) [ -f "$root/$p" ] && names="$names
-$(sed -nE 's/^(export )?([A-Za-z_][A-Za-z0-9_]*)=.*/\2/p' "$root/$p")" ;;
+    .env*) env_files="$env_files$p"$'\n' ;;
+    *) link_paths="$link_paths$p"$'\n' ;;
   esac
 done <<<"$includes"
+
+names=""
+while IFS= read -r p; do
+  [ -n "$p" ] && [ -f "$root/$p" ] && names="$names
+$(sed -nE 's/^(export )?([A-Za-z_][A-Za-z0-9_]*)=.*/\2/p' "$root/$p")"
+done <<<"$env_files"
 [ -f "$HOME/.claude/checks/clean-suite-env" ] && names="$names
 $(cat "$HOME/.claude/checks/clean-suite-env")"
 names=$(printf '%s\n' "$names" | sed '/^[[:space:]]*$/d' | sort -u)
@@ -61,11 +67,9 @@ lane_clean() {
     git -C "$root" worktree add -q --detach "$c" HEAD || { echo 2 > "$tmp/clean.rc"; stamp clean end; return; }
     while IFS= read -r p; do
       [ -n "$p" ] || continue
-      p=${p%/}
-      case "$(basename "$p")" in .env*) continue ;; esac
       mkdir -p "$(dirname "$c/$p")"
       ln -s "$root/$p" "$c/$p"
-    done <<<"$includes"
+    done <<<"$link_paths"
     while IFS= read -r n; do [ -n "$n" ] && unset_args+=(-u "$n"); done <<<"$names"
     (cd "$c" && env ${unset_args[@]+"${unset_args[@]}"} bash -c "$cmd")
     echo $? > "$tmp/clean.rc"
