@@ -60,4 +60,8 @@ out=$("$s/check-red-green.sh" "$r" "$reviewed" "$FX_VERIFY" "$d/feat4/tickets/T0
 out=$("$s/check-red-green.sh" "$r" "$reviewed" "$FX_VERIFY" "$d/feat4/tickets/T01-f.md"); rc=$?
 [ $rc = 1 ] && grep -q '^FAIL delivers US-1.AC2: ' <<<"$out" || bad "AC4 start default is not base (exit $rc): $out"
 
+# an unreadable ticket and a start that is not an ancestor of HEAD cannot run
+out=$("$s/check-red-green.sh" "$r" "$reviewed" "$FX_VERIFY" "$d/nope/T09-x.md"); rc=$?
+[ $rc = 2 ] && [ "$out" = "ERROR cannot read ticket $d/nope/T09-x.md. Fix: pass the ticket path from the index (docs/work/<feature>/tickets/<id>-*.md)." ] || bad "unreadable ticket (exit $rc): $out"
+
 [ $fail = 0 ] && echo "OK delivers-test"; exit $fail
