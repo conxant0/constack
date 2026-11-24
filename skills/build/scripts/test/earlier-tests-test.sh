@@ -51,7 +51,7 @@ grep -q '^| T02 | b | T01 | done ' "$d/a/docs/work/f/index.md" || bad "AC5 T02 n
 
 # US-5.AC1: the ticket's own red or guard commit may change an earlier test file
 lead "$d/e"; merge_ticket "$d/e" t1 'test(US-1.AC1): red' tests/t1.sh 'test -f app.txt' >/dev/null
-m=$(merge_ticket "$d/e" t2 'test(US-2.AC1): red' tests/t1.sh 'test -s app.txt' 'test(US-2.AC2): guard' tests/base.sh 'test -r app.txt')
+m=$(merge_ticket "$d/e" t2 'test(US-2.AC1): red' tests/t1.sh $'test -f app.txt\ntest -s app.txt' 'test(US-2.AC2): guard' tests/base.sh $'test -f app.txt\ntest -r app.txt')
 out=$("$wf" done "$d/e/docs/work/f/index.md" T02 "$m")
 ! grep -q '^WARN earlier-tests' <<<"$out" || bad "AC1 warned on the ticket's own red or guard commit: $out"
 
