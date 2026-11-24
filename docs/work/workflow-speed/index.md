@@ -38,4 +38,5 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 - 2026-11-24, T02 quality (logged): wf catch-all usage line lists mode under <index.md> though it takes a check name (wf:573); move mode ahead of the <index.md> part
 - 2026-11-24, T03 quality (logged): wf warn-log wrong-argument-count usage/exit 2 (wf:577) untested; add a warn-log-test case calling it with 3 args
 - 2026-11-24, T06 quality (logged): 'first fence after the Mutation: line' rule untested (check-red-green.sh:87); add a guard-patch-test case with a non-applying diff fence above Mutation: and assert no guard-patch line
+- 2026-11-24, T05 quality (logged): wf:493-494 tests never assert the file:<n>: line-number prefix of 'not graded' / 'names no fix ticket' lines; assert exact heading/row line numbers
 
