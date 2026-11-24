@@ -76,4 +76,11 @@ for t in T09 T05; do
   grep -qF "check warning fixed-in names no done ticket: $L1. Fix: name a ticket the index records done, or grade it real: <reason> (F<nn>) with a fix ticket." <<<"$out" || bad "AC15 [$t] line: $out"
 done
 
+mv "$R/docs/work/f/index.md" "$d/index.md"
+review_pass "- $L1 real: states the length rule US-3.AC1 carries (fixed in T03)"
+out=$("$wf" check-review "$R/docs/work/f/review.md"); rc=$?
+[ $rc = 1 ] || bad "AC15 [no index] exit $rc, want 1"
+grep -qF "check warning fixed-in names no done ticket: $L1. Fix: name a ticket the index records done, or grade it real: <reason> (F<nn>) with a fix ticket." <<<"$out" || bad "AC15 [no index] line: $out"
+mv "$d/index.md" "$R/docs/work/f/index.md"
+
 [ $fail = 0 ] && echo "OK check-review-warnings-test"; exit $fail
