@@ -22,7 +22,13 @@ earlier_tests() {
     kind=${c#*:}; c=${c%:*}
     while IFS=$'\t' read -r add del f; do
       printf '%s\n' "$p" | grep -qxF -- "$f" || continue
-      [ $kind = other ] || [ "$del" != 0 ] || ! git -C "$dir" cat-file -e "$c:$f" 2>/dev/null || continue
+      if [ $kind = red ] && git -C "$dir" cat-file -e "$c:$f" 2>/dev/null; then
+        if git -C "$dir" cat-file -e "$s:$f" 2>/dev/null; then
+          [ -n "$(grep -vxFf <(git -C "$dir" show "$c:$f") <(git -C "$dir" show "$s:$f"))" ] || continue
+        else
+          [ "$del" != 0 ] || continue
+        fi
+      fi
       printf '%s\n' "$seen" "$ok" | grep -qxF -- "$f" && continue
       seen=$(printf '%s\n%s' "$seen" "$f")
       if [ $kind = other ]; then msg="$f: $2 commit ${c:0:8} changed it outside a red or guard commit"
