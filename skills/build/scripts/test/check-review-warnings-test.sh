@@ -12,9 +12,18 @@ git -C "$R" config user.email t@t; git -C "$R" config user.name t
 echo '- US-1.AC1: Given a, when b, then c' > "$R/docs/work/f/spec.md"
 git -C "$R" add -A; git -C "$R" commit -q -m init
 head=$(git -C "$R" rev-parse HEAD)
+printf '| T03 | x | none | done abc12345 |\n| T05 | y | none | todo |\n' > "$R/docs/work/f/index.md"
 review() {
   { echo 'Verdict: FAIL'; echo 'Spec: docs/work/f/spec.md'; echo "Range: $head...$head"
     echo; echo '## Fix tickets'; echo 'F01 x: fixes US-1.AC1'
+    echo; echo '## OPEN'; echo 'none'
+    echo; echo '## Check warnings'; for r in "$@"; do echo "$r"; done
+  } > "$R/docs/work/f/review.md"
+}
+review_pass() {
+  { echo 'Verdict: PASS'; echo 'Spec: docs/work/f/spec.md'; echo "Range: $head...$head"
+    echo; echo '## Acceptance criteria'; echo '| AC | Test | Test checks the AC | Note |'; echo '| US-1.AC1 | t | yes | |'
+    echo; echo '## Fix tickets'; echo 'none'
     echo; echo '## OPEN'; echo 'none'
     echo; echo '## Check warnings'; for r in "$@"; do echo "$r"; done
   } > "$R/docs/work/f/review.md"
@@ -53,5 +62,11 @@ out=$("$wf" check-review "$R/docs/work/f/review.md")
 grep -qF "check warning graded real names no fix ticket: $L1. Fix: end the row with (F<nn>), the fix ticket step 8 writes for it." <<<"$out" || bad "AC11 L1 not named: $out"
 ! grep -qF "names no fix ticket: $L2" <<<"$out" || bad "AC11 flagged L2 that names F02: $out"
 ! grep -qF 'check warning not graded' <<<"$out" || bad "AC11 real rows counted as ungraded: $out"
+
+printf '%s\n' "$L1" > "$R/docs/work/f/check-warnings.log"
+review_pass "- $L1 real: states the length rule US-3.AC1 carries (fixed in T03)"
+out=$("$wf" check-review "$R/docs/work/f/review.md"); rc=$?
+[ $rc = 0 ] || bad "AC14 exit $rc, want 0: $out"
+! grep -qi 'check warning' <<<"$out" || bad "AC14 flagged a fixed-in row: $out"
 
 [ $fail = 0 ] && echo "OK check-review-warnings-test"; exit $fail
