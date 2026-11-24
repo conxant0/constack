@@ -43,4 +43,17 @@ git -C "$d/r5" add -A; git -C "$d/r5" commit -qm 'test(US-1.AC1): guard' -m 'Mut
 out=$("$s/check-red-green.sh" "$d/r5" "$base" "$V" "$d/f1/tickets/T01-w.md")
 ! grep -q '^WARN wording' <<<"$out" || bad "AC1 guard test file left out of the wording command: $out"
 
+# US-3.AC2: the wording check stops with no result -> a could-not-run warning, not a FAIL
+fix=" Fix: keep snapshot and golden tests out of this ticket's red and guard test files, and put its tests under one package's tests dir."
+# snapshot: the test pins the exact text, so the one-space probe fails (exit 2)
+pyrepo "$d/r2" pkg/tests/test_msg.py $'def test_x():\n    assert msg.MSG == "Keep it short."\n' $'X = 2\nMSG = "Keep it short."\n'
+# no tests dir: the red test is outside tests/, so no narrow command exists and the command is `false`
+pyrepo "$d/r3" pkg/test_msg.py $'def test_x():\n    assert msg.X == 2\n' $'X = 2\nMSG = "Keep it short."\n'
+for r in r2 r3; do
+  out=$("$s/check-red-green.sh" "$d/$r" "$(git -C "$d/$r" rev-list --max-parents=0 HEAD)" "$V" "$d/f1/tickets/T01-w.md"); rc=$?
+  [ $rc = 0 ] || bad "AC2 [$r] exit $rc, want 0: $out"
+  grep -q "^WARN wording T01: could not run: .*\.$fix\$" <<<"$out" || bad "AC2 [$r] line: $out"
+  ! grep -q '^FAIL wording' <<<"$out" || bad "AC2 [$r] printed FAIL: $out"
+done
+
 [ $fail = 0 ] && echo "OK wording-test"; exit $fail
