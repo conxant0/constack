@@ -42,4 +42,15 @@ grep -q '^| T02 | b | T01 | todo |' "$idx" || bad "AC8 recorded done: $(grep '^|
 [ "$(git -C "$d/e" rev-parse HEAD)" = "$m" ] || bad "AC8 committed after FAIL"
 [ ! -s "$d/e/docs/work/f/check-warnings.log" ] || bad "AC8 logged a FAIL"
 
+# US-5.AC8: block mode prints every finding before it exits 1
+lead "$d/g"; merge_ticket "$d/g" t1 'test(US-1.AC1): red' tests/t1.sh $'test -f app.txt\ntrue' 'test(US-1.AC2): red' tests/t1b.sh 'test -r app.txt' >/dev/null
+m=$(merge_ticket "$d/g" t2 'feat: T2 code' tests/t1.sh 'true' 'feat: T2 more' tests/t1b.sh 'true')
+idx=$d/g/docs/work/f/index.md
+out=$(CHECKS_CONF=$d/b.conf "$wf" done "$idx" T02 "$m"); rc=$?
+[ $rc = 1 ] || bad "AC8 two findings: exit $rc, want 1"
+for f in tests/t1.sh tests/t1b.sh; do
+  grep -q "^FAIL earlier-tests $f: " <<<"$out" || bad "AC8 two findings: no FAIL line for $f: $out"
+done
+grep -q '^| T02 | b | T01 | todo |' "$idx" || bad "AC8 two findings: recorded done: $(grep '^| T02' "$idx")"
+
 [ $fail = 0 ] && echo "OK earlier-tests-block-test"; exit $fail
