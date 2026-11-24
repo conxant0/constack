@@ -59,6 +59,10 @@
 #   wf ruling <index.md> "<ticket or stage>: <ruling, why>"
 #                            Edit the index (status cell, or a dated line under ## Rulings) and
 #                            commit only index.md. Exit 2 on a bad id, status, sha or index.
+#   wf mode delivers|wording|guard-patch|earlier-tests
+#                            The check's mode, warn or block: <check>=<mode> in $CHECKS_CONF, else
+#                            skills/build/checks.conf; missing file or name: delivers=block, others warn.
+#                            Exit 0; unknown check or a value other than warn or block: exit 2.
 set -u
 . "$(cd "$(dirname "$0")" && pwd)/test-re.sh"
 . "$(cd "$(dirname "$0")" && pwd)/earlier-tests.sh"
@@ -525,6 +529,18 @@ ruling() { # ruling <index> <text>: append "- <date>, <text>" to the Rulings sec
   commit "$1" "docs(build): ruling"
 }
 
+mode() { # <check>: warn or block, from $CHECKS_CONF or skills/build/checks.conf, else the built-in default
+  local conf=${CHECKS_CONF:-$(cd "$(dirname "$0")/.." && pwd)/checks.conf} v line
+  case $1 in delivers) v=block ;; *) v=warn ;; esac
+  if [ -r "$conf" ]; then
+    line=$(grep -E "^$1=" "$conf" | tail -n 1)
+    [ -z "$line" ] || v=${line#*=}
+  fi
+  case $v in warn|block) echo "$v" ;;
+    *) echo "ERROR $conf: $1=$v is not warn or block. Fix: set $1=warn or $1=block in $conf."; exit 2 ;;
+  esac
+}
+
 cmd=${1:-}; shift || true
 case $cmd in
   base) [ $# -eq 0 ] || { echo "usage: wf base"; exit 2; }; repo_base ;;
@@ -551,5 +567,8 @@ case $cmd in
     earlier_tests "$1" "$2" "$sha" || exit 1
     set_status "$1" "$2" "done ${sha:0:8}" ;;
   ruling) [ $# -eq 2 ] && [ -n "$2" ] || { echo 'usage: wf ruling <index.md> "<text>"'; exit 2; }; ruling "$@" ;;
-  *) echo "usage: wf base|frontier|chains|waves|check-plan|check-spec|check-review|gate|scope|red|size|set|done|ruling <index.md> ..."; exit 2 ;;
+  mode)
+    case "$*" in delivers|wording|guard-patch|earlier-tests) ;; *) echo "usage: wf mode delivers|wording|guard-patch|earlier-tests"; exit 2 ;; esac
+    mode "$1" ;;
+  *) echo "usage: wf base|frontier|chains|waves|check-plan|check-spec|check-review|gate|scope|red|size|set|done|ruling|mode <index.md> ..."; exit 2 ;;
 esac

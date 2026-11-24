@@ -10,9 +10,10 @@
 # One line per check. Exit 0 all OK, 1 any FAIL, 2 could not run.
 set -u
 wt=$1 base=$2 verify=$3 ticket=${4:-} start=${5:-$2}
+here=$(cd "$(dirname "$0")" && pwd)
 red_re='^test\(US-[0-9]+\.AC[0-9]+[a-z]?\): (red|guard)$'
-. "$(cd "$(dirname "$0")" && pwd)/test-re.sh"
-. "$(cd "$(dirname "$0")" && pwd)/ac-covered.sh"
+. "$here/test-re.sh"
+. "$here/ac-covered.sh"
 if [ -n "$ticket" ]; then
   case $ticket in /*) ;; *) ticket=$PWD/$ticket ;; esac
   [ -r "$ticket" ] || { echo "ERROR cannot read ticket $ticket. Fix: pass the ticket path from the index (docs/work/<feature>/tickets/<id>-*.md)."; exit 2; }
@@ -49,6 +50,13 @@ narrowed() {
   printf 'cd %q && %s -m pytest -q -p no:cacheprovider -p no:xdist' "$root" "${py:-python3}"
   printf ' %q' $(printf '%s\n' "$tests" | sed "s#^${roots}##")
 }
+
+finding() { # <mode> <check> <subject> <text> <fix>: FAIL and fail=1 in block mode, WARN in warn mode
+  if [ "$1" = block ]; then echo "FAIL $2 $3: $4. Fix: $5"; fail=1; else echo "WARN $2 $3: $4. Fix: $5"; fi
+}
+if [ -n "$ticket" ]; then
+  delivers_mode=$("$here/wf" mode delivers) || { echo "$delivers_mode"; exit 2; }
+fi
 
 fail=0
 reds=$(git log --reverse --format='%H %s' "$base..$head" | grep -E "^[0-9a-f]+ ${red_re#^}" | cut -d' ' -f1)
@@ -91,7 +99,8 @@ done
 if [ -n "$ticket" ]; then
   subjects=$(git log --format=%s "$start..$head")
   for ac in $(sed -n '/^## Delivers/,/^## /p' "$ticket" | ac_uncovered "$subjects" - | cut -d' ' -f2); do
-    echo "FAIL delivers $ac: no \"test($ac): red\" or guard commit in ${start:0:8}..${head:0:8}. Fix: add the red commit for $ac (or a guard with a Mutation patch if the code already does it); a prefactor's Delivers says none."; fail=1
+    finding "$delivers_mode" delivers "$ac" "no \"test($ac): red\" or guard commit in ${start:0:8}..${head:0:8}" \
+      "add the red commit for $ac (or a guard with a Mutation patch if the code already does it); a prefactor's Delivers says none."
   done
 fi
 
