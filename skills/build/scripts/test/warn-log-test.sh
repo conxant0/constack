@@ -27,4 +27,10 @@ CHECKS_CONF=$d/warn.conf "$s/check-red-green.sh" "$d/r1" "$base" "$FX_VERIFY" "$
 "$s/wf" warn-log "$d/feat" delivers T01 "US-1.AC3: another warning"
 [ "$(wc -l < "$d/feat/check-warnings.log" | tr -d ' ')" = 2 ] || bad "AC4 a different line from the same ticket was dropped: $(cat "$d/feat/check-warnings.log")"
 
+# US-6.AC5
+mkcase "$d/r2" "$d/featb/tickets/T01-x.md" US-1.AC1 US-1.AC2
+out=$(CHECKS_CONF=$d/block.conf "$s/check-red-green.sh" "$d/r2" "$base" "$FX_VERIFY" "$d/featb/tickets/T01-x.md"); rc=$?
+[ $rc = 1 ] && grep -q '^FAIL delivers US-1.AC2: ' <<<"$out" || bad "AC5 block run did not FAIL (exit $rc): $out"
+[ ! -s "$d/featb/check-warnings.log" ] || bad "AC5 block mode wrote the log: $(cat "$d/featb/check-warnings.log")"
+
 [ $fail = 0 ] && echo "OK warn-log-test"; exit $fail
