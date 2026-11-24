@@ -24,7 +24,7 @@ git -C "$L" reset -q --hard HEAD^1
 out=$("$wf" gate "$L/docs/work/f/index.md"); rc=$?
 [ $rc = 0 ] && [ -z "$out" ] || bad "AC9 gate with a warn-log written log (exit $rc): $out"
 [ -z "$(git -C "$L" status --porcelain)" ] || bad "AC9 git status still shows the log: $(git -C "$L" status --porcelain)"
-grep -qxF check-warnings.log "$(git -C "$L" rev-parse --path-format=absolute --git-common-dir)/info/exclude" || bad "AC9 no ignore entry"
+[ "$(grep -cxF check-warnings.log "$(git -C "$L" rev-parse --path-format=absolute --git-common-dir)/info/exclude")" = 1 ] || bad "AC9 ignore entry not exactly once"
 # a log the writer did not create (no ignore entry) is skipped by the gate too
 M=$d/lead2; git init -q -b feature/x "$M"; git -C "$M" config user.email t@t; git -C "$M" config user.name t
 mkdir -p "$M/docs/work/f"; printf 'Branch: feature/x\nBase: main\n' > "$M/docs/work/f/index.md"; git -C "$M" add -A; git -C "$M" commit -qm init
@@ -35,5 +35,11 @@ out=$("$wf" gate "$M/docs/work/f/index.md"); rc=$?
 echo x > "$M/other.txt"
 out=$("$wf" gate "$M/docs/work/f/index.md"); rc=$?
 [ $rc = 1 ] && grep -qF "uncommitted changes" <<<"$out" || bad "AC9 gate ignored other.txt (exit $rc): $out"
+# warn-log creates info/ when the repo has none
+N=$d/lead3; git init -q -b feature/x "$N"; mkdir -p "$N/docs/work/f"
+gN=$(git -C "$N" rev-parse --path-format=absolute --git-common-dir); rm -rf "$gN/info"
+"$wf" warn-log "$N/docs/work/f" delivers T01 "US-1.AC2: three"
+grep -qxF check-warnings.log "$gN/info/exclude" 2>/dev/null || bad "AC9 no ignore entry when info/ was missing"
+[ "$(cat "$N/docs/work/f/check-warnings.log" 2>&1)" = "delivers T01 US-1.AC2: three" ] || bad "AC9 log not written when info/ was missing: $(cat "$N/docs/work/f/check-warnings.log" 2>&1)"
 
 [ $fail = 0 ] && echo "OK warn-log-git-test"; exit $fail
