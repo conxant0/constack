@@ -20,7 +20,7 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 | T08 | Per-ticket wording check, and no ticket means no new lines | T07 | todo |
 | T09 | wf done warns on edits to earlier or Base tests | T06 | todo |
 | T10 | wf done: red-commit rewrites, brand-new files, block mode | T09 | todo |
-| T11 | review-lanes runs the full and clean suites together | T00 | todo |
+| T11 | review-lanes runs the full and clean suites together | T00 | doing |
 | T12 | review-lanes wording lane in its own copy | T11 | todo |
 | T13 | Shipped modes: delivers blocks, the other three warn | T08, T10 | todo |
 
