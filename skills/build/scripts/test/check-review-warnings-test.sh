@@ -52,4 +52,12 @@ out=$("$wf" check-review "$R/docs/work/f/review.md")
 out=$("$wf" check-review "$R/docs/work/f/review.md")
 ! grep -qi 'check warning' <<<"$out" || bad "AC7 empty log: $out"
 
+# US-6.AC11
+printf '%s\n%s\n' "$L1" "$L2" > "$R/docs/work/f/check-warnings.log"
+review "- $L1 real: states the length rule US-3.AC1 carries" "- $L2 real: guard proves nothing (F02)"
+out=$("$wf" check-review "$R/docs/work/f/review.md")
+grep -qF "check warning graded real names no fix ticket: $L1. Fix: end the row with (F<nn>), the fix ticket step 8 writes for it." <<<"$out" || bad "AC11 L1 not named: $out"
+! grep -qF "names no fix ticket: $L2" <<<"$out" || bad "AC11 flagged L2 that names F02: $out"
+! grep -qF 'check warning not graded' <<<"$out" || bad "AC11 real rows counted as ungraded: $out"
+
 [ $fail = 0 ] && echo "OK check-review-warnings-test"; exit $fail
