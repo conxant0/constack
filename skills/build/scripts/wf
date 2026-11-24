@@ -574,7 +574,7 @@ case $cmd in
   done)
     [ $# -eq 3 ] || { echo "usage: wf done <index.md> <id> <merge sha>"; exit 2; }
     sha=$(git -C "$(dirname "$1")" rev-parse -q --verify "$3^{commit}") || { echo "not a commit: $3"; exit 2; }
-    earlier_tests "$1" "$2" "$sha" || exit 1
+    earlier_tests "$1" "$2" "$sha" || exit $?
     set_status "$1" "$2" "done ${sha:0:8}" ;;
   ruling) [ $# -eq 2 ] && [ -n "$2" ] || { echo 'usage: wf ruling <index.md> "<text>"'; exit 2; }; ruling "$@" ;;
   mode)
