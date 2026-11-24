@@ -42,4 +42,9 @@ c=$(git -C "$d/c" rev-parse "$m^2")
 out=$("$wf" done "$d/c/docs/work/f/index.md" T02 "$m")
 grep -q "^WARN earlier-tests tests/base.sh: T02 commit ${c:0:8} changed it outside a red or guard commit\. Fix: " <<<"$out" || bad "AC3 line: $out"
 
+# US-5.AC5
+# the AC1 run above warned; the ticket is still recorded done
+grep -q '^| T02 | b | T01 | done ' "$d/a/docs/work/f/index.md" || bad "AC5 T02 not done: $(grep '^| T02' "$d/a/docs/work/f/index.md")"
+[ "$(git -C "$d/a" log -1 --format=%s)" = "docs(build): T02 done" ] || bad "AC5 done commit missing"
+
 [ $fail = 0 ] && echo "OK earlier-tests-test"; exit $fail
