@@ -49,4 +49,27 @@ grep -q "^WARN earlier-tests tests/base.sh: T02 commit ${c:0:8} changed it outsi
 grep -q '^| T02 | b | T01 | done ' "$d/a/docs/work/f/index.md" || bad "AC5 T02 not done: $(grep '^| T02' "$d/a/docs/work/f/index.md")"
 [ "$(git -C "$d/a" log -1 --format=%s)" = "docs(build): T02 done" ] || bad "AC5 done commit missing"
 
+# US-5.AC1: the ticket's own red or guard commit may change an earlier test file
+lead "$d/e"; merge_ticket "$d/e" t1 'test(US-1.AC1): red' tests/t1.sh 'test -f app.txt' >/dev/null
+m=$(merge_ticket "$d/e" t2 'test(US-2.AC1): red' tests/t1.sh 'test -s app.txt' 'test(US-2.AC2): guard' tests/base.sh 'test -r app.txt')
+out=$("$wf" done "$d/e/docs/work/f/index.md" T02 "$m")
+! grep -q '^WARN earlier-tests' <<<"$out" || bad "AC1 warned on the ticket's own red or guard commit: $out"
+
+# US-5.AC1: two commits changing the same file give one warning and one log line
+lead "$d/f"; merge_ticket "$d/f" t1 'test(US-1.AC1): red' tests/t1.sh 'test -f app.txt' >/dev/null
+m=$(merge_ticket "$d/f" t2 'feat: T2 code' tests/t1.sh 'true' 'fix: T2 more' tests/t1.sh 'true; true')
+out=$("$wf" done "$d/f/docs/work/f/index.md" T02 "$m")
+[ "$(grep -c '^WARN earlier-tests tests/t1.sh: ' <<<"$out")" = 1 ] || bad "AC1 not one warning per file: $out"
+[ "$(grep -c '^earlier-tests T02 tests/t1.sh: ' "$d/f/docs/work/f/check-warnings.log")" = 1 ] || bad "AC1 not one log line per file"
+
+# US-5.AC1: a ticket built on main with no merge starts at its "docs(build): T02 doing" commit
+lead "$d/g"
+git -C "$d/g" checkout -q -b t1; printf 'test -f app.txt\n' > "$d/g/tests/t1.sh"; git -C "$d/g" add -A; git -C "$d/g" commit -qm 'test(US-1.AC1): red'
+git -C "$d/g" checkout -q main; git -C "$d/g" merge -q --ff-only t1
+"$wf" set "$d/g/docs/work/f/index.md" T02 doing >/dev/null
+printf 'true\n' > "$d/g/tests/t1.sh"; git -C "$d/g" commit -qam 'feat: T2 code'
+c=$(git -C "$d/g" rev-parse HEAD)
+out=$("$wf" done "$d/g/docs/work/f/index.md" T02 "$c")
+grep -qxF "WARN earlier-tests tests/t1.sh: T02 commit ${c:0:8} changed it outside a red or guard commit. Fix: the lead adds \"Ruling <date> (lead): tests/t1.sh may change: <what>\" to the ticket if build rule 8 allows the change; otherwise final review grades this line." <<<"$out" || bad "AC1 no-merge line: $out"
+
 [ $fail = 0 ] && echo "OK earlier-tests-test"; exit $fail
