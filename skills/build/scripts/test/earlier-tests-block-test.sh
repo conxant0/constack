@@ -65,4 +65,14 @@ out=$(CHECKS_CONF=$d/w.conf "$wf" done "$d/dup/docs/work/f/index.md" T02 "$m")
 c=$(git -C "$d/dup" rev-parse "$m^2")
 grep -qxF "WARN earlier-tests tests/t1.sh: T02 commit ${c:0:8} (red or guard) removed or rewrote lines. Fix: the lead adds \"Ruling <date> (lead): tests/t1.sh may change: <what>\" to the ticket if build rule 8 allows the change; otherwise final review grades this line." <<<"$out" || bad "AC6 [repeated line] removal of one of two identical lines not flagged: $out"
 
+lead "$d/sib"; r=$d/sib
+printf 'a\nb\nc\nd\ne\nf\n' > "$r/tests/base.sh"; git -C "$r" commit -qam base2; git -C "$r" tag -f base >/dev/null
+git -C "$r" checkout -qb t2; printf 'a\nb\nc\nd\ne\nf\nT2\n' > "$r/tests/base.sh"; git -C "$r" commit -qam 'test(US-2.AC1): red'
+git -C "$r" checkout -q main
+git -C "$r" checkout -qb t1; printf 'T1\na\nb\nc\nd\ne\nf\n' > "$r/tests/base.sh"; git -C "$r" commit -qam 'test(US-1.AC1): red'
+git -C "$r" checkout -q main; git -C "$r" merge -q --no-ff t1 -m 'merge t1'
+git -C "$r" merge -q --no-ff t2 -m 'merge t2'; m=$(git -C "$r" rev-parse HEAD)
+out=$(CHECKS_CONF=$d/w.conf "$wf" done "$r/docs/work/f/index.md" T02 "$m")
+! grep -q 'earlier-tests tests/base.sh' <<<"$out" || bad "AC7 [sibling merged first] warned on an add-only red: $out"
+
 [ $fail = 0 ] && echo "OK earlier-tests-block-test"; exit $fail
