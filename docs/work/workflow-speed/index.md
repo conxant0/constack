@@ -36,4 +36,5 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 - 2026-11-24, T01 (afk): delivers-test.sh US-9.AC9 probe may change to a line with ':' so the Delivers-section limit is actually tested; Tests block updated
 - 2026-11-24, T12 quality (logged): review-lanes usage error text omits --only/--wording-tests flags; --diff-filter=AM untested (deleted .py would hit mutate-copy as COULD-NOT-RUN)
 - 2026-11-24, T02 quality (logged): wf catch-all usage line lists mode under <index.md> though it takes a check name (wf:573); move mode ahead of the <index.md> part
+- 2026-11-24, T03 quality (logged): wf warn-log wrong-argument-count usage/exit 2 (wf:577) untested; add a warn-log-test case calling it with 3 args
 
