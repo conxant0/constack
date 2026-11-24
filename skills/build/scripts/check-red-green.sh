@@ -87,8 +87,8 @@ done
 
 if [ -n "$ticket" ]; then
   subjects=$(git log --format=%s "$base..$head")
-  for ac in $(sed -n '/^## Delivers/,/^## /p' "$ticket" | sed -nE 's/^- (US-[0-9]+\.AC[0-9]+):.*/\1/p'); do
-    printf '%s\n' "$subjects" | grep -qF -e "test($ac): red" -e "test($ac): guard" && continue
+  for ac in $(sed -n '/^## Delivers/,/^## /p' "$ticket" | sed -nE 's/^- (US-[0-9]+\.AC[0-9]+[a-z]?):.*/\1/p'); do
+    printf '%s\n' "$subjects" | grep -qxF -e "test($ac): red" -e "test($ac): guard" && continue
     echo "FAIL delivers $ac: no \"test($ac): red\" or guard commit in ${base:0:8}..${head:0:8}. Fix: add the red commit for $ac (or a guard with a Mutation patch if the code already does it); a prefactor's Delivers says none."; fail=1
   done
 fi
