@@ -79,6 +79,7 @@ out=$("$s/review-lanes" "$d/b/docs/work/f/index.md" "$base"); rc=$?
 - `.worktreeinclude` paths are symlinked, not copied (spec Decisions).
 - install.sh: add `review-lanes` to the `chmod +x` list.
 - skills/final-review/SKILL.md (spec Decisions "Final-review order"): steps 3 and 3b become one step: right after the gate, dispatch the security finder and the behaviour finder, run `${CLAUDE_SKILL_DIR}/../build/scripts/review-lanes <index> <BASE>` with `run_in_background` (PREV on a delta run), then do the lead's own steps (`wf red`, test judging, `wf scope` and Out of Scope, `wf size` and structure). Record each lane's header and body in review.md's Full suite section. The live check (6b) runs in the review's own tree once review-lanes has exited. Everything joins before the security coverage check, filters and proof, then the behaviour sort, then the write-up and step 8.
+- Ruling 2026-11-24 (lead): review-lanes-test.sh may change: add `export HOME=$d/home; mkdir -p "$HOME"` to the test header right after `export TMPDIR=...`, so the real ~/.claude/checks/clean-suite-env does not leak into `unset=`. No assertion changes.
 
 ## Constraints
 
