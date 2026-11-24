@@ -27,4 +27,11 @@ out=$("$s/check-red-green.sh" "$r" "$base" "$FX_VERIFY" "$d/feat/tickets/T01-x.m
 [ $rc = 0 ] && ! grep -q 'delivers US-1.AC2' <<<"$out" || bad "AC1 guard commit not accepted (exit $rc): $out"
 r=$d/r1; base=$(git -C "$r" rev-list --max-parents=0 HEAD)   # the AC2 block reuses r1
 
+for line in 'none' 'none (prefactor: no behaviour change, existing tests stay green)'; do
+  fx_ticket "$d/feat2/tickets/T00-p.md" "$line"
+  out=$("$s/check-red-green.sh" "$r" "$base" "$FX_VERIFY" "$d/feat2/tickets/T00-p.md"); rc=$?
+  [ $rc = 0 ] || bad "AC2 [$line] exit $rc, want 0"
+  ! grep -q ' delivers ' <<<"$out" || bad "AC2 [$line] printed a delivers line: $out"
+done
+
 [ $fail = 0 ] && echo "OK delivers-test"; exit $fail
