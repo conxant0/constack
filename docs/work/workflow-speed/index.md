@@ -22,7 +22,7 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 | T10 | wf done: red-commit rewrites, brand-new files, block mode | T09 | done 5b9cdd4e |
 | T11 | review-lanes runs the full and clean suites together | T00 | done fa9680ea |
 | T12 | review-lanes wording lane in its own copy | T11 | done 2c5b053e |
-| T13 | Shipped modes: delivers blocks, the other three warn | T08, T10 | todo |
+| T13 | Shipped modes: delivers blocks, the other three warn | T08, T10 | doing |
 
 ## Rulings
 - 2026-11-24, T00 (afk): resumed interrupted doing ticket, reset to todo
