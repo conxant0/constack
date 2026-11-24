@@ -14,6 +14,7 @@ Blocked by: T09
 
 - modify: skills/build/scripts/earlier-tests.sh
 - test: skills/build/scripts/test/earlier-tests-block-test.sh
+- test: skills/build/scripts/test/earlier-tests-test.sh (fixture only, see Ruling)
 
 ## Interfaces
 
@@ -75,6 +76,8 @@ grep -q '^| T02 | b | T01 | todo |' "$idx" || bad "AC8 recorded done: $(grep '^|
 ```
 
 ## Approach
+
+- Ruling 2026-11-24 (lead): `skills/build/scripts/test/earlier-tests-test.sh` may change: in the "ticket's own red or guard commit" block (lines 52-56), the T2 red and guard commits keep every existing line of tests/t1.sh and tests/base.sh and only add their new line (e.g. `$'test -f app.txt\ntest -s app.txt'`), since US-5.AC6 now warns on red commits that rewrite lines; the no-WARN assertion stays unchanged.
 
 - Extend T09's `earlier_tests` in earlier-tests.sh; with several findings, print all of them, then in block mode return 1 (wf's `|| exit 1` stops before `set_status`). Do not edit wf.
 - `--no-renames` on `git diff-tree`, so a rename shows as a delete plus an add.
