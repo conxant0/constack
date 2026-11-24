@@ -1,14 +1,16 @@
 earlier_tests() {
-  local dir base b s p c f msg ok kind add del md seen= red_re='^test\\(US-[0-9]+\\.AC[0-9]+[a-z]?\\): (red|guard)$'
+  local dir base b s st p c f msg ok kind add del md seen= red_re='^test\\(US-[0-9]+\\.AC[0-9]+[a-z]?\\): (red|guard)$'
   dir=$(dirname "$1")
   base=$(base_ref "$1")
   [ -n "$base" ] && git -C "$dir" rev-parse -q --verify "$base^{commit}" >/dev/null || return 0
   b=$(git -C "$dir" merge-base "$base" "$3") || return 0
   if git -C "$dir" rev-parse -q --verify "$3^2" >/dev/null; then
     s=$(git -C "$dir" rev-parse "$3^1")
+    st=$(git -C "$dir" merge-base "$3^1" "$3^2")
   else
     s=$(git -C "$dir" log --format='%H%x09%s' "$3" | awk -F'\t' -v d="docs(build): $2 doing" '$2 == d { print $1; exit }')
     [ -n "$s" ] || s=$b
+    st=$s
   fi
   p=$(for c in $(git -C "$dir" log --format='%H%x09%s' "$b..$s" | awk -F'\t' -v re="$red_re" '$2 ~ re { print $1 }'); do
     git -C "$dir" diff-tree --no-commit-id --name-only --no-renames -r "$c"
@@ -23,8 +25,8 @@ earlier_tests() {
     while IFS=$'\t' read -r add del f; do
       printf '%s\n' "$p" | grep -qxF -- "$f" || continue
       if [ $kind = red ] && git -C "$dir" cat-file -e "$c:$f" 2>/dev/null; then
-        if git -C "$dir" cat-file -e "$s:$f" 2>/dev/null; then
-          diff <(git -C "$dir" show "$s:$f" | sort) <(git -C "$dir" show "$c:$f" | sort) | grep -q '^<' || continue
+        if git -C "$dir" cat-file -e "$st:$f" 2>/dev/null; then
+          diff <(git -C "$dir" show "$st:$f" | sort) <(git -C "$dir" show "$c:$f" | sort) | grep -q '^<' || continue
         else
           [ "$del" != 0 ] || continue
         fi
