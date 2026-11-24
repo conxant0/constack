@@ -42,4 +42,21 @@ grep -q "/wording \[" "$STATUS_LOG" || bad "AC2 wording lane did not run in its 
 grep -q "^LANE full: $plain " <<<"$out" || bad "AC2 full lane differs from a plain run ($plain): $out"
 [ -z "$(git -C "$d/a" status --porcelain --untracked-files=no)" ] || bad "AC2 review tree left changed"
 
+# US-1.AC5
+for need in venv env; do
+  if [ $need = venv ]; then ign='.venv/'; path=.venv/marker; else ign='.env'; path=.env; fi
+  pyrepo "$d/b-$need" "    assert os.path.exists('$path')"
+  printf '%s\n' "$ign" > "$d/b-$need/.gitignore"; printf '%s\n' "$ign" > "$d/b-$need/.worktreeinclude"
+  git -C "$d/b-$need" add .gitignore .worktreeinclude; git -C "$d/b-$need" commit -qm include
+  mkdir -p "$d/b-$need/.venv"; echo x > "$d/b-$need/$path"
+  out=$(STATUS_LOG=$d/s2.log "$s/review-lanes" "$d/b-$need/docs/work/f/index.md" "$base" --only wording); rc=$?
+  grep -q '^LANE wording: \(PASS\|SURVIVED\) ' <<<"$out" || bad "AC5 [$need] wording lane: $out"
+  ! grep -q 'COULD-NOT-RUN' <<<"$out" || bad "AC5 [$need] could not run: $out"
+  grep -q '1 sentences: ' <<<"$out" || bad "AC5 [$need] no sentence reported: $out"
+done
+# control: without the include file the copy lacks .env, so the lane cannot run
+pyrepo "$d/c-env" "    assert os.path.exists('.env')"; echo x > "$d/c-env/.env"
+out=$(STATUS_LOG=$d/s3.log "$s/review-lanes" "$d/c-env/docs/work/f/index.md" "$base" --only wording)
+grep -q '^LANE wording: COULD-NOT-RUN ' <<<"$out" && grep -q 'Fix: re-run review-lanes .* --only wording --wording-tests ' <<<"$out" || bad "AC5 control: missing include path did not give COULD-NOT-RUN: $out"
+
 [ $fail = 0 ] && echo "OK review-lanes-wording-test"; exit $fail
