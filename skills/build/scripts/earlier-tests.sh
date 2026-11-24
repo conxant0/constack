@@ -24,7 +24,7 @@ earlier_tests() {
       printf '%s\n' "$p" | grep -qxF -- "$f" || continue
       if [ $kind = red ] && git -C "$dir" cat-file -e "$c:$f" 2>/dev/null; then
         if git -C "$dir" cat-file -e "$s:$f" 2>/dev/null; then
-          [ -n "$(grep -vxFf <(git -C "$dir" show "$c:$f") <(git -C "$dir" show "$s:$f"))" ] || continue
+          diff <(git -C "$dir" show "$s:$f" | sort) <(git -C "$dir" show "$c:$f" | sort) | grep -q '^<' || continue
         else
           [ "$del" != 0 ] || continue
         fi
