@@ -46,7 +46,7 @@ Safe because: <the one fact>. Proof: `<command>` -> <output, or "unproven">.
 
 ## Check warnings
 
-<`- ` and each line of check-warnings.log, then `real: <reason> (F<nn>)` or `false alarm: <reason>`. "none" if the log is missing or empty.>
+<`- ` and each line of check-warnings.log, then `real: <reason> (F<nn>)`, `real: <reason> (fixed in <ticket id>)` (a ticket the index records done) or `false alarm: <reason>`. "none" if the log is missing or empty.>
 
 ## Fix tickets
 

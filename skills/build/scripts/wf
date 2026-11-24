@@ -493,7 +493,7 @@ check_review() {
       for (i=1; i<=nl; i++) { L=lg[i]; g=0
         for (j=1; j<=ncw && !g; j++) if (index(cw[j], L) == 1 && substr(cw[j], length(L) + 1) ~ /^ (real|false alarm): .+/) g=j
         if (!g) p(at["Check warnings"] ? at["Check warnings"] : 1, "check warning not graded: " L ". Fix: add \"- " L " real: <reason> (F<nn>)\" or \"- " L " false alarm: <reason>\" under ## Check warnings.")
-        else if (substr(cw[g], length(L) + 1) ~ /^ real: / && match(cw[g], /\(fixed in [^)]+\)$/) && (substr(cw[g], RSTART + 10, RLENGTH - 11) in done)) {}
+        else if (substr(cw[g], length(L) + 1) ~ /^ real: / && match(cw[g], /\(fixed in [^)]+\)$/) ) { if (!(substr(cw[g], RSTART + 10, RLENGTH - 11) in done)) p(cwln[g], "check warning fixed-in names no done ticket: " L ". Fix: name a ticket the index records done, or grade it real: <reason> (F<nn>) with a fix ticket.") }
         else if (substr(cw[g], length(L) + 1) ~ /^ real: / && substr(cw[g], length(L) + 1) !~ /^ real: .+\(F[0-9]+\)/) p(cwln[g], "check warning graded real names no fix ticket: " L ". Fix: end the row with (F<nn>), the fix ticket step 8 writes for it.") }
     }' $([ -n "$spec" ] && [ -r "$root/$spec" ] && printf '%q' "$root/$spec") ${lf[@]+"${lf[@]}"} "$f")
   [ -n "$spec" ] && [ -r "$root/$spec" ] || out="$out${out:+$'\n'}$f:1: Spec: ${spec:-(none)} cannot be read from $root. Fix: set Spec: to the spec path from the repo root."
