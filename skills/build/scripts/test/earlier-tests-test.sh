@@ -35,4 +35,11 @@ m=$(merge_ticket "$d/b2" t2 'feat: T2 code' tests/t1.sh 'true')
 out=$("$wf" done "$d/b2/docs/work/f/index.md" T02 "$m")
 grep -q '^WARN earlier-tests tests/t1.sh: T02 ' <<<"$out" || bad "AC2 a non-matching ruling allowed it: $out"
 
+# US-5.AC3
+lead "$d/c"
+m=$(merge_ticket "$d/c" t2 'feat: T2 code' tests/base.sh 'true')
+c=$(git -C "$d/c" rev-parse "$m^2")
+out=$("$wf" done "$d/c/docs/work/f/index.md" T02 "$m")
+grep -q "^WARN earlier-tests tests/base.sh: T02 commit ${c:0:8} changed it outside a red or guard commit\. Fix: " <<<"$out" || bad "AC3 line: $out"
+
 [ $fail = 0 ] && echo "OK earlier-tests-test"; exit $fail
