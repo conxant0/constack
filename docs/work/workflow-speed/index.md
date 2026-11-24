@@ -40,4 +40,5 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 - 2026-11-24, T06 quality (logged): 'first fence after the Mutation: line' rule untested (check-red-green.sh:87); add a guard-patch-test case with a non-applying diff fence above Mutation: and assert no guard-patch line
 - 2026-11-24, T05 quality (logged): wf:493-494 tests never assert the file:<n>: line-number prefix of 'not graded' / 'names no fix ticket' lines; assert exact heading/row line numbers
 - 2026-11-24, T07 quality (logged): check-red-green.sh:27 EXIT trap does not remove paths the patch created, as the Approach says; an early exit between apply and apply -R leaves untracked files; remove create-mode paths in the trap or drop the Approach sentence
+- 2026-11-24, T09 (afk): quality finding 3 (red_re repeated in check-red-green.sh:14) is fixed only within earlier-tests.sh; moving red_re into test-re.sh is deferred because T08 is editing check-red-green.sh in parallel and the move would conflict; final review should dedupe it
 
