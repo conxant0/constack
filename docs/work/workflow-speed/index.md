@@ -31,4 +31,5 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 - 2026-11-24, T00 (afk): 3 prior runs lost T00 with empty worktrees, likely headless session exiting while a background implementer ran; dispatching foreground
 - 2026-11-24, T11 (afk): test header may export HOME=$d/home so the real ~/.claude/checks/clean-suite-env does not leak into unset=; fixture isolation, no assertion loosened
 - 2026-11-24, T01 (afk): quality finding 4 (AC-coverage rule duplicated in check-red-green.sh and wf red) fixed by one helper in new skills/build/scripts/ac-covered.sh, wf added to Files; refactor, no behaviour change
+- 2026-11-24, T11 quality (logged): review-lanes usage/no-Test-command ERROR Fix: text untested; ~/.claude/checks/clean-suite-env read (lines 44-45) untested and final-review SKILL.md step 2 dropped its mention; SKILL.md 'exit 2 means apply the Fix' false for INT/TERM exit 2 with no Fix
 
