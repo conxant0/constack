@@ -42,6 +42,10 @@ printf 'import os, sys\nsys.path.insert(0, os.path.dirname(os.path.dirname(os.pa
 git -C "$d/r5" add -A; git -C "$d/r5" commit -qm 'test(US-1.AC1): guard' -m 'Mutation: pkg/msg.py: MSG -> "" -> test_g fails'
 out=$("$s/check-red-green.sh" "$d/r5" "$base" "$V" "$d/f1/tickets/T01-w.md")
 ! grep -q '^WARN wording' <<<"$out" || bad "AC1 guard test file left out of the wording command: $out"
+# a string constant in a test file is not copy
+pyrepo "$d/r6" pkg/tests/test_msg.py $'NOTE = "Not copy."\ndef test_x():\n    assert "short" in msg.MSG\n' $'X = 2\nMSG = "Keep it short."\n'
+out=$("$s/check-red-green.sh" "$d/r6" "$base" "$V" "$d/f1/tickets/T01-w.md")
+! grep -q '^WARN wording pkg/tests/test_msg.py:NOTE' <<<"$out" || bad "AC1 checked a test file's constant: $out"
 
 # US-3.AC2: the wording check stops with no result -> a could-not-run warning, not a FAIL
 fix=" Fix: keep snapshot and golden tests out of this ticket's red and guard test files, and put its tests under one package's tests dir."
