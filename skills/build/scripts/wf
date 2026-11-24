@@ -60,6 +60,8 @@
 #                            Edit the index (status cell, or a dated line under ## Rulings) and
 #                            commit only index.md. Exit 2 on a bad id, status, sha or index.
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/test-re.sh"
+. "$(cd "$(dirname "$0")" && pwd)/earlier-tests.sh"
 
 tickets() { # id<TAB>blockers<TAB>status<TAB>line, from the index's ticket table
   awk -F'|' -v f="$1" '
@@ -484,7 +486,7 @@ check_review() {
     elif ! git -C "$root" merge-base --is-ancestor "$end" "$head"; then
       out="$out${out:+$'\n'}$f:$ln: Range end ${end:0:9} is not an ancestor of $head. Fix: re-run /final-review $spec at this branch."
     else
-      changed=$(git -C "$root" diff --name-only "$end" "$head" | grep -vE '\.md$|(^|/)docs/|(^|/)(tests?|tests_unit|__tests__|fixtures?)/|(^|/)test_[^/]*\.py$|_test\.py$|(^|/)conftest\.py$|\.(test|spec)\.[cm]?[jt]sx?$' | head -n 5 | paste -sd, - | sed 's/,/, /g')
+      changed=$(git -C "$root" diff --name-only "$end" "$head" | grep -vE "\.md\$|(^|/)docs/|$test_re" | head -n 5 | paste -sd, - | sed 's/,/, /g')
       [ -z "$changed" ] || out="$out${out:+$'\n'}$f:$ln: $changed changed since the Range end ${end:0:9}. Fix: re-run /final-review $spec (a delta run covers only these)."
     fi
   fi
@@ -544,6 +546,7 @@ case $cmd in
   done)
     [ $# -eq 3 ] || { echo "usage: wf done <index.md> <id> <merge sha>"; exit 2; }
     sha=$(git -C "$(dirname "$1")" rev-parse -q --verify "$3^{commit}") || { echo "not a commit: $3"; exit 2; }
+    earlier_tests "$1" "$2" "$sha" || exit 1
     set_status "$1" "$2" "done ${sha:0:8}" ;;
   ruling) [ $# -eq 2 ] && [ -n "$2" ] || { echo 'usage: wf ruling <index.md> "<text>"'; exit 2; }; ruling "$@" ;;
   *) echo "usage: wf base|frontier|chains|waves|check-plan|check-spec|check-review|gate|scope|red|size|set|done|ruling <index.md> ..."; exit 2 ;;

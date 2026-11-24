@@ -9,8 +9,7 @@
 set -u
 wt=$1 base=$2 verify=$3
 red_re='^test\(US-[0-9]+\.AC[0-9]+[a-z]?\): (red|guard)$'
-# test dirs (tests/, test/, tests_unit/, __tests__/, fixtures/), test_*.py, *_test.py, conftest.py, *.test.ts(x), *.spec.js
-test_re='(^|/)(tests?|tests_unit|__tests__|fixtures?)/|(^|/)test_[^/]*\.py$|_test\.py$|(^|/)conftest\.py$|\.(test|spec)\.[cm]?[jt]sx?$'
+. "$(cd "$(dirname "$0")" && pwd)/test-re.sh"
 
 cd "$wt" || { echo "ERROR cannot cd to $wt. Fix: pass the worktree path from the implementer's report (git worktree list shows it)."; exit 2; }
 [ -z "$(git status --porcelain --untracked-files=no)" ] || { echo "ERROR worktree has uncommitted changes. Fix: the implementer commits or discards them (git -C <worktree> status), then re-run."; exit 2; }
