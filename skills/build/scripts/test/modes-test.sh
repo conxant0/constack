@@ -44,5 +44,9 @@ for c in wording guard-patch earlier-tests; do
   out=$(CHECKS_CONF=$d/bad-$c.conf "$s/wf" mode $c 2>&1); rc=$?
   [ $rc = 2 ] && [ "$out" = "ERROR $d/bad-$c.conf: $c=maybe is not warn or block. Fix: set $c=warn or $c=block in $d/bad-$c.conf." ] || bad "AC13 $c (exit $rc): $out"
 done
+for args in foo '' 'delivers extra'; do
+  out=$("$s/wf" mode $args 2>&1); rc=$?
+  [ $rc = 2 ] && [ "$out" = "usage: wf mode delivers|wording|guard-patch|earlier-tests" ] || bad "AC13 usage [wf mode $args] (exit $rc): $out"
+done
 
 [ $fail = 0 ] && echo "OK modes-test"; exit $fail
