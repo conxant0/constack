@@ -32,4 +32,15 @@ for b in k n x; do
   [ "$(git -C "$d/r6-$b" symbolic-ref -q --short HEAD)" = "$br" ] || bad "AC6 [$b] not back on $br"
 done
 
+# US-4.AC7
+fx_repo "$d/r7"; fx_commit "$d/r7" 'chore: other' other.txt a >/dev/null
+mkdir -p "$d/r7/tests"; printf 'grep -qx 1 app.txt\n' > "$d/r7/tests/g1.sh"; git -C "$d/r7" add tests/g1.sh
+{ echo 'Mutation: tests/g1.sh: 1 -> 9 -> fails'; echo '```diff'; printf 'grep -qx 9 app.txt\n' > "$d/r7/tests/g1.sh"; git -C "$d/r7" diff -- tests/g1.sh; echo '```'; } > "$d/b7"
+git -C "$d/r7" rm -q -f --cached tests/g1.sh; rm "$d/r7/tests/g1.sh"
+mkguard "$d/r7" "$d/b7"
+out=$("$s/check-red-green.sh" "$d/r7" "$base" "$FX_VERIFY"); rc=$?
+[ $rc = 0 ] || bad "AC7 warn mode changed the exit: $rc"
+grep -qxF "WARN guard-patch US-1.AC1 ${sha:0:8}: Mutation patch changes a test file (tests/g1.sh). Fix: the patch must change production code only; break the code, not the test." <<<"$out" || bad "AC7 line: $out"
+! grep -q 'tests still pass\|does not apply' <<<"$out" || bad "AC7 applied the test patch: $out"
+
 [ $fail = 0 ] && echo "OK guard-patch-safety-test"; exit $fail
