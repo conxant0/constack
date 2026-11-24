@@ -24,8 +24,10 @@ for where in ticket index; do
   else "$wf" ruling "$d/b-$where/docs/work/f/index.md" "T02 (lead): tests/t1.sh may change: one more check" >/dev/null; fi
   git -C "$d/b-$where" commit -qam ruling >/dev/null 2>&1
   m=$(merge_ticket "$d/b-$where" t2 'feat: T2 code' tests/t1.sh 'true')
-  out=$("$wf" done "$d/b-$where/docs/work/f/index.md" T02 "$m")
+  out=$("$wf" done "$d/b-$where/docs/work/f/index.md" T02 "$m"); rc=$?
   ! grep -q 'earlier-tests tests/t1.sh' <<<"$out" || bad "AC2 [$where] warned despite the ruling: $out"
+  [ $rc = 0 ] || bad "AC2 [$where] exit $rc"
+  grep -q '^| T02 | b | T01 | done ' "$d/b-$where/docs/work/f/index.md" || bad "AC2 [$where] T02 not done"
 done
 # a ruling for another path, or for another ticket, does not allow it
 lead "$d/b2"; merge_ticket "$d/b2" t1 'test(US-1.AC1): red' tests/t1.sh 'test -f app.txt' >/dev/null
