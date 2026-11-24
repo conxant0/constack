@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# review-lanes <index.md> <base-ref> [--only wording] [--wording-tests "<shell command>"]
+# Runs final review's script lanes together: full suite, clean-checkout suite, wording.
+set -u
+. "$(cd "$(dirname "$0")" && pwd)/test-re.sh"
+
+index=${1:-}; base=${2:-}
+if [ -z "$index" ] || [ -z "$base" ] || [ ! -f "$index" ]; then
+  echo "ERROR review-lanes: usage: review-lanes <index.md> <base-ref>. Fix: pass an existing index.md and the review's BASE (or PREV)."
+  exit 2
+fi
+root=$(git -C "$(dirname "$index")" rev-parse --show-toplevel 2>/dev/null) || {
+  echo "ERROR $index: not inside a git repo. Fix: pass the index.md of the branch under review."; exit 2; }
+cmd=$(sed -n 's/^Test command:[[:space:]]*//p' "$index" | head -1 | tr -d '`')
+if [ -z "$cmd" ]; then
+  echo "ERROR $index: no \"Test command:\" line. Fix: add the full suite command to the index (slice assets/index-template.md)."
+  exit 2
+fi
+
+tmp=$(cd "$(mktemp -d "${TMPDIR:-/tmp}/review-lanes.XXXXXX")" && pwd -P)
+cleanup() {
+  git -C "$root" worktree list --porcelain | sed -n 's/^worktree //p' | while IFS= read -r w; do
+    case "$w" in "$tmp"/*) git -C "$root" worktree remove --force "$w" 2>/dev/null ;; esac
+  done
+  rm -rf "$tmp"
+  git -C "$root" worktree prune
+}
+trap cleanup EXIT
+trap 'jobs -p | xargs kill 2>/dev/null; exit 2' INT TERM
+
+includes=""
+[ -f "$root/.worktreeinclude" ] &&
+  includes=$(cd "$root" && git ls-files -oi --exclude-from=.worktreeinclude --directory)
+
+names=""
+while IFS= read -r p; do
+  [ -n "$p" ] || continue
+  p=${p%/}
+  case "$(basename "$p")" in
+    .env*) [ -f "$root/$p" ] && names="$names
+$(sed -nE 's/^(export )?([A-Za-z_][A-Za-z0-9_]*)=.*/\2/p' "$root/$p")" ;;
+  esac
+done <<<"$includes"
+[ -f "$HOME/.claude/checks/clean-suite-env" ] && names="$names
+$(cat "$HOME/.claude/checks/clean-suite-env")"
+names=$(printf '%s\n' "$names" | sed '/^[[:space:]]*$/d' | sort -u)
+
+stamp() { date +%s > "$tmp/$1.$2"; }
+
+lane_full() {
+  stamp full start
+  (cd "$root" && bash -c "$cmd") > "$tmp/full.out" 2>&1
+  echo $? > "$tmp/full.rc"
+  stamp full end
+}
+
+lane_clean() {
+  stamp clean start
+  local c=$tmp/clean unset_args=() p n
+  {
+    git -C "$root" worktree add -q --detach "$c" HEAD || { echo 2 > "$tmp/clean.rc"; stamp clean end; return; }
+    while IFS= read -r p; do
+      [ -n "$p" ] || continue
+      p=${p%/}
+      case "$(basename "$p")" in .env*) continue ;; esac
+      mkdir -p "$(dirname "$c/$p")"
+      ln -s "$root/$p" "$c/$p"
+    done <<<"$includes"
+    while IFS= read -r n; do [ -n "$n" ] && unset_args+=(-u "$n"); done <<<"$names"
+    (cd "$c" && env ${unset_args[@]+"${unset_args[@]}"} bash -c "$cmd")
+    echo $? > "$tmp/clean.rc"
+  } > "$tmp/clean.out" 2>&1
+  stamp clean end
+}
+
+lane_wording() {
+  stamp wording start
+  local changed
+  changed=$(git -C "$root" diff --name-only "$base"...HEAD -- '*.py' | grep -Ev "$test_re")
+  if [ -z "$changed" ]; then
+    echo 0 > "$tmp/wording.rc"
+  else
+    printf '%s\n' "$changed" "wording lane for changed .py files is not built yet. Fix: run mutate-copy on these files by hand." > "$tmp/wording.out"
+    echo 1 > "$tmp/wording.rc"
+  fi
+  stamp wording end
+}
+
+lane_full & lane_clean & lane_wording &
+wait
+
+status=0
+for l in full clean wording; do
+  rc=$(cat "$tmp/$l.rc" 2>/dev/null || echo 2)
+  if [ "$rc" = 0 ]; then r=PASS; else r=FAIL; status=1; fi
+  h="LANE $l: $r start=$(cat "$tmp/$l.start") end=$(cat "$tmp/$l.end")"
+  [ "$l" = clean ] && h="$h unset=$(printf '%s\n' "$names" | paste -sd, -)"
+  echo "$h"
+  if [ "$r" = FAIL ] && [ -f "$tmp/$l.out" ]; then
+    body=$(grep -E '^(FAILED|ERROR|FAIL)[ :]' "$tmp/$l.out" | head -40)
+    [ -n "$body" ] || body=$(tail -20 "$tmp/$l.out")
+    printf '%s\n' "$body" | sed 's/^/  /'
+  fi
+done
+exit $status
