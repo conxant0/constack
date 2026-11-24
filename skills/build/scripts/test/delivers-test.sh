@@ -47,4 +47,15 @@ fx_commit "$r" 'feat: green' app.txt 2 >/dev/null
 out=$("$s/check-red-green.sh" "$r" "$base" "$FX_VERIFY" "$d/feat3/tickets/T02-l.md"); rc=$?
 [ $rc = 1 ] && grep -q '^FAIL delivers US-2.AC7b: ' <<<"$out" || bad "AC3 AC7 red accepted for AC7b (exit $rc): $out"
 
+r=$d/r4; fx_repo "$r"; start=$(git -C "$r" rev-parse HEAD)
+fx_commit "$r" 'test(US-1.AC2): red' tests/ac2.sh 'grep -qx 2 app.txt' >/dev/null
+reviewed=$(fx_commit "$r" 'feat: green' app.txt 2)
+fx_commit "$r" 'refactor: review fix' other.txt x >/dev/null
+fx_ticket "$d/feat4/tickets/T01-f.md" '- US-1.AC2: Given a, when b, then c'
+out=$("$s/check-red-green.sh" "$r" "$reviewed" "$FX_VERIFY" "$d/feat4/tickets/T01-f.md" "$start"); rc=$?
+[ $rc = 0 ] && ! grep -q 'delivers US-1.AC2' <<<"$out" || bad "AC4 with start (exit $rc): $out"
+# without the start, the range is reviewed..HEAD and holds no red commit
+out=$("$s/check-red-green.sh" "$r" "$reviewed" "$FX_VERIFY" "$d/feat4/tickets/T01-f.md"); rc=$?
+[ $rc = 1 ] && grep -q '^FAIL delivers US-1.AC2: ' <<<"$out" || bad "AC4 start default is not base (exit $rc): $out"
+
 [ $fail = 0 ] && echo "OK delivers-test"; exit $fail
