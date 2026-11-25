@@ -28,7 +28,7 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 | F03 | earlier-tests ignores a ticket rewriting its own added lines | F01 | done 0d4bf643 |
 | F04 | earlier-tests compares red commits with the ticket's real start, counting repeated lines | none | done 85c72fc6 |
 | F05 | A bad mode for wording or guard-patch stops the check with exit 2 | none | doing |
-| F06 | The wording check runs when Verify names python through a command substitution | none | todo |
+| F06 | The wording check runs when Verify names python through a command substitution | none | doing |
 
 ## Rulings
 - 2026-11-24, T00 (afk): resumed interrupted doing ticket, reset to todo
