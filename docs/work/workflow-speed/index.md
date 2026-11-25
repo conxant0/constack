@@ -27,6 +27,8 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 | F02 | check-review accepts a real warning already fixed in /build | F01 | done cdbd5a58 |
 | F03 | earlier-tests ignores a ticket rewriting its own added lines | F01 | done 0d4bf643 |
 | F04 | earlier-tests compares red commits with the ticket's real start, counting repeated lines | none | done 85c72fc6 |
+| F05 | A bad mode for wording or guard-patch stops the check with exit 2 | none | todo |
+| F06 | The wording check runs when Verify names python through a command substitution | none | todo |
 
 ## Rulings
 - 2026-11-24, T00 (afk): resumed interrupted doing ticket, reset to todo
@@ -52,4 +54,5 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 - 2026-11-24, final-review (fable): earlier-tests warns when a red commit rewrites a line its own ticket added; decided: new US-5.AC9, US-5.AC6 Given narrowed to lines the file had when T2 started; why: a common false alarm spoils the count US-6 uses and would undo good merges in block mode
 - 2026-11-24, final-review (fable): red/guard subject regex defined twice (check-red-green.sh:14, earlier-tests.sh:2); decided: decline, TODOS.md entry; why: a refactor no AC needs is declined (preference 2)
 - 2026-11-24, F02 (final-review): skills/build/scripts/test/check-review-warnings-test.sh may change: add an index.md to the fixture and a PASS variant of review(); existing assertions unchanged
+- 2026-11-25, final-review (fable): spec Decisions still described the removed US-5 check (four shipped modes, a ticket's commits, wf done reads may change: lines); reproduced: grep for earlier-tests outside docs/ prints nothing, wf:576-579 only records the status; decided: correct the three Decision lines in the review commit, no ticket, skill prose untouched; why: the smaller change, no AC needs code or prose removed (preference 2)
 
