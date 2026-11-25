@@ -8,7 +8,7 @@ Spec-driven, test-first feature building with Claude Code: grill the idea, write
 git clone <this repo> && cd constack && ./install.sh
 ```
 
-It links each skill, the hooks and the status line into `~/.claude`, so `git pull` here updates them. Your `~/.claude/CLAUDE.md` gets one import line (`@<this repo>/CLAUDE.md`), so your own rules stay. `settings.json` is copied only when you have none; otherwise merge `settings.example.json` by hand. Anything already there is left alone and listed; `./install.sh --replace` moves those to `~/.claude/backups/` first. Tests: `test/install-test.sh`, `skills/build/scripts/test/*.sh` and `skills/pr/scripts/test/*.sh`.
+It links each skill, the hooks and the status line into `~/.claude`, so `git pull` here updates them. Your `~/.claude/CLAUDE.md` gets one import line (`@<this repo>/CLAUDE.md`), so your own rules stay. `settings.json` is copied only when you have none; otherwise merge `settings.example.json` by hand. Anything already there is left alone and listed; `./install.sh --replace` moves those to `~/.claude/backups/` first. Tests: `test/install-test.sh`, `skills/build/scripts/test/*.sh`, `skills/pr/scripts/test/*.sh` and `skills/quick/scripts/test/*.sh`.
 
 Needs: Claude Code, `git`, `gh` (for `/pr` and `/resolve`), `node` (status line), `python3` (`afk-loop`). Optional: [rtk](https://github.com/rtk-ai/rtk) (the hook and `RTK.md` do nothing without it).
 
@@ -17,7 +17,7 @@ Needs: Claude Code, `git`, `gh` (for `/pr` and `/resolve`), `node` (status line)
 | Step | Command | Writes |
 |---|---|---|
 | 0 | `git worktree add ../<feature> -b feature/<feature> <base>`, then `cd ../<feature> && claude` | |
-| 1 | `/grill-me` | conversation only |
+| 1 | `/grill-me` (or `/quick "<task>"` for at most 3 ACs: writes the spec, one approval, builds as `/direct` does, then go to 5) | conversation only |
 | 2 | `/spec` (same session) | `docs/work/<feature>/spec.md` |
 | 3 | `/clear`, `/slice <spec>` (or `/direct <spec>` for at most 6 ACs: one session, no tickets) | `index.md` + `tickets/T01-*.md` |
 | 4 | `/clear`, `/build <index>` | merged, reviewed tickets |
