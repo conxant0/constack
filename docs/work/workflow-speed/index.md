@@ -60,4 +60,5 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 - 2026-11-25, F05 (final-review): skills/build/scripts/test/modes-test.sh may change: three assertion lines added inside the AC13 loop, no existing assertion changed
 - 2026-11-25, F06 (final-review): skills/build/scripts/test/wording-test.sh may change: one US-3.AC4 block appended, no existing assertion changed
 - 2026-11-25, final-review (fable): wording of US-3.AC5 for the dropped Verify env prefix (false could-not-run, FAIL guard beside OK green); reproduced: beh/probe.sh 1a-1c and decide/probe3.sh (NAME=value "$(...)" and doubled prefix fail the same way); decided: one AC, three measured forms, SURVIVED clause plus OK guard/exit 0 clause, ticket F07; why: leaving a form in live use untested would leave US-3's so-that false (preference 2's limit)
+- 2026-11-25, F07 (final-review): skills/build/scripts/test/wording-test.sh may change: one US-3.AC5 block appended, no existing assertion changed
 
