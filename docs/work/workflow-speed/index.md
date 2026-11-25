@@ -29,7 +29,7 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 | F04 | earlier-tests compares red commits with the ticket's real start, counting repeated lines | none | done 85c72fc6 |
 | F05 | A bad mode for wording or guard-patch stops the check with exit 2 | none | done 43b32dc1 |
 | F06 | The wording check runs when Verify names python through a command substitution | none | done f0bda75a |
-| F07 | The red-green check keeps the Verify's environment prefix | none | todo |
+| F07 | The red-green check keeps the Verify's environment prefix | none | doing |
 
 ## Rulings
 - 2026-11-24, T00 (afk): resumed interrupted doing ticket, reset to todo
