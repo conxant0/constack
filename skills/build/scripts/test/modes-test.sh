@@ -43,6 +43,9 @@ for c in wording guard-patch; do
   printf '%s=maybe\n' "$c" > "$d/bad-$c.conf"
   out=$(CHECKS_CONF=$d/bad-$c.conf "$s/wf" mode $c 2>&1); rc=$?
   [ $rc = 2 ] && [ "$out" = "ERROR $d/bad-$c.conf: $c=maybe is not warn or block. Fix: set $c=warn or $c=block in $d/bad-$c.conf." ] || bad "AC13 $c (exit $rc): $out"
+  out=$(CHECKS_CONF=$d/bad-$c.conf "$s/check-red-green.sh" "$r" "$base" "$FX_VERIFY" "$t"); rc=$?
+  [ $rc = 2 ] || bad "AC13 $c through the check: exit $rc, want 2"
+  [ "$out" = "ERROR $d/bad-$c.conf: $c=maybe is not warn or block. Fix: set $c=warn or $c=block in $d/bad-$c.conf." ] || bad "AC13 $c through the check printed: $out"
 done
 for args in foo '' 'delivers extra'; do
   out=$("$s/wf" mode $args 2>&1); rc=$?
