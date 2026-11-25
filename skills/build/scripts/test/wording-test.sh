@@ -61,4 +61,21 @@ out=$("$s/check-red-green.sh" "$d/r4" "$base" "$V" "$d/f1/tickets/T01-w.md"); rc
 [ $rc = 0 ] || bad "AC3 exit $rc: $out"
 ! grep -q 'wording' <<<"$out" || bad "AC3 printed a wording line: $out"
 
+real=$(command -v "$py")
+for form in direct variable; do
+  pyrepo "$d/r8-$form" pkg/tests/test_msg.py $'def test_x():\n    assert msg.X == 2\n' $'X = 2\nMSG = "Keep it short."\n'
+  mkdir -p "$d/r8-$form/venv/bin"
+  printf '#!/bin/sh\necho "$*" >> %q\nexec %q "$@"\n' "$d/used-$form" "$real" > "$d/r8-$form/venv/bin/python3"
+  chmod +x "$d/r8-$form/venv/bin/python3"
+  sub='"$(git rev-parse --path-format=absolute --git-common-dir)/../venv/bin/python3"'
+  if [ $form = direct ]; then V8="cd pkg && $sub -m pytest -q -p no:cacheprovider"
+  else V8="cd pkg && PY=$sub && \$PY -m pytest -q -p no:cacheprovider"; fi
+  fx_ticket "$d/f8-$form/tickets/T01-w.md" '- US-1.AC1: Given a, when b, then c'
+  out=$("$s/check-red-green.sh" "$d/r8-$form" "$base" "$V8" "$d/f8-$form/tickets/T01-w.md"); rc=$?
+  [ $rc = 0 ] || bad "AC4 [$form] exit $rc: $out"
+  grep -q '^WARN wording pkg/msg.py:MSG: SURVIVED Keep it short\.\. Fix: ' <<<"$out" || bad "AC4 [$form] no SURVIVED line: $out"
+  ! grep -q 'could not run' <<<"$out" || bad "AC4 [$form] printed could-not-run: $out"
+  grep -q 'no:xdist' "$d/used-$form" || bad "AC4 [$form] venv python not used by the wording run"
+done
+
 [ $fail = 0 ] && echo "OK wording-test"; exit $fail
