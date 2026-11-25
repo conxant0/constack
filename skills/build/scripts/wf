@@ -29,10 +29,10 @@
 #                            may follow AC7); each AC has Given, when, then; no OPEN: once approved;
 #                            Out of Scope and Manual check have content; no file paths (dir/file.ext).
 #                            One file:line: problem per line, exit 1 on any.
-#   wf gate <spec|index.md> [--build|--final|--slice|--direct]
+#   wf gate <spec|index.md> [--build|--final|--slice|--direct|--quick]
 #                            Current branch is the file's Branch: and the tree is clean.
 #                            --slice (spec): Status: approved and wf check-spec clean. --direct: same, plus
-#                            at most 6 ACs (lettered ones count). Each new line ends with a Fix:.
+#                            at most 6 ACs (lettered ones count); --quick: same, at most 3. Each new line ends with a Fix:.
 #                            --build: settings allow git, check-red-green.sh and wf (skip in auto or
 #                            bypass mode), and every ignored venv / node_modules / .env is listed in
 #                            .worktreeinclude. --final: every ticket in the index next to it is done.
@@ -344,7 +344,7 @@ gate() {
     if [ -z "$want" ]; then echo "$f:1: missing \"Branch:\" line"
     elif [ "$cur" != "$want" ]; then echo "$f:$ln: on branch ${cur:-(detached)}, want $want"; fi
     [ -z "$(git -C "$root" status --porcelain | cut -c4- | grep -vE '(^|/)check-warnings\.log$')" ] || echo "$root: uncommitted changes (git status --porcelain is not empty)"
-    if [ "$mode" = --slice ] || [ "$mode" = --direct ]; then
+    if [ "$mode" = --slice ] || [ "$mode" = --direct ] || [ "$mode" = --quick ]; then
       ln=$(grep -n -m1 '^Status:' "$f" | cut -d: -f1)
       rule=$(sed -n "${ln:-0}s/^Status: *//p" "$f" | sed 's/ *$//')
       [ "$rule" = approved ] || echo "$f:${ln:-1}: Status is ${rule:-missing}, /${mode#--} needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run."
@@ -353,6 +353,10 @@ gate() {
     if [ "$mode" = --direct ]; then
       need=$(grep -cE '^- US-[0-9]+[.]AC[0-9]+[a-z]?:' "$f")
       [ "$need" -le 6 ] || echo "$f:1: $need ACs, /direct takes at most 6. Fix: run /slice $f instead."
+    fi
+    if [ "$mode" = --quick ]; then
+      need=$(grep -cE '^- US-[0-9]+[.]AC[0-9]+[a-z]?:' "$f")
+      [ "$need" -le 3 ] || echo "$f:1: $need ACs, /quick takes at most 3. Fix: run /direct $f instead (at most 6 ACs), else /slice $f."
     fi
     if [ "$mode" = --final ]; then
       [ "$(frontier "$dir/index.md" 2>&1)" = "all done" ] || echo "$dir/index.md:1: not every ticket is done (run /build)"
@@ -562,8 +566,8 @@ case $cmd in
   check-plan) [ $# -eq 1 ] || { echo "usage: wf check-plan <index.md>"; exit 2; }; check_plan "$1" ;;
   check-spec) [ $# -eq 1 ] || { echo "usage: wf check-spec <spec.md>"; exit 2; }; check_spec "$1" ;;
   gate)
-    [ $# -eq 1 ] || { [ $# -eq 2 ] && case $2 in --build|--final|--slice|--direct) true ;; *) false ;; esac; } ||
-      { echo "usage: wf gate <spec|index.md> [--build|--final|--slice|--direct]"; exit 2; }
+    [ $# -eq 1 ] || { [ $# -eq 2 ] && case $2 in --build|--final|--slice|--direct|--quick) true ;; *) false ;; esac; } ||
+      { echo "usage: wf gate <spec|index.md> [--build|--final|--slice|--direct|--quick]"; exit 2; }
     gate "$@" ;;
   scope) [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wf scope <index.md> [head]"; exit 2; }; scope "$@" ;;
   check-review) [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wf check-review <review.md> [head]"; exit 2; }; check_review "$@" ;;
