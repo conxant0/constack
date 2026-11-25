@@ -21,19 +21,41 @@ Fixes: review.md Behaviour finding 1. check-red-green.sh:43 `pytest_cmd` builds 
 ## Tests
 
 ### US-3.AC5
-File: skills/build/scripts/test/wording-test.sh (append before the final line, after the US-3.AC4 block, reusing its `real` and `sub`)
+File: skills/build/scripts/test/wording-test.sh (append before the final line, after the US-3.AC4 block; reuses its `real` and `sub`)
+```bash
+for form in envu assign pyvar; do
+  case $form in
+    envu)   V9="cd pkg && env -u TOKEN $sub -m pytest -q -p no:cacheprovider"
+            x='X = 2 if "TOKEN" not in os.environ else 3' ;;
+    assign) V9="cd pkg && DEV_MODE=true $sub -m pytest -q -p no:cacheprovider"
+            x='X = 2 if os.environ.get("DEV_MODE") == "true" else 3' ;;
+    pyvar)  V9="cd pkg && PY=$sub && DEV_MODE=true OTHER=1 \$PY -m pytest -q -p no:cacheprovider"
+            x='X = 2 if os.environ.get("DEV_MODE") == "true" and os.environ.get("OTHER") == "1" else 3' ;;
+  esac
+  pyrepo "$d/r9-$form" pkg/tests/test_msg.py $'def test_x():\n    assert msg.X == 2\n' "import os
+$x
+MSG = \"Keep it short.\"
+"
+  mkdir -p "$d/r9-$form/venv/bin"; ln -s "$real" "$d/r9-$form/venv/bin/python3"; echo venv/ >> "$d/r9-$form/.git/info/exclude"
+  fx_ticket "$d/f9-$form/tickets/T01-w.md" '- US-1.AC1: Given a, when b, then c'
+  out=$(TOKEN=1 "$s/check-red-green.sh" "$d/r9-$form" "$base" "$V9" "$d/f9-$form/tickets/T01-w.md"); rc=$?
+  [ $rc = 0 ] || bad "US-3.AC5 [$form] wording exit $rc: $out"
+  grep -q '^WARN wording pkg/msg.py:MSG: SURVIVED Keep it short\.\. Fix: ' <<<"$out" || bad "US-3.AC5 [$form] no SURVIVED line: $out"
+  ! grep -q 'could not run' <<<"$out" || bad "US-3.AC5 [$form] printed could-not-run: $out"
 
-The three forms, each with a fixture whose code reads the prefix:
-- `env -u TOKEN $sub`: run the check with `TOKEN=1` exported; msg.py sets `X = 2 if "TOKEN" not in os.environ else 3`.
-- `DEV_MODE=true $sub`: msg.py sets `X = 2 if os.environ.get("DEV_MODE") == "true" else 3`.
-- `PY=$sub && DEV_MODE=true OTHER=1 \$PY`: msg.py sets X from both `DEV_MODE` and `OTHER`.
-
-For each form:
-1. (a) Red commit plus a green that adds `MSG = "Keep it short."` with X right under the prefix, ticket T01. Run `check-red-green.sh <repo> <base> "$V" <ticket>`. Assert rc 0, a line matching `^WARN wording pkg/msg.py:MSG: SURVIVED Keep it short\.\. Fix: `, and no `could not run`.
-2. (b) A repo where msg.py already has the prefix-dependent X. Add one guard commit `test(US-1.AC2): guard` whose test asserts `msg.X == 2`. Its body carries a fenced Mutation diff that breaks X, committed with `--cleanup=verbatim`. Run the check over `<base>..guard` with the same `$V`. Assert rc 0, a line starting `OK   guard US-1.AC2`, and no `FAIL guard`.
-3. Before the fix, every form must fail (a) or (b). Reproduced by the review probe: `bash $TMPDIR/fr-71220/beh/probe.sh <scripts dir>` blocks 1a, 1b, 1c.
-
-`venv/` stays untracked: add it to each fixture's `.git/info/exclude`.
+  g=$d/r9-$form; gb=$(git -C "$g" rev-parse HEAD)
+  printf 'import os, sys\nsys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))\nimport msg\ndef test_g():\n    assert msg.X == 2\n' > "$g/pkg/tests/test_guard.py"
+  sed -i.bak 's/^X = .*/X = 0/' "$g/pkg/msg.py"; rm "$g/pkg/msg.py.bak"
+  patch=$(git -C "$g" diff -- pkg/msg.py); git -C "$g" checkout -q -- pkg/msg.py
+  git -C "$g" add -A
+  printf 'test(US-1.AC2): guard\n\nMutation: pkg/msg.py X -> 0 -> test_g fails\n\n```diff\n%s\n```\n' "$patch" | git -C "$g" commit -q --cleanup=verbatim -F -
+  out=$(TOKEN=1 "$s/check-red-green.sh" "$g" "$gb" "$V9"); rc=$?
+  [ $rc = 0 ] || bad "US-3.AC5 [$form] guard exit $rc: $out"
+  grep -q '^OK   guard US-1.AC2 ' <<<"$out" || bad "US-3.AC5 [$form] no OK guard line: $out"
+  ! grep -q '^FAIL guard' <<<"$out" || bad "US-3.AC5 [$form] printed FAIL guard: $out"
+done
+```
+Measured by the review: appended to wording-test.sh at 72be583, every form fails both parts (could-not-run instead of SURVIVED; `FAIL guard ... assert 3 == 2`, exit 1). The same block with a no-prefix Verify and `X = 2` passes, so the fixture's guard patch applies and bites.
 
 ## Approach
 
