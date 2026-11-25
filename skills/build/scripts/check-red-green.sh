@@ -40,7 +40,6 @@ pytest_cmd() {
   roots=$(printf '%s\n' "$2" | sed -nE 's#^(.*/)?tests(_unit)?/.*#\1#p' | sort -u)
   [ -n "$tests" ] && [ "$(printf '%s\n' "$roots" | wc -l)" -eq 1 ] || return 0
   py=$(printf '%s' "$verify" | grep -oE '"\$\([^)]*\)[^" ]*/python3?"|[^ ]*/python3?' | head -n 1)
-  case $py in *'$('*) py=$(eval "printf %s $py") ;; esac
   printf 'cd %q && %s -m pytest -q%s -p no:cacheprovider -p no:xdist' "${roots:-.}" "${py:-python3}" "$1"
   printf ' %q' $(printf '%s\n' "$tests" | sed "s#^${roots}##")
 }
