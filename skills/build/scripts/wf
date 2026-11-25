@@ -268,7 +268,7 @@ check_plan() {
       sec == "Files" && /^- [a-z]+: / { p=$0; sub(/^- [a-z]+: */, "", p); gsub(/`/, "", p); sub(/ .*/, "", p)
         if (p != "") { k=++nf; fid[k]=id; fpath[k]=p; ffile[k]=FILENAME; fln[k]=FNR } }
       sec == "Tests" && /^### / { tests[FILENAME]=tests[FILENAME] " " $0 " " }
-      function covered(fn, a,   s, re) { s=tests[fn]; re="[^A-Za-z0-9.]" a "[^A-Za-z0-9]"; gsub(/[.]/, "[.]", re); return s ~ re }
+      function covered(fn, a,   s, e, re) { s=tests[fn]; e=a; gsub(/[.]/, "[.]", e); re="[^A-Za-z0-9.]" e "[^A-Za-z0-9]"; return s ~ re }
       END {
         for (fn in wantf) { n=split(acs[fn], x, " "); for (i=1; i<=n; i++) if (!covered(fn, x[i])) printf "%s:%d: %s has no ### Tests heading naming it\n", fn, want[fn, x[i]], x[i]
           t=fn; sub(/.*\//, "", t); sub(/-.*/, "", t)
