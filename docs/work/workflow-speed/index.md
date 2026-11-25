@@ -29,6 +29,7 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 | F04 | earlier-tests compares red commits with the ticket's real start, counting repeated lines | none | done 85c72fc6 |
 | F05 | A bad mode for wording or guard-patch stops the check with exit 2 | none | done 43b32dc1 |
 | F06 | The wording check runs when Verify names python through a command substitution | none | done f0bda75a |
+| F07 | The red-green check keeps the Verify's environment prefix | none | todo |
 
 ## Rulings
 - 2026-11-24, T00 (afk): resumed interrupted doing ticket, reset to todo
@@ -58,4 +59,5 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 - 2026-11-25, final-review (fable): wording of US-3.AC4 for the wording check's false could-not-run with a command-substitution interpreter; reproduced: beh/b4-wording-py.sh (variable form) and decide/q2-direct.sh (direct form) both print could not run; decided: one AC naming both measured forms, ticket F06; why: naming one form would leave US-3's so-that false for about half the measured Verify lines (preference 2's limit)
 - 2026-11-25, F05 (final-review): skills/build/scripts/test/modes-test.sh may change: three assertion lines added inside the AC13 loop, no existing assertion changed
 - 2026-11-25, F06 (final-review): skills/build/scripts/test/wording-test.sh may change: one US-3.AC4 block appended, no existing assertion changed
+- 2026-11-25, final-review (fable): wording of US-3.AC5 for the dropped Verify env prefix (false could-not-run, FAIL guard beside OK green); reproduced: beh/probe.sh 1a-1c and decide/probe3.sh (NAME=value "$(...)" and doubled prefix fail the same way); decided: one AC, three measured forms, SURVIVED clause plus OK guard/exit 0 clause, ticket F07; why: leaving a form in live use untested would leave US-3's so-that false (preference 2's limit)
 
