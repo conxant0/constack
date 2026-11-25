@@ -33,6 +33,6 @@ check "red with a frontend test runs all"      "pkg/web/a.test.ts"  2
 check "red touching a non-test file fails"     "pkg/notes.md"       - "FAIL red US-1.AC1"
 check "red touching code names the file"       "pkg/helper.py"      - "touches non-test files: pkg/helper.py"
 # every FAIL or ERROR line the script can print names its fix (global CLAUDE.md: checks print how to fix)
-nofix=$(grep -nE 'echo "(FAIL|ERROR)' "$s/check-red-green.sh" | grep -vF ' Fix: ')
+nofix=$(grep -nE 'echo "(FAIL|ERROR|WARN)' "$s/check-red-green.sh" | grep -vF ' Fix: ')
 [ -z "$nofix" ] || { printf 'FAIL check-red-green.sh lines with no " Fix: ":\n%s\n' "$nofix"; fail=1; }
 [ $fail = 0 ] && echo "OK check-red-green-test"; exit $fail

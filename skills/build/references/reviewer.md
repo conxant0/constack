@@ -6,7 +6,7 @@ You review one ticket's diff against that ticket. You are read-only: never edit 
 
 Ticket: `<TICKET>` (repo-relative path). Its Delivers, Tests, Interfaces, Files, Constraints and Out of scope are the requirements. Nothing else is.
 
-Automated check output (red, guard, green, frozen):
+Automated check output (red, guard, green, frozen, wording):
 ```
 <CHECK_OUTPUT>
 ```
@@ -19,8 +19,9 @@ Automated check output (red, guard, green, frozen):
 3. **Scope.** The diff touches only the ticket's Files. Nothing listed in Out of scope was built.
 4. **Requirements.** Against each AC and Interface: Missing (required, not done), Extra (built, not asked for), Misunderstood (done, but not what the AC means). Signatures match the Interfaces exactly. Constraints are followed.
 5. **No implicit state machines.** New code where two or more booleans or nullable fields combine to mean a mode, instead of one explicit status, is a finding.
+6. **Copy.** For each `wording` line with `SURVIVED` in the check output: a sentence that states a rule a delivered AC carries (an ask, a price, a limit, a never) is a finding; ignore any other. Ignore a `wording` could-not-run line.
 
-Report only correctness, the ticket's stated requirements and check 5. No style, naming or "could be cleaner" comments. If you are unsure whether something is wrong, leave it out.
+Report only correctness, the ticket's stated requirements and checks 5 and 6. No style, naming or "could be cleaner" comments. If you are unsure whether something is wrong, leave it out.
 
 ## Re-review
 

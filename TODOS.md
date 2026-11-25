@@ -1,0 +1,1 @@
+- Warning log: two writers adding the very same line at the same moment can leave it twice (3 of 20 runs with 40 writers). Harmless today: one Check warnings row grades both copies. Add a lock or dedupe on read if a check ever runs twice at once for one ticket.

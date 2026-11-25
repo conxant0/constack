@@ -59,7 +59,16 @@
 #   wf ruling <index.md> "<ticket or stage>: <ruling, why>"
 #                            Edit the index (status cell, or a dated line under ## Rulings) and
 #                            commit only index.md. Exit 2 on a bad id, status, sha or index.
+#   wf mode delivers|wording|guard-patch
+#                            The check's mode, warn or block: <check>=<mode> in $CHECKS_CONF, else
+#                            skills/build/checks.conf; missing file or name: delivers=block, others warn.
+#                            Exit 0; unknown check or a value other than warn or block: exit 2.
+#   wf warn-log <feature-dir> <check> <ticket-id> "<subject>: <text>"
+#                            Append "<check> <ticket-id> <subject>: <text>" to <feature-dir>/check-warnings.log
+#                            unless that exact line is already there. Exit 0.
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/test-re.sh"
+. "$(cd "$(dirname "$0")" && pwd)/ac-covered.sh"
 
 tickets() { # id<TAB>blockers<TAB>status<TAB>line, from the index's ticket table
   awk -F'|' -v f="$1" '
@@ -334,7 +343,7 @@ gate() {
     cur=$(git -C "$root" branch --show-current)
     if [ -z "$want" ]; then echo "$f:1: missing \"Branch:\" line"
     elif [ "$cur" != "$want" ]; then echo "$f:$ln: on branch ${cur:-(detached)}, want $want"; fi
-    [ -z "$(git -C "$root" status --porcelain)" ] || echo "$root: uncommitted changes (git status --porcelain is not empty)"
+    [ -z "$(git -C "$root" status --porcelain | cut -c4- | grep -vE '(^|/)check-warnings\.log$')" ] || echo "$root: uncommitted changes (git status --porcelain is not empty)"
     if [ "$mode" = --slice ] || [ "$mode" = --direct ]; then
       ln=$(grep -n -m1 '^Status:' "$f" | cut -d: -f1)
       rule=$(sed -n "${ln:-0}s/^Status: *//p" "$f" | sed 's/ *$//')
@@ -425,27 +434,33 @@ red() {
   base=$(base_ref "$f")
   [ -n "$base" ] || { echo "$f:1: missing \"Base:\" line"; exit 2; }
   subjects=$(git -C "$root" log --format=%s "$base..$head") || { echo "git log $base..$head failed"; exit 2; }
-  printf '%s\n' "$subjects" | awk -v f="$f" -v range="$base..$head" '
-    NR == FNR { have[$0]=1; next }
-    /^- US-[0-9]+[.]AC[0-9]+[a-z]?:/ { id=$2; sub(/:$/, "", id)
-      if (!(("test(" id "): red") in have) && !(("test(" id "): guard") in have)) { printf "%s:%d: %s has no \"test(%s): red\" or guard commit in %s\n", f, FNR, id, id, range; bad=1 } }
-    END { exit bad }' - "$f"
+  local n id out
+  out=$(ac_uncovered "$subjects" "$f") && return 0
+  while read -r n id; do
+    printf '%s:%d: %s has no "test(%s): red" or guard commit in %s\n' "$f" "$n" "$id" "$id" "$base..$head"
+  done <<<"$out"
+  return 1
 }
 
 check_review() {
-  local f=$1 head=${2:-HEAD} root spec end ln changed out
+  local f=$1 head=${2:-HEAD} root spec end ln changed out log doneids lf=()
   [ -r "$f" ] || { echo "$f: cannot read"; exit 2; }
+  log=$(dirname "$f")/check-warnings.log; [ -s "$log" ] && lf=("$log")
+  doneids=$(tickets "$(dirname "$f")/index.md" 2>/dev/null | awk -F'\t' '$3 ~ /^done / {printf "%s ", $1}')
   root=$(git -C "$(dirname "$f")" rev-parse --show-toplevel 2>/dev/null) || { echo "$f: not in a git repo"; exit 2; }
   spec=$(awk '/^Spec:/ { gsub(/`/, ""); print $2; exit }' "$f")
-  out=$(awk -v f="$f" -v spec="$root/$spec" -v specname="$(basename "${spec:-spec.md}")" -v AC='US-[0-9]+[.]AC[0-9]+[a-z]?' '
+  out=$(awk -v f="$f" -v logf="$log" -v doneids="$doneids" -v spec="$root/$spec" -v specname="$(basename "${spec:-spec.md}")" -v AC='US-[0-9]+[.]AC[0-9]+[a-z]?' '
     function p(n, msg) { printf "%s:%d: %s\n", f, n, msg }
     function first(sec, want) { return !(sec in at) || tolower(body[sec]) ~ ("^" want) }
+    FILENAME == logf { if ($0 != "") lg[++nl]=$0; next }
+    BEGIN { n=split(doneids, d, " "); for (i=1; i<=n; i++) done[d[i]]=1 }
     NR == FNR && FILENAME == spec { if (match($0, "^- " AC ":")) { id=substr($0, 3, RLENGTH - 3); sids[++ns]=id; sln[id]=FNR }; next }
     /^Verdict:/ && !vln { vln=FNR; verdict=$2; overruled=($0 ~ /overruled by hand/) }
     /^Range:/ && !rln { rln=FNR }
     /^## / { sec=substr($0, 4); sub(/ +$/, "", sec); at[sec]=FNR; next }
     /^### / { if (sec == "Verify" && $0 ~ "^### US-") {} else next }
     sec != "" && /[^ ]/ && !(sec in body) { body[sec]=$0; bln[sec]=FNR }
+    sec == "Check warnings" && /^- / { cw[++ncw]=substr($0, 3); cwln[ncw]=FNR }
     sec == "Acceptance criteria" && /^\| *US-/ {
       split($0, cell, "|"); gsub(/-AC/, " to AC", cell[2]); n=split(cell[2], tk, /[ ,]+/); story=""; last=""
       for (i=1; i<=n; i++) {
@@ -474,7 +489,12 @@ check_review() {
         if (!overruled && !first("OPEN", "none")) p(bln["OPEN"] ? bln["OPEN"] : 1, "OPEN is not none, but Verdict is PASS. Fix: set Verdict: FAIL and stop: OPEN items are the user'"'"'s (step 8).")
       } else if (first("Fix tickets", "none") && first("OPEN", "none"))
         p(vln, "Verdict is FAIL, but Fix tickets and OPEN are both none. Fix: list the F tickets step 8 writes, or the OPEN items for the user.")
-    }' $([ -n "$spec" ] && [ -r "$root/$spec" ] && printf '%q' "$root/$spec") "$f")
+      for (i=1; i<=nl; i++) { L=lg[i]; g=0
+        for (j=1; j<=ncw && !g; j++) if (index(cw[j], L) == 1 && substr(cw[j], length(L) + 1) ~ /^ (real|false alarm): .+/) g=j
+        if (!g) p(at["Check warnings"] ? at["Check warnings"] : 1, "check warning not graded: " L ". Fix: add \"- " L " real: <reason> (F<nn>)\" or \"- " L " false alarm: <reason>\" under ## Check warnings.")
+        else if (substr(cw[g], length(L) + 1) ~ /^ real: / && match(cw[g], /\(fixed in [^)]+\)$/) ) { if (!(substr(cw[g], RSTART + 10, RLENGTH - 11) in done)) p(cwln[g], "check warning fixed-in names no done ticket: " L ". Fix: name a ticket the index records done, or grade it real: <reason> (F<nn>) with a fix ticket.") }
+        else if (substr(cw[g], length(L) + 1) ~ /^ real: / && substr(cw[g], length(L) + 1) !~ /^ real: .+\(F[0-9]+\)/) p(cwln[g], "check warning graded real names no fix ticket: " L ". Fix: end the row with (F<nn>), the fix ticket step 8 writes for it.") }
+    }' $([ -n "$spec" ] && [ -r "$root/$spec" ] && printf '%q' "$root/$spec") ${lf[@]+"${lf[@]}"} "$f")
   [ -n "$spec" ] && [ -r "$root/$spec" ] || out="$out${out:+$'\n'}$f:1: Spec: ${spec:-(none)} cannot be read from $root. Fix: set Spec: to the spec path from the repo root."
   if grep -q '^Verdict:' "$f"; then
     ln=$(grep -n -m1 '^Range:' "$f" | cut -d: -f1)
@@ -484,7 +504,7 @@ check_review() {
     elif ! git -C "$root" merge-base --is-ancestor "$end" "$head"; then
       out="$out${out:+$'\n'}$f:$ln: Range end ${end:0:9} is not an ancestor of $head. Fix: re-run /final-review $spec at this branch."
     else
-      changed=$(git -C "$root" diff --name-only "$end" "$head" | grep -vE '\.md$|(^|/)docs/|(^|/)(tests?|tests_unit|__tests__|fixtures?)/|(^|/)test_[^/]*\.py$|_test\.py$|(^|/)conftest\.py$|\.(test|spec)\.[cm]?[jt]sx?$' | head -n 5 | paste -sd, - | sed 's/,/, /g')
+      changed=$(git -C "$root" diff --name-only "$end" "$head" | grep -vE "\.md\$|(^|/)docs/|$test_re" | head -n 5 | paste -sd, - | sed 's/,/, /g')
       [ -z "$changed" ] || out="$out${out:+$'\n'}$f:$ln: $changed changed since the Range end ${end:0:9}. Fix: re-run /final-review $spec (a delta run covers only these)."
     fi
   fi
@@ -521,6 +541,18 @@ ruling() { # ruling <index> <text>: append "- <date>, <text>" to the Rulings sec
   commit "$1" "docs(build): ruling"
 }
 
+mode() {
+  local conf=${CHECKS_CONF:-$(cd "$(dirname "$0")/.." && pwd)/checks.conf} v line
+  case $1 in delivers) v=block ;; *) v=warn ;; esac
+  if [ -r "$conf" ]; then
+    line=$(grep -E "^$1=" "$conf" | tail -n 1)
+    [ -z "$line" ] || v=${line#*=}
+  fi
+  case $v in warn|block) echo "$v" ;;
+    *) echo "ERROR $conf: $1=$v is not warn or block. Fix: set $1=warn or $1=block in $conf."; exit 2 ;;
+  esac
+}
+
 cmd=${1:-}; shift || true
 case $cmd in
   base) [ $# -eq 0 ] || { echo "usage: wf base"; exit 2; }; repo_base ;;
@@ -546,5 +578,16 @@ case $cmd in
     sha=$(git -C "$(dirname "$1")" rev-parse -q --verify "$3^{commit}") || { echo "not a commit: $3"; exit 2; }
     set_status "$1" "$2" "done ${sha:0:8}" ;;
   ruling) [ $# -eq 2 ] && [ -n "$2" ] || { echo 'usage: wf ruling <index.md> "<text>"'; exit 2; }; ruling "$@" ;;
-  *) echo "usage: wf base|frontier|chains|waves|check-plan|check-spec|check-review|gate|scope|red|size|set|done|ruling <index.md> ..."; exit 2 ;;
+  mode)
+    case "$*" in delivers|wording|guard-patch) ;; *) echo "usage: wf mode delivers|wording|guard-patch"; exit 2 ;; esac
+    mode "$1" ;;
+  warn-log)
+    [ $# -eq 4 ] || { echo 'usage: wf warn-log <feature-dir> <check> <ticket-id> "<subject>: <text>"'; exit 2; }
+    line="$2 $3 $4"
+    if gd=$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); then
+      mkdir -p "$gd/info"
+      grep -qxF check-warnings.log "$gd/info/exclude" 2>/dev/null || echo check-warnings.log >> "$gd/info/exclude"
+    fi
+    grep -Fxq -- "$line" "$1/check-warnings.log" 2>/dev/null || printf '%s\n' "$line" >> "$1/check-warnings.log" ;;
+  *) echo "usage: wf base|frontier|chains|waves|check-plan|check-spec|check-review|gate|scope|red|size|set|done|ruling|mode|warn-log <index.md> ..."; exit 2 ;;
 esac

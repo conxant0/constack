@@ -44,6 +44,10 @@ Safe because: <the one fact>. Proof: `<command>` -> <output, or "unproven">.
 
 <"not run: no verify skill", or one row per AC: `<AC id>: pass | fail | unreachable | not run | not observable`, then the reason or the skill's evidence block. Last line: minutes the step took.>
 
+## Check warnings
+
+<`- ` and each line of check-warnings.log, then `real: <reason> (F<nn>)`, `real: <reason> (fixed in <ticket id>)` (a ticket the index records done) or `false alarm: <reason>`. "none" if the log is missing or empty.>
+
 ## Fix tickets
 
 <F01 <title>: fixes <AC id or finding>. "none" if PASS.>
