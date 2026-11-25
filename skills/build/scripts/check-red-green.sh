@@ -35,12 +35,15 @@ last_line() { # most telling line of a test run's output
 }
 
 pytest_cmd() {
-  local tests roots py
+  local tests roots py pre=
   tests=$(printf '%s\n' "$2" | grep -E '(^|/)tests(_unit)?/(.*/)?test_[^/]*\.py$')
   roots=$(printf '%s\n' "$2" | sed -nE 's#^(.*/)?tests(_unit)?/.*#\1#p' | sort -u)
   [ -n "$tests" ] && [ "$(printf '%s\n' "$roots" | wc -l)" -eq 1 ] || return 0
   py=$(printf '%s' "$verify" | grep -oE '"\$\([^)]*\)[^" ]*/python3?"|[^ ]*/python3?' | head -n 1)
-  printf 'cd %q && %s -m pytest -q%s -p no:cacheprovider -p no:xdist' "${roots:-.}" "${py:-python3}" "$1"
+  case $verify in *' -m pytest'*)
+    pre=$(printf '%s' "$verify" | sed -E 's/ -m pytest.*//; s/.*(&&|;) *//; s/ *("[^"]*"|[^ "]+)$//') ;;
+  esac
+  printf 'cd %q && %s%s -m pytest -q%s -p no:cacheprovider -p no:xdist' "${roots:-.}" "${pre:+$pre }" "${py:-python3}" "$1"
   printf ' %q' $(printf '%s\n' "$tests" | sed "s#^${roots}##")
 }
 
