@@ -55,9 +55,12 @@ review missing "Mutation: mutations/missing.diff; $TESTS"
 mkpatch stale 's/^LIMIT = 3/LIMIT = 9/'; sed -i '' 's/^-LIMIT = 3/-LIMIT = 7/' docs/work/x/mutations/stale.diff
 review stale "Mutation: mutations/stale.diff; $TESTS"
 review nocmd "Mutation: mutations/wording.diff"
+mkpatch fpiece 's/{GREETING} Welcome, {name}\./{GREETING}{name}/'
+review fpiece "Mutation: mutations/fpiece.diff; $TESTS"
 git add -A && git commit -qm fixture
 
 expect "AC4: wording-only patch" 1 "$(at wording): the patch mutations/wording.diff changes only wording. Fix: wording is the wording check's job (mutate-copy); grade the row yes." wording
+expect "AC4: text between two f-string placeholders deleted" 1 "$(at fpiece): the patch mutations/fpiece.diff changes only wording. Fix: wording is the wording check's job (mutate-copy); grade the row yes." fpiece
 expect "missing patch" 2 "$(at missing): no patch mutations/missing.diff beside the review. Fix: save the production change there with git diff, then re-run." missing
 expect "patch that does not apply" 2 "$(at stale): the patch mutations/stale.diff does not apply. Fix: re-make it with git diff against this branch's HEAD, then re-run." stale
 expect "Note with no test command" 2 "$(at nocmd): the Note names no test command. Fix: write it as \"Mutation: <patch>; <test command>\"." nocmd
