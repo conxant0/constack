@@ -39,4 +39,10 @@ plan big 15 '| P1 | a | none | todo |' '| P2 | b | P1 | todo |' -- "- P1: $(acs 
 expect "US-3.AC3 part with 14 ACs" 1 "$d/big/index.md:19: P1 lists 14 ACs. Fix: split it so no part has more than 13." parts "$d/big/index.md"
 plan max 15 '| P1 | a | none | todo |' '| P2 | b | P1 | todo |' -- "- P1: $(acs 1 13); files: a.sh" "- P2: $(acs 14 15); files: b.sh"
 expect "part with 13 ACs" 0 "" parts "$d/max/index.md"
+
+# US-3.AC4: two parts with no blocked-by path between them list the same file
+plan share 3 '| P1 | a | none | todo |' '| P2 | b | none | todo |' '| P3 | c | P2 | todo |' -- '- P1: US-1.AC1; files: src/a.py, tests/test_a.py' '- P2: US-1.AC2; files: `src/b.py`, src/a.py' '- P3: US-1.AC3; files: src/c.py'
+expect "US-3.AC4 shared file, no path" 1 "$d/share/index.md:21: P1 and P2 both list src/a.py, and neither is blocked by the other. Fix: give the file to one part, or order the two (one blocked by the other)." parts "$d/share/index.md"
+plan chain 3 '| P1 | a | none | todo |' '| P2 | b | P1 | todo |' '| P3 | c | P2 | todo |' -- '- P1: US-1.AC1; files: src/a.py' '- P2: US-1.AC2; files: src/b.py' '- P3: US-1.AC3; files: src/a.py'
+expect "shared file on a blocked-by path" 0 "" parts "$d/chain/index.md"
 [ $fail = 0 ] && echo "OK parts-test"; exit $fail
