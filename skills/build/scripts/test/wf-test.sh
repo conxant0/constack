@@ -248,7 +248,7 @@ expect "gate --final not done" 1 "$g/index.md:1: not every ticket is done (run /
 sed -i '' 's/| todo |/| done abc |/' "$g/index.md"; git -C "$g" commit -qam done
 expect "gate --final all done" 0 "" gate "$g/spec.md" --final
 
-# gate --slice / --direct / --quick: approved, check-spec clean, and at most 6 ACs for --direct, 3 for --quick (lettered ones count)
+# gate --slice / --direct / --quick: approved, check-spec clean, any AC count for --direct, at most 3 for --quick (lettered ones count)
 spec gs 's/^Branch: b/Branch: feature\/x/'; cp "$d/gs.md" "$g/s.md"; git -C "$g" add s.md; git -C "$g" commit -qm spec
 expect "gate --slice approved" 0 "" gate "$g/s.md" --slice
 expect "gate --direct 4 ACs" 0 "" gate "$g/s.md" --direct
@@ -265,7 +265,7 @@ $g/s.md:1: wf check-spec failed (lines above). Fix: correct each line in the spe
 sed -i '' 's/US-1.AC3:/US-1.AC2:/' "$g/s.md"
 perl -i -pe 's{^(- US-2\.AC1:.*)$}{$1\n- US-2.AC2: Given a, when b, then f.\n- US-2.AC3: Given a, when b, then g.\n- US-2.AC3b: Given a, when b, then h.}' "$g/s.md"; git -C "$g" commit -qam seven
 expect "gate --slice 7 ACs" 0 "" gate "$g/s.md" --slice
-expect "gate --direct 7 ACs" 1 "$g/s.md:1: 7 ACs, /direct takes at most 6. Fix: run /slice $g/s.md instead." gate "$g/s.md" --direct
+expect "gate --direct 7 ACs" 0 "" gate "$g/s.md" --direct
 expect "gate bad mode" 2 "usage: wf gate <spec|index.md> [--build|--final|--slice|--direct|--quick]" gate "$g/s.md" --nope
 
 # scope: changed files no ticket lists; the plan folder and dir/ entries are exempt
