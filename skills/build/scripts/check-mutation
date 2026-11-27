@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # check-mutation <review.md>: for each AC row graded "no" with Note "Mutation: <patch beside the review>; <test command>",
-# apply the patch in place and put it back. A patch whose Python files differ only in strings is wording (exit 1).
+# apply the patch in place, run the command from the repo root, and put it back. A patch whose Python files differ
+# only in strings is wording, and a command that fails means the tests catch it: either is exit 1.
 # One file:line: problem. Fix: ... per line. Exit 2 when a row cannot be checked (missing, stale or dirty patch).
 set -u
 f=${1:?usage: check-mutation <review.md>}
@@ -29,7 +30,7 @@ bad=0
 while IFS=$'\t' read -r n id note <&3; do
   at="$f:$n: $id"; spec=${note#Mutation:}
   case $spec in *\;*) ;; *) echo "$at: the Note names no test command. Fix: write it as \"Mutation: <patch>; <test command>\"."; exit 2 ;; esac
-  rel=$(sed 's/^ *//;s/ *$//' <<<"${spec%%;*}"); p=$dir/$rel
+  rel=$(sed 's/^ *//;s/ *$//' <<<"${spec%%;*}"); p=$dir/$rel; cmd=${spec#*;}
   [ -f "$p" ] || { echo "$at: no patch $rel beside the review. Fix: save the production change there with git diff, then re-run."; exit 2; }
   files=$(git -C "$root" apply --numstat "$p" | cut -f3)
   dirty=$(git -C "$root" status --porcelain -- $files | cut -c4- | paste -sd, - | sed 's/,/, /g')
@@ -38,6 +39,9 @@ while IFS=$'\t' read -r n id note <&3; do
   git -C "$root" apply "$p" && applied=$p
   if python3 -c "$wording_only" "$root" $files; then
     echo "$at: the patch $rel changes only wording. Fix: wording is the wording check's job (mutate-copy); grade the row yes."; bad=1
+  elif ! out=$(cd "$root" && bash -c "$cmd" </dev/null 2>&1); then
+    line=$(grep -m1 -E '(^|[^A-Za-z])FAIL(ED)?[: ]' <<<"$out" || tail -n 1 <<<"$out")
+    echo "$at: $line: the tests already catch this change. Fix: grade the row yes."; bad=1
   fi
   restore
 done 3< <(awk -F'|' '/^## / { sec=substr($0, 4); next }
