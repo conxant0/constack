@@ -27,4 +27,8 @@ repo own; lines "$r" app.txt 2 'feat(US-1.AC1): green'
 sha=$(git -C "$r" rev-parse --short=8 HEAD)
 expect "US-4.AC1 lead AC commit" 1 "$r/docs/work/x/index.md:1: commit $sha \"feat(US-1.AC1): green\" is the lead's own AC commit. Fix: hand AC work to a helper and merge the helper's branch with a merge commit (git merge --no-ff)." lead "$r/docs/work/x/index.md"
 
+# US-4.AC2: the lead's own commits change 41 lines outside the plan folder
+repo big; lines "$r" glue.sh 30 'chore: wire parts'; lines "$r" app.txt 11 'fix: glue'; lines "$r" docs/work/x/notes.md 50 'docs(direct): notes'
+expect "US-4.AC2 41 lines" 1 "$r/docs/work/x/index.md:1: the lead's own commits change 41 lines outside docs/work/x/, limit 40. Fix: hand the work to a helper and merge its branch with a merge commit (git merge --no-ff)." lead "$r/docs/work/x/index.md"
+
 [ $fail = 0 ] && echo "OK lead-test"; exit $fail
