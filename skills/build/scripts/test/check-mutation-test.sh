@@ -82,6 +82,8 @@ case "$out" in "$(at caught): FAIL: test_limit "*"$CAUGHT") ok=$rc ;; *) ok=x ;;
 expect "AC5: pytest-shaped output names the failing test" 1 "$(at pyshape): FAILED tests/test_calc.py::test_limit - AssertionError$CAUGHT" pyshape
 expect "AC5: no FAIL line, the last line" 1 "$(at lastline): last$CAUGHT" lastline
 expect "a logic patch the tests miss" 0 "" missed
+out=$(cd "$d/docs" && "$tool" "$d/docs/work/x/missed.md" 2>&1); rc=$?
+[ $rc = 0 ] && [ -z "$out" ] || { printf 'FAIL the test command runs from the repo root when the caller is elsewhere: exit %s, got:\n%s\n' "$rc" "$out"; fail=1; }
 expect "a command that fails without the patch" 2 "$(at broken): the test command fails before the patch is applied: no such module. Fix: correct the command in the Note so it passes on this branch, then re-run." broken
 
 [ $fail = 0 ] && echo "OK check-mutation-test"
