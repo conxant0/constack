@@ -9,7 +9,7 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 
 | Ticket | Title | Blocked by | Status |
 |---|---|---|---|
-| T01 | binary-test-verdict (direct) | none | todo |
+| T01 | binary-test-verdict (direct) | none | doing |
 
 ## Rulings
 
