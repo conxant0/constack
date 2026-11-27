@@ -520,7 +520,9 @@ questions() { # questions <index>: /direct's Open questions are listed, or "none
   awk -v f="$1" '
     /^## / { sec=substr($0, 4); sub(/ +$/, "", sec); if (sec == "Open questions") at=FNR; next }
     sec == "Open questions" && ($0 ~ /^-? *none *$/ || $0 ~ /^- Q[0-9]+:/) { has=1 }
-    END { if (!has) { printf "%s:%d: no \"## Open questions\" section. Fix: list every choice the spec leaves open or contradicts as \"- Q<n>: <question> Answer: <answer>\", send each to the decision agent (skills/build/references/decide.md), and write \"none\" when there are none.\n", f, at ? at : 1; exit 1 } }' "$1"
+    sec == "Open questions" && /^- Q[0-9]+:/ && $0 !~ / Answer: *[^ ]/ { q=$2; sub(/:$/, "", q)
+      printf "%s:%d: %s has no answer. Fix: send %s to the decision agent (skills/build/references/decide.md) and record its answer on that line as \"Answer: <answer>\".\n", f, FNR, q, q; bad=1 }
+    END { if (bad) exit 1; if (!has) { printf "%s:%d: no \"## Open questions\" section. Fix: list every choice the spec leaves open or contradicts as \"- Q<n>: <question> Answer: <answer>\", send each to the decision agent (skills/build/references/decide.md), and write \"none\" when there are none.\n", f, at ? at : 1; exit 1 } }' "$1"
 }
 
 commit() { # commit <index> <message>: commit only the index
