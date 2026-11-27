@@ -12,4 +12,5 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 | T01 | binary-test-verdict (direct) | none | doing |
 
 ## Rulings
+- 2026-11-27, T01 (direct): skills/build/scripts/test/wf-test.sh may change: "missing AC row, weak test" expects the new partly line (US-1.AC1)
 
