@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# check-red-green.sh <worktree> <base-sha> "<verify command>" [<ticket.md> [<ticket-start-sha>]]
-#   DELIVERS: every `- US-n.ACm:` line under the ticket's ## Delivers has a red or guard
+# check-red-green.sh <worktree> <base-sha> "<verify command>" [<ticket.md> | <index.md>:<part id> [<ticket-start-sha>]]
+#   DELIVERS: every `- US-n.ACm:` line under the ticket's ## Delivers (for a /direct part: every AC on its
+#           "- <part>:" line under the index's ## Parts) has a red or guard
 #           commit in <ticket-start>..HEAD (start defaults to base; fix rounds pass the dispatch BASE)
 #   RED:   every `test(US-n.ACm): red` commit in base..HEAD fails its own test files (see narrowed)
 #   GUARD:  every `test(US-n.ACm): guard` commit passes them and names a `Mutation:` in its body
@@ -14,10 +15,20 @@ here=$(cd "$(dirname "$0")" && pwd)
 red_re='^test\(US-[0-9]+\.AC[0-9]+[a-z]?\): (red|guard)$'
 . "$here/test-re.sh"
 . "$here/ac-covered.sh"
+part=
 if [ -n "$ticket" ]; then
+  case $ticket in *.md:[A-Z]*) part=${ticket##*:}; ticket=${ticket%:*} ;; esac
   case $ticket in /*) ;; *) ticket=$PWD/$ticket ;; esac
   [ -r "$ticket" ] || { echo "ERROR cannot read ticket $ticket. Fix: pass the ticket path from the index (docs/work/<feature>/tickets/<id>-*.md)."; exit 2; }
 fi
+delivers() { # the `- US-n.ACm:` lines this ticket or part delivers
+  if [ -z "$part" ]; then sed -n '/^## Delivers/,/^## /p' "$ticket"; return; fi
+  awk -v id="$part" '/^## / { sec=substr($0, 4); next }
+    sec == "Parts" && index($0, "- " id ":") == 1 { found=1; t=$0; sub(/^- [^:]*:/, "", t); sub(/; *files:.*/, "", t)
+      while (match(t, /US-[0-9]+[.]AC[0-9]+[a-z]?/)) { print "- " substr(t, RSTART, RLENGTH) ":"; t=substr(t, RSTART + RLENGTH) } }
+    END { exit !found }' "$ticket"
+}
+[ -z "$part" ] || delivers >/dev/null || { echo "ERROR no line for $part under \"## Parts\" in $ticket. Fix: pass <index.md>:<part id> for a part the index lists under ## Parts."; exit 2; }
 
 cd "$wt" || { echo "ERROR cannot cd to $wt. Fix: pass the worktree path from the implementer's report (git worktree list shows it)."; exit 2; }
 [ -z "$(git status --porcelain --untracked-files=no)" ] || { echo "ERROR worktree has uncommitted changes. Fix: the implementer commits or discards them (git -C <worktree> status), then re-run."; exit 2; }
@@ -60,7 +71,7 @@ narrowed() {
 finding() {
   if [ "$1" = block ]; then echo "FAIL $2 $3: $4. Fix: $5"; fail=1; else
     echo "WARN $2 $3: $4. Fix: $5"
-    [ -z "$ticket" ] || "$here/wf" warn-log "$(dirname "$(dirname "$ticket")")" "$2" "$ticket_id" "$3: $4"
+    [ -z "$ticket" ] || "$here/wf" warn-log "$feature_dir" "$2" "$ticket_id" "$3: $4"
   fi
 }
 wording() {
@@ -89,7 +100,8 @@ guard_patch_mode=$("$here/wf" mode guard-patch) || { echo "$guard_patch_mode"; e
 if [ -n "$ticket" ]; then
   delivers_mode=$("$here/wf" mode delivers) || { echo "$delivers_mode"; exit 2; }
   wording_mode=$("$here/wf" mode wording) || { echo "$wording_mode"; exit 2; }
-  ticket_id=$(basename "$ticket"); ticket_id=${ticket_id%%-*}
+  ticket_id=$(basename "$ticket"); ticket_id=${ticket_id%%-*}; feature_dir=$(dirname "$(dirname "$ticket")")
+  [ -z "$part" ] || { ticket_id=$part; feature_dir=$(dirname "$ticket"); }
 fi
 
 fail=0
@@ -151,7 +163,7 @@ done
 
 if [ -n "$ticket" ]; then
   subjects=$(git log --format=%s "$start..$head")
-  for ac in $(sed -n '/^## Delivers/,/^## /p' "$ticket" | ac_uncovered "$subjects" - | cut -d' ' -f2); do
+  for ac in $(delivers | ac_uncovered "$subjects" - | cut -d' ' -f2); do
     finding "$delivers_mode" delivers "$ac" "no \"test($ac): red\" or guard commit in ${start:0:8}..${head:0:8}" \
       "add the red commit for $ac (or a guard with a Mutation patch if the code already does it); a prefactor's Delivers says none."
   done
