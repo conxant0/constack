@@ -67,5 +67,21 @@ out=$("$tool" "$d/docs/work/x/wording.md" 2>&1); rc=$?
 [ $rc = 2 ] && [ "$out" = "$(at wording): calc.py has uncommitted changes. Fix: commit or stash them, then re-run." ] || { printf 'FAIL dirty file: exit %s, got:\n%s\n' "$rc" "$out"; fail=1; }
 git checkout -q -- calc.py
 
+mkpatch caught 's/^LIMIT = 3/LIMIT = 4/'
+review caught "Mutation: mutations/caught.diff; $TESTS"
+mkpatch missed 's/if n < 0:/if n < -1:/'
+review missed "Mutation: mutations/missed.diff; $TESTS"
+review pyshape "Mutation: mutations/caught.diff; printf '=== FAILURES ===\n___ test_limit ___\nFAILED tests/test_calc.py::test_limit - AssertionError\n1 failed\n'; exit 1"
+review lastline "Mutation: mutations/caught.diff; echo boom; echo last; exit 3"
+git add -A && git commit -qm fixture2
+CAUGHT=": the tests already catch this change. Fix: grade the row yes."
+out=$("$tool" "$d/docs/work/x/caught.md" 2>&1); rc=$?
+case "$out" in "$(at caught): FAIL: test_limit "*"$CAUGHT") ok=$rc ;; *) ok=x ;; esac
+[ "$ok" = 1 ] || { printf 'FAIL AC5: a patch the tests catch: exit %s, got:\n%s\n' "$rc" "$out"; fail=1; }
+[ -z "$(git status --porcelain)" ] || { printf 'FAIL AC5: tree not clean after the run:\n%s\n' "$(git status --porcelain)"; fail=1; }
+expect "AC5: pytest-shaped output names the failing test" 1 "$(at pyshape): FAILED tests/test_calc.py::test_limit - AssertionError$CAUGHT" pyshape
+expect "AC5: no FAIL line, the last line" 1 "$(at lastline): last$CAUGHT" lastline
+expect "a logic patch the tests miss" 0 "" missed
+
 [ $fail = 0 ] && echo "OK check-mutation-test"
 exit $fail
