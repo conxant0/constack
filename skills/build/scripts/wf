@@ -48,11 +48,10 @@
 #                            over 1000 and grew by more than 100. One path: before -> after per file, exit 1 on any.
 #   wf check-review <review.md> [head]
 #                            /final-review's review.md agrees with itself. PASS: every spec AC has a row
-#                            (rows like "US-1.AC1 to AC4, AC6" or "US-3.AC1-AC4" count), no row says no or partly
-#                            under Test checks the AC unless its Note starts "Waived <date>", no Verify row says fail or not
-#                            run, Fix tickets and OPEN are none or absent (an "overruled by hand" PASS may keep
+#                            (rows like "US-1.AC1 to AC4, AC6" or "US-3.AC1-AC4" count), no row says no under Test checks
+#                            the AC, no Verify row says fail or not run, Fix tickets and OPEN are none or absent (an "overruled by hand" PASS may keep
 #                            OPEN). Full suite is not judged: a PASS may record baseline failures. FAIL: Fix tickets
-#                            or OPEN is not none. Either verdict: the Range end is a sha, an ancestor of head (default
+#                            or OPEN is not none. Either verdict: no row says partly, a no row's Note starts "Mutation:", the Range end is a sha, an ancestor of head (default
 #                            HEAD), and nothing but docs, *.md or tests changed since; each such line names "Range end". One file:line: problem. Fix: ... per line, exit 1 on any.
 #   wf set <index.md> <id> todo|doing|"blocked: <reason>"
 #   wf done <index.md> <id> <merge sha>
@@ -480,7 +479,7 @@ check_review() {
       w=cell[4]; gsub(/^ +| +$/, "", w)
       x=cell[2]; gsub(/^ +| +$/, "", x)
       if (tolower(w) == "partly") p(FNR, x " says \"" w "\" under Test checks the AC. Fix: grade the row yes or no (step 4): no when a production change makes the AC false and its tests still pass, else yes.")
-      if (verdict == "PASS" && tolower(w) == "no" && tolower(cell[5]) !~ /^ *waived [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/) { p(FNR, x " says \"" w "\" under Test checks the AC, but Verdict is PASS. Fix: set Verdict: FAIL and write an F ticket for it (step 8), or, if the user waived it, start the Note with \"Waived <YYYY-MM-DD> (<who>): <reason>\".") }
+      if (verdict == "PASS" && tolower(w) == "no") p(FNR, x " says \"" w "\" under Test checks the AC, but Verdict is PASS. Fix: set Verdict: FAIL and write an F ticket for it (step 8).")
       if (tolower(w) == "no" && cell[5] !~ /^ *Mutation:/) p(FNR, x " says \"" w "\" under Test checks the AC, but its Note does not start with \"Mutation:\". Fix: start the Note with \"Mutation: <patch file beside this review>; <the test command that still passed>\", or grade the row yes.")
     }
     sec == "Verify" && $0 ~ "^(### )?US-[0-9]+[.]AC[^:]*: *(fail|not run)" && verdict == "PASS" {
