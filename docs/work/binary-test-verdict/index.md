@@ -11,7 +11,7 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 |---|---|---|---|
 | T01 | binary-test-verdict (direct) | none | done bf66fee2 |
 | F01 | guard an empty Note and a late "Mutation:" | none | done 6acbf94e |
-| F02 | guard text deleted between f-string placeholders | none | todo |
+| F02 | guard text deleted between f-string placeholders | none | doing |
 
 ## Rulings
 - 2026-11-27, T01 (direct): skills/build/scripts/test/wf-test.sh may change: "missing AC row, weak test" expects the new partly line (US-1.AC1)
