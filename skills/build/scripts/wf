@@ -31,6 +31,8 @@
 #                            One file:line: problem per line, exit 1 on any.
 #   wf questions <index.md>  /direct's "## Open questions" section exists and says "none" or lists "- Qn: ..." lines,
 #                            each with "Answer: <answer>" on its line. One file:line: problem. Fix: ... per line, exit 1 on any.
+#   wf parts <index.md>      /direct's "## Parts": one "- Pn: <AC ids>; files: <paths>" line per table row, every
+#                            AC in <index dir>/spec.md in exactly one part. One file:line: problem. Fix: ... per line, exit 1 on any.
 #   wf gate <spec|index.md> [--build|--final|--slice|--direct|--quick]
 #                            Current branch is the file's Branch: and the tree is clean.
 #                            --slice and --direct (spec): Status: approved and wf check-spec clean. --quick: same,
@@ -525,6 +527,26 @@ questions() { # questions <index>: /direct's Open questions are listed, or "none
     END { if (bad) exit 1; if (!has) { printf "%s:%d: no \"## Open questions\" section. Fix: list every choice the spec leaves open or contradicts as \"- Q<n>: <question> Answer: <answer>\", send each to the decision agent (skills/build/references/decide.md), and write \"none\" when there are none.\n", f, at ? at : 1; exit 1 } }' "$1"
 }
 
+parts() { # parts <index>: /direct's "## Parts" lines split the spec's ACs between the table's parts
+  local f=$1 spec rows; load "$f"
+  spec=$(dirname "$f")/spec.md
+  [ -r "$spec" ] || { echo "$f:1: no spec.md next to the index"; exit 2; }
+  printf '%s\n' "$rows" | awk -F'\t' -v f="$f" -v spec="$spec" -v AC='US-[0-9]+[.]AC[0-9]+[a-z]?' '
+    FNR == 1 { fi++ }
+    fi == 1 { if (NF) { rid[++nr]=$1; rln[$1]=$4 }; next }
+    fi == 2 { if (match($0, "^- " AC ":")) { a=substr($0, 3, RLENGTH - 3); sa[++ns]=a; sln[a]=FNR }; next }
+    /^## / { sec=substr($0, 4); sub(/ +$/, "", sec); next }
+    sec == "Parts" && /^- [A-Z][0-9]+:/ { id=$0; sub(/^- /, "", id); sub(/:.*/, "", id); pln[id]=FNR; pid[++np]=id
+      t=$0; sub(/^- [^:]*:/, "", t); sub(/; *files:.*/, "", t)
+      while (match(t, AC)) { a=substr(t, RSTART, RLENGTH); t=substr(t, RSTART + RLENGTH); in_[a]=in_[a] " " id } }
+    END {
+      for (i=1; i<=nr; i++) if (!(rid[i] in pln)) { printf "%s:%d: %s has a row but no line under \"## Parts\". Fix: add \"- %s: <AC ids>; files: <paths it owns>\", or delete its row.\n", f, rln[rid[i]], rid[i], rid[i]; bad=1 }
+      for (i=1; i<=np; i++) if (!(pid[i] in rln)) { printf "%s:%d: %s has a line under \"## Parts\" but no row. Fix: add its row to the table, or delete the line.\n", f, pln[pid[i]], pid[i]; bad=1 }
+      for (i=1; i<=ns; i++) if (!(sa[i] in in_)) { printf "%s:%d: %s is in no part. Fix: add it to exactly one part'"'"'s line under \"## Parts\" in %s.\n", spec, sln[sa[i]], sa[i], f; bad=1 }
+      exit bad
+    }' - "$spec" "$f"
+}
+
 commit() { # commit <index> <message>: commit only the index
   git -C "$(dirname "$1")" commit -q -m "$2" -- "$(basename "$1")" || { echo "$1: commit failed"; exit 2; }
 }
@@ -575,6 +597,7 @@ case $cmd in
   waves) [ $# -eq 1 ] || { echo "usage: wf waves <index.md>"; exit 2; }; waves "$1" ;;
   check-plan) [ $# -eq 1 ] || { echo "usage: wf check-plan <index.md>"; exit 2; }; check_plan "$1" ;;
   check-spec) [ $# -eq 1 ] || { echo "usage: wf check-spec <spec.md>"; exit 2; }; check_spec "$1" ;;
+  parts) [ $# -eq 1 ] || { echo "usage: wf parts <index.md>"; exit 2; }; parts "$1" ;;
   questions) [ $# -eq 1 ] || { echo "usage: wf questions <index.md>"; exit 2; }; questions "$1" ;;
   gate)
     [ $# -eq 1 ] || { [ $# -eq 2 ] && case $2 in --build|--final|--slice|--direct|--quick) true ;; *) false ;; esac; } ||
@@ -604,5 +627,5 @@ case $cmd in
       grep -qxF check-warnings.log "$gd/info/exclude" 2>/dev/null || echo check-warnings.log >> "$gd/info/exclude"
     fi
     grep -Fxq -- "$line" "$1/check-warnings.log" 2>/dev/null || printf '%s\n' "$line" >> "$1/check-warnings.log" ;;
-  *) echo "usage: wf base|frontier|chains|waves|check-plan|check-spec|questions|check-review|gate|scope|red|size|set|done|ruling|mode|warn-log <index.md> ..."; exit 2 ;;
+  *) echo "usage: wf base|frontier|chains|waves|check-plan|check-spec|questions|parts|check-review|gate|scope|red|size|set|done|ruling|mode|warn-log <index.md> ..."; exit 2 ;;
 esac
