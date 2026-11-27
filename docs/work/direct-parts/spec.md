@@ -36,6 +36,7 @@ As the owner, I want the split of a feature written as a few lines in the index,
 - US-3.AC4: Given a build index where two parts with no blocked-by path between them both list the same file, when the parts check runs, then it exits 1, names the file and both parts, and its Fix line says to give the file to one part or order the two.
 - US-3.AC5: Given a build index with parts P1 done and P2 todo blocked by P1, and no tickets folder, when the next-work command runs, then it prints P2 and exits 0.
 - US-3.AC6: Given a helper branch for a part whose index line lists US-1.AC1 and US-1.AC2, holding a red commit for US-1.AC1 only, when the red-green check runs for that part with no ticket file, then it fails its delivers line and names US-1.AC2.
+- US-3.AC7: Given a build index with parts P1 done and P2 doing, no tickets folder, and a commit with the subject "merge P2: b" on the branch, when the final gate runs, then it exits 1, names P2, does not say to run the ticket build, and its Fix line says to finish the no-ticket build (lead check, quality review, full suite) and then mark P2 done with that merge commit.
 
 ### US-4 The orchestrator writes no criterion code
 
