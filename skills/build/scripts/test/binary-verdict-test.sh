@@ -23,5 +23,11 @@ PARTLY="$R:14: US-1.AC2 says \"partly\" under Test checks the AC. Fix: grade the
 review PASS partly ''; expect "AC1: partly under PASS" 1 "$PARTLY"
 review FAIL partly ''; expect "AC1: partly under FAIL" 1 "$PARTLY"
 
+NOTE="$R:14: US-1.AC2 says \"no\" under Test checks the AC, but its Note does not start with \"Mutation:\". Fix: start the Note with \"Mutation: <patch file beside this review>; <the test command that still passed>\", or grade the row yes."
+review FAIL no 'tests look thin'; expect "AC2: no without Mutation under FAIL" 1 "$NOTE"
+review PASS no 'tests look thin'; out=$("$wf" check-review "$R" 2>&1); rc=$?
+[ $rc = 1 ] && grep -qFx "$NOTE" <<<"$out" || { printf 'FAIL AC2: no without Mutation under PASS: exit %s, got:\n%s\n' "$rc" "$out"; fail=1; }
+review FAIL no 'Mutation: mutations/US-1.AC2.diff; python3 -m unittest'; expect "AC2: no with Mutation under FAIL" 0 ""
+
 [ $fail = 0 ] && echo "OK binary-verdict-test"
 exit $fail
