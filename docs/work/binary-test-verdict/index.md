@@ -9,7 +9,7 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 
 | Ticket | Title | Blocked by | Status |
 |---|---|---|---|
-| T01 | binary-test-verdict (direct) | none | done ca17d361 |
+| T01 | binary-test-verdict (direct) | none | done bf66fee2 |
 
 ## Rulings
 - 2026-11-27, T01 (direct): skills/build/scripts/test/wf-test.sh may change: "missing AC row, weak test" expects the new partly line (US-1.AC1)
