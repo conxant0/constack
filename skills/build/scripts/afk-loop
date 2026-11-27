@@ -40,18 +40,9 @@ for f in sys.argv[1:]:
 EOF
 }
 
-herdr_step() { # herdr sidebar: working plus a $step token ("[2] /encode-comments"); no-op outside herdr, never fails the loop
-  [ "${HERDR_ENV:-}" = 1 ] && [ -n "${HERDR_PANE_ID:-}" ] && command -v herdr >/dev/null || return 0
-  # seq in ns: lower than the claude hook's ns seq and herdr drops the report (tested herdr 0.9.5, 2026-11-21)
-  herdr pane report-agent "$HERDR_PANE_ID" --source afk-loop --agent claude \
-    --seq "$(python3 -c 'import time; print(time.time_ns())')" --state working >/dev/null 2>&1
-  herdr pane report-metadata "$HERDR_PANE_ID" --source afk-loop --token "step=$1" >/dev/null 2>&1
-  return 0
-}
-
 n=0
 run() { # one fresh headless session
-  n=$((n + 1)); echo "[$n] $1"; herdr_step "[$n] ${1%% *}"
+  n=$((n + 1)); echo "[$n] $1"
   # no AskUserQuestion: nobody is there to answer (afk.md). ~/.claude/checks/afk-disallowed-tools adds more,
   # one tool or MCP server per line, e.g. paid tools that only run by hand (blocks subagents too, probed 2026-10-27)
   local t extra=()

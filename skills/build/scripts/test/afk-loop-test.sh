@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # afk-loop-test.sh: drives afk-loop with a fake claude (no tokens). Prints FAIL lines, exit 1 on any.
 set -u
-unset HERDR_ENV HERDR_PANE_ID  # run inside herdr, afk-loop would report to the real pane
 s=$(cd "$(dirname "$0")/.." && pwd)
 d=$(mktemp -d); trap 'rm -rf "$d"' EXIT
 fail=0
@@ -56,17 +55,4 @@ mkdir -p "$d/.claude/checks"; printf '# paid\nmcp__paid-a\n\nmcp__paid-b  # by h
 rm -f "$CALLS"; check "overlay tools" 0 "afk-loop: PASS" ok
 grep -v -q -- '--disallowedTools mcp__paid-a mcp__paid-b AskUserQuestion --output-format' "$CALLS" && { echo "FAIL a session ran without the overlay tools disallowed: $(head -1 "$CALLS")"; fail=1; }
 rm -f "$d/.claude/checks/afk-disallowed-tools"
-# inside herdr, each session reports working plus a $step token; outside herdr nothing is sent; a failing herdr never stops the loop
-printf '#!/bin/sh\nprintf "%%s\\n" "$*" >> "$HERDR_CALLS"; exit ${HERDR_EXIT:-0}\n' > "$d/bin/herdr"; chmod +x "$d/bin/herdr"
-export HERDR_CALLS=$d/herdr-calls; rm -f "$HERDR_CALLS"
-HERDR_ENV=1 HERDR_PANE_ID=w9:p1 check "herdr steps" 0 "afk-loop: PASS" ok
-grep -q -- '^pane report-agent w9:p1 --source afk-loop --agent claude --seq [0-9]\{19\} --state working$' "$HERDR_CALLS" ||
-  { echo "FAIL no working report with a ns seq: $(head -1 "$HERDR_CALLS"). Fix: herdr_step in afk-loop must call report-agent with --seq time_ns"; fail=1; }
-steps=$(sed -n 's/^pane report-metadata w9:p1 --source afk-loop --token step=//p' "$HERDR_CALLS" | tr '\n' ',')
-[ "$steps" = "[1] /build,[2] /build,[3] /encode-comments,[4] /final-review,[5] /build,[6] /encode-comments,[7] /final-review," ] ||
-  { echo "FAIL step tokens: $steps. Fix: run() in afk-loop must call herdr_step \"[\$n] <command>\" once per session"; fail=1; }
-rm -f "$HERDR_CALLS"; check "no herdr outside it" 0 "afk-loop: PASS" ok
-[ -e "$HERDR_CALLS" ] && { echo "FAIL herdr called without HERDR_ENV=1. Fix: herdr_step must return early unless HERDR_ENV=1 and HERDR_PANE_ID are set"; fail=1; }
-HERDR_EXIT=1 HERDR_ENV=1 HERDR_PANE_ID=w9:p1 check "failing herdr" 0 "afk-loop: PASS" ok
-rm -f "$d/bin/herdr"
 [ $fail = 0 ] && echo "afk-loop: all tests pass"; exit $fail
