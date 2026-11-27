@@ -30,4 +30,10 @@ expect "empty section" 1 "$d/empty.md:12: no \"## Open questions\" section. Fix:
 index open '## Open questions' '' '- Q1: which count does the summary show?' '- Q2: which order? Answer: newest first (fable)'
 expect "US-2.AC2 unanswered" 1 "$d/open.md:14: Q1 has no answer. Fix: send Q1 to the decision agent (skills/build/references/decide.md) and record its answer on that line as \"Answer: <answer>\"." questions "$d/open.md"
 
+# US-2.AC3: "none", or every question answered
+index none '## Open questions' '' 'none' '' '## Parts'
+expect "US-2.AC3 none" 0 "" questions "$d/none.md"
+index answered '## Open questions' '' '- Q1: which count does the summary show? Answer: the unread count (fable)' '- Q2: which order? Answer: newest first (fable)'
+expect "US-2.AC3 all answered" 0 "" questions "$d/answered.md"
+
 [ $fail = 0 ] && echo "OK questions-test"; exit $fail
