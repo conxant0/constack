@@ -37,6 +37,7 @@ As the owner reading a final review, I want every AC row graded yes or no, with 
 - The per-ticket checks and reviewers in the build stage.
 - The strings-blanked comparison for files that are not Python (later).
 - ACs for which no test can exist (separate change).
+- Telling a string that drives behaviour (a compared literal, a format spec, a dict key, a command argument, a regex pattern) from wording in the mutation check: a patch that changes only such a string is rejected as wording (later).
 
 ## Manual check
 

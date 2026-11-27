@@ -1,0 +1,13 @@
+diff --git a/skills/build/scripts/wf b/skills/build/scripts/wf
+index 019660e..6caab41 100755
+--- a/skills/build/scripts/wf
++++ b/skills/build/scripts/wf
+@@ -480,7 +480,7 @@ check_review() {
+       x=cell[2]; gsub(/^ +| +$/, "", x)
+       if (tolower(w) == "partly") p(FNR, x " says \"" w "\" under Test checks the AC. Fix: grade the row yes or no (step 4): no when a production change makes the AC false and its tests still pass, else yes.")
+       if (verdict == "PASS" && tolower(w) == "no") p(FNR, x " says \"" w "\" under Test checks the AC, but Verdict is PASS. Fix: set Verdict: FAIL and write an F ticket for it (step 8).")
+-      if (tolower(w) == "no" && cell[5] !~ /^ *Mutation:/) p(FNR, x " says \"" w "\" under Test checks the AC, but its Note does not start with \"Mutation:\". Fix: start the Note with \"Mutation: <patch file beside this review>; <the test command that still passed>\", or grade the row yes.")
++      if (tolower(w) == "no" && cell[5] !~ /^ *Mutation/) p(FNR, x " says \"" w "\" under Test checks the AC, but its Note does not start with \"Mutation:\". Fix: start the Note with \"Mutation: <patch file beside this review>; <the test command that still passed>\", or grade the row yes.")
+     }
+     sec == "Verify" && $0 ~ "^(### )?US-[0-9]+[.]AC[^:]*: *(fail|not run)" && verdict == "PASS" {
+       w=$0; sub(/^[^:]*: */, "", w); w=(w ~ /^fail/) ? "fail" : "not run"
