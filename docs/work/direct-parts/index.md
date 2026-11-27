@@ -15,4 +15,5 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 ## Rulings
 - 2026-11-27, T01 (direct): skills/build/scripts/test/wf-test.sh may change: "gate --direct 7 ACs" now expects exit 0 and no output (US-1.AC1 drops the 6-AC limit)
 - 2026-11-27, T01 (direct): skills/build/scripts/test/wf-test.sh may change: the --quick over-limit Fix text in "gate --quick 4 ACs" and "gate --quick draft" now names the grilled path (US-1.AC2)
+- 2026-11-27, final-review (fable): the orchestrated flow never marks its last part done (skills/direct/SKILL.md:40, :44); reproduced: gate --final prints 'not every ticket is done (run /build)' for a merged part still doing; decided: new AC US-3.AC7 plus fix ticket F01 (final gate names the part with a Fix, step 8 marks it done), commit fc16196; why: an Out of Scope line would leave US-5's so-that false, and the repo rule wants a check, not a prompt line
 
