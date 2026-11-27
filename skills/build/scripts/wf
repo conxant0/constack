@@ -31,8 +31,8 @@
 #                            One file:line: problem per line, exit 1 on any.
 #   wf gate <spec|index.md> [--build|--final|--slice|--direct|--quick]
 #                            Current branch is the file's Branch: and the tree is clean.
-#                            --slice (spec): Status: approved and wf check-spec clean. --direct: same, plus
-#                            at most 6 ACs (lettered ones count); --quick: same, at most 3. Each new line ends with a Fix:.
+#                            --slice and --direct (spec): Status: approved and wf check-spec clean. --quick: same,
+#                            plus at most 3 ACs (lettered ones count). Each new line ends with a Fix:.
 #                            --build: settings allow git, check-red-green.sh and wf (skip in auto or
 #                            bypass mode), and every ignored venv / node_modules / .env is listed in
 #                            .worktreeinclude. --final: every ticket in the index next to it is done.
@@ -348,10 +348,6 @@ gate() {
       rule=$(sed -n "${ln:-0}s/^Status: *//p" "$f" | sed 's/ *$//')
       [ "$rule" = approved ] || echo "$f:${ln:-1}: Status is ${rule:-missing}, /${mode#--} needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run."
       have=$(check_spec "$f") || { printf '%s\n' "$have"; echo "$f:1: wf check-spec failed (lines above). Fix: correct each line in the spec, commit, re-run."; }
-    fi
-    if [ "$mode" = --direct ]; then
-      need=$(grep -cE '^- US-[0-9]+[.]AC[0-9]+[a-z]?:' "$f")
-      [ "$need" -le 6 ] || echo "$f:1: $need ACs, /direct takes at most 6. Fix: run /slice $f instead."
     fi
     if [ "$mode" = --quick ]; then
       need=$(grep -cE '^- US-[0-9]+[.]AC[0-9]+[a-z]?:' "$f")
