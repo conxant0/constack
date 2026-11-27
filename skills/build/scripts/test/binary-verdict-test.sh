@@ -27,6 +27,8 @@ review FAIL no 'tests look thin'; expect "AC2: no without Mutation under FAIL" 1
 review PASS no 'tests look thin'; out=$("$wf" check-review "$R" 2>&1); rc=$?
 [ $rc = 1 ] && grep -qFx "$NOTE" <<<"$out" || { printf 'FAIL AC2: no without Mutation under PASS: exit %s, got:\n%s\n' "$rc" "$out"; fail=1; }
 review FAIL no 'Mutation: mutations/US-1.AC2.diff; python3 -m unittest'; expect "AC2: no with Mutation under FAIL" 0 ""
+review FAIL no ''; expect "AC2: no with an empty Note under FAIL" 1 "$NOTE"
+review FAIL no 'see Mutation: mutations/US-1.AC2.diff; python3 -m unittest'; expect "AC2: Mutation: not at the start of the Note" 1 "$NOTE"
 
 PASSNO="$R:14: US-1.AC2 says \"no\" under Test checks the AC, but Verdict is PASS. Fix: set Verdict: FAIL and write an F ticket for it (step 8)."
 review PASS no 'Waived 2026-11-02 (owner): flaky'; expect "AC3: a waived no under PASS" 1 "$PASSNO
