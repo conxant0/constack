@@ -258,9 +258,12 @@ sed -i '' 's/^Status: approved/Status: draft/' "$g/s.md"; git -C "$g" commit -qa
 expect "gate --quick draft" 1 "$g/s.md:3: Status is draft, /quick needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run.
 $g/s.md:1: 4 ACs, /quick takes at most 3. Fix: use the grilled path (/grill-me, /spec, then /direct $g/s.md)." gate "$g/s.md" --quick
 expect "gate --slice draft" 1 "$g/s.md:3: Status is draft, /slice needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run." gate "$g/s.md" --slice
+expect "gate --direct draft" 1 "$g/s.md:3: Status is draft, /direct needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run." gate "$g/s.md" --direct
 sed -i '' 's/^Status: draft/Status: approved/;s/US-1.AC2:/US-1.AC3:/' "$g/s.md"; git -C "$g" commit -qam order
 expect "gate --slice check-spec" 1 "$g/s.md:14: US-1.AC3 out of order, want AC2 here
 $g/s.md:1: wf check-spec failed (lines above). Fix: correct each line in the spec, commit, re-run." gate "$g/s.md" --slice
+expect "gate --direct check-spec" 1 "$g/s.md:14: US-1.AC3 out of order, want AC2 here
+$g/s.md:1: wf check-spec failed (lines above). Fix: correct each line in the spec, commit, re-run." gate "$g/s.md" --direct
 sed -i '' 's/US-1.AC3:/US-1.AC2:/' "$g/s.md"
 perl -i -pe 's{^(- US-2\.AC1:.*)$}{$1\n- US-2.AC2: Given a, when b, then f.\n- US-2.AC3: Given a, when b, then g.\n- US-2.AC3b: Given a, when b, then h.}' "$g/s.md"; git -C "$g" commit -qam seven
 expect "gate --slice 7 ACs" 0 "" gate "$g/s.md" --slice
