@@ -38,8 +38,13 @@ while IFS=$'\t' read -r n id note <&3; do
   git -C "$root" apply --check "$p" 2>/dev/null || { echo "$at: the patch $rel does not apply. Fix: re-make it with git diff against this branch's HEAD, then re-run."; exit 2; }
   git -C "$root" apply "$p" && applied=$p
   if python3 -c "$wording_only" "$root" $files; then
-    echo "$at: the patch $rel changes only wording. Fix: wording is the wording check's job (mutate-copy); grade the row yes."; bad=1
-  elif ! out=$(cd "$root" && bash -c "$cmd" </dev/null 2>&1); then
+    echo "$at: the patch $rel changes only wording. Fix: wording is the wording check's job (mutate-copy); grade the row yes."; bad=1; restore
+  else
+    restore
+    out=$(cd "$root" && bash -c "$cmd" </dev/null 2>&1) || { echo "$at: the test command fails before the patch is applied: $(tail -n 1 <<<"$out"). Fix: correct the command in the Note so it passes on this branch, then re-run."; exit 2; }
+    git -C "$root" apply "$p" && applied=$p
+  fi
+  if [ -n "$applied" ] && ! out=$(cd "$root" && bash -c "$cmd" </dev/null 2>&1); then
     line=$(grep -m1 -E '(^|[^A-Za-z])FAIL(ED)?[: ]' <<<"$out" || tail -n 1 <<<"$out")
     echo "$at: $line: the tests already catch this change. Fix: grade the row yes."; bad=1
   fi
