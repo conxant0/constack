@@ -18,4 +18,5 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 - 2026-11-27, final-review (fable): the orchestrated flow never marks its last part done (skills/direct/SKILL.md:40, :44); reproduced: gate --final prints 'not every ticket is done (run /build)' for a merged part still doing; decided: new AC US-3.AC7 plus fix ticket F01 (final gate names the part with a Fix, step 8 marks it done), commit fc16196; why: an Out of Scope line would leave US-5's so-that false, and the repo rule wants a check, not a prompt line
 - 2026-11-27, final-review (fable): structure finding, two readers of a Parts line (check-red-green.sh:26, wf:548); reproduced: trailing-space heading and unknown AC id disagree; decided: declined; why: a refactor no AC needs is declined, both cases need a malformed index and fail loudly
 - 2026-11-27, F01 (afk): was doing at session start, interrupted; reset to todo for a fresh implementer
+- 2026-11-27, F01 (afk): was doing at session start, interrupted a second time; reset to todo for a fresh implementer
 
