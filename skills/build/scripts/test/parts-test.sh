@@ -45,4 +45,9 @@ plan share 3 '| P1 | a | none | todo |' '| P2 | b | none | todo |' '| P3 | c | P
 expect "US-3.AC4 shared file, no path" 1 "$d/share/index.md:21: P1 and P2 both list src/a.py, and neither is blocked by the other. Fix: give the file to one part, or order the two (one blocked by the other)." parts "$d/share/index.md"
 plan chain 3 '| P1 | a | none | todo |' '| P2 | b | P1 | todo |' '| P3 | c | P2 | todo |' -- '- P1: US-1.AC1; files: src/a.py' '- P2: US-1.AC2; files: src/b.py' '- P3: US-1.AC3; files: src/a.py'
 expect "shared file on a blocked-by path" 0 "" parts "$d/chain/index.md"
+
+# US-3.AC5: the next-work command reads parts from an index with no tickets folder
+plan next 2 '| P1 | a | none | done abc12345 |' '| P2 | b | P1 | todo |' -- '- P1: US-1.AC1; files: a.sh' '- P2: US-1.AC2; files: b.sh'
+[ ! -e "$d/next/tickets" ] || { echo "FAIL US-3.AC5 fixture has a tickets folder"; fail=1; }
+expect "US-3.AC5 frontier on parts" 0 "P2" frontier "$d/next/index.md"
 [ $fail = 0 ] && echo "OK parts-test"; exit $fail
