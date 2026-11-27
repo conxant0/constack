@@ -37,4 +37,9 @@ git -C "$r" checkout -q feature/x; git -C "$r" merge -q --no-ff helper -m 'merge
 lines "$r" glue.sh 10 'chore: glue'; lines "$r" docs/work/x/notes.md 200 'docs(direct): notes'
 expect "US-4.AC3 merged AC work, small glue" 0 "" lead "$r/docs/work/x/index.md"
 
+repo mergesubj; git -C "$r" checkout -qb helper
+lines "$r" app.txt 5 'feat(US-1.AC1): green'
+git -C "$r" checkout -q feature/x; git -C "$r" merge -q --no-ff helper -m 'feat(US-1.AC1): merge helper'
+expect "lead merge commit with an AC subject is not the lead's own" 0 "" lead "$r/docs/work/x/index.md"
+
 [ $fail = 0 ] && echo "OK lead-test"; exit $fail
