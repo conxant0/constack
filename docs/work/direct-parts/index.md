@@ -20,4 +20,5 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 - 2026-11-27, F01 (afk): was doing at session start, interrupted; reset to todo for a fresh implementer
 - 2026-11-27, F01 (afk): was doing at session start, interrupted a second time; reset to todo for a fresh implementer
 - 2026-11-27, F01 (afk): reused the interrupted implementer's commits c1e0536..322dc60 (branch worktree-agent-a2b95792bc21a89f8) as build/F01 in serial worktree ../direct-parts-F01 instead of a fresh implementer; why: complete red+green already existed and two lead sessions died after dispatch; red-green check, both reviews and the suite all still run
+- 2026-11-27, F01 quality (afk): fix round 1, two missing cases for the keep-today's-line branches added in 6801d7b by a fresh implementer; re-review pass, LOG none
 
