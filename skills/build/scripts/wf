@@ -48,6 +48,9 @@
 #   wf red <spec.md> [head]   Every spec AC (lettered ones like AC7b too) has a commit whose subject is
 #                            exactly "test(<id>): red" or "test(<id>): guard" in Base..head (Base from the spec, head
 #                            default HEAD). One file:line: problem per AC without one, exit 1 on any.
+#   wf lead <index.md> [head] /direct's orchestrator wrote no AC code: its own commits (first-parent, non-merge, in
+#                            Base..head) hold no "<type>(US-n.ACm): ..." subject. One file:line: problem. Fix: ... per line,
+#                            exit 1 on any.
 #   wf size <index.md> [head] Non-test files changed in Base...head that cross 1000 lines, or were already
 #                            over 1000 and grew by more than 100. One path: before -> after per file, exit 1 on any.
 #   wf check-review <review.md> [head]
@@ -445,6 +448,18 @@ red() {
   return 1
 }
 
+lead() { # lead <index> [head]: /direct's orchestrator writes no AC code; its own commits are first-parent, non-merge
+  local f=$1 head=${2:-HEAD} root base out
+  [ -r "$f" ] || { echo "$f: cannot read"; exit 2; }
+  root=$(git -C "$(dirname "$f")" rev-parse --show-toplevel 2>/dev/null) || { echo "$f: not in a git repo"; exit 2; }
+  base=$(base_ref "$f")
+  [ -n "$base" ] || { echo "$f:1: missing \"Base:\" line"; exit 2; }
+  out=$(git -C "$root" log --reverse --first-parent --no-merges --format='%h %s' --abbrev=8 "$base..$head") || { echo "git log $base..$head failed"; exit 2; }
+  printf '%s\n' "$out" | awk -v f="$f" '$2 ~ /^[a-z]+\(US-[0-9]+[.]AC[0-9]+[a-z]?\)/ { s=$0; sub(/^[^ ]* /, "", s)
+    printf "%s:1: commit %s \"%s\" is the lead'"'"'s own AC commit. Fix: hand AC work to a helper and merge the helper'"'"'s branch with a merge commit (git merge --no-ff).\n", f, $1, s; bad=1 }
+    END { exit bad }'
+}
+
 check_review() {
   local f=$1 head=${2:-HEAD} root spec end ln changed out log doneids lf=()
   [ -r "$f" ] || { echo "$f: cannot read"; exit 2; }
@@ -614,6 +629,7 @@ case $cmd in
     gate "$@" ;;
   scope) [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wf scope <index.md> [head]"; exit 2; }; scope "$@" ;;
   check-review) [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wf check-review <review.md> [head]"; exit 2; }; check_review "$@" ;;
+  lead) [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wf lead <index.md> [head]"; exit 2; }; lead "$@" ;;
   red) [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wf red <spec.md> [head]"; exit 2; }; red "$@" ;;
   size) [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wf size <index.md> [head]"; exit 2; }; size "$@" ;;
   set)
@@ -636,5 +652,5 @@ case $cmd in
       grep -qxF check-warnings.log "$gd/info/exclude" 2>/dev/null || echo check-warnings.log >> "$gd/info/exclude"
     fi
     grep -Fxq -- "$line" "$1/check-warnings.log" 2>/dev/null || printf '%s\n' "$line" >> "$1/check-warnings.log" ;;
-  *) echo "usage: wf base|frontier|chains|waves|check-plan|check-spec|questions|parts|check-review|gate|scope|red|size|set|done|ruling|mode|warn-log <index.md> ..."; exit 2 ;;
+  *) echo "usage: wf base|frontier|chains|waves|check-plan|check-spec|questions|parts|check-review|gate|scope|red|lead|size|set|done|ruling|mode|warn-log <index.md> ..."; exit 2 ;;
 esac
