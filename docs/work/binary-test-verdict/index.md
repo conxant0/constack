@@ -14,4 +14,5 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 ## Rulings
 - 2026-11-27, T01 (direct): skills/build/scripts/test/wf-test.sh may change: "missing AC row, weak test" expects the new partly line (US-1.AC1)
 - 2026-11-27, T01 (direct): skills/build/scripts/test/wf-test.sh may change: "hyphen range and a waived row" becomes "hyphen range" (AC2 row stays yes) and "waiver without a date does not count" also expects the Mutation Note line (US-1.AC2)
+- 2026-11-27, T01 (direct): skills/build/scripts/test/wf-test.sh may change: "waiver without a date does not count" expects the PASS line without waiver wording (US-1.AC3)
 
