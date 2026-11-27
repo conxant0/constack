@@ -29,6 +29,8 @@
 #                            may follow AC7); each AC has Given, when, then; no OPEN: once approved;
 #                            Out of Scope and Manual check have content; no file paths (dir/file.ext).
 #                            One file:line: problem per line, exit 1 on any.
+#   wf questions <index.md>  /direct's "## Open questions" section exists and says "none" or lists "- Qn: ..." lines,
+#                            each with "Answer: <answer>" on its line. One file:line: problem. Fix: ... per line, exit 1 on any.
 #   wf gate <spec|index.md> [--build|--final|--slice|--direct|--quick]
 #                            Current branch is the file's Branch: and the tree is clean.
 #                            --slice and --direct (spec): Status: approved and wf check-spec clean. --quick: same,
@@ -513,6 +515,14 @@ check_review() {
   [ -z "$out" ] || { printf '%s\n' "$out"; exit 1; }
 }
 
+questions() { # questions <index>: /direct's Open questions are listed, or "none", before any code
+  [ -r "$1" ] || { echo "$1: cannot read"; exit 2; }
+  awk -v f="$1" '
+    /^## / { sec=substr($0, 4); sub(/ +$/, "", sec); if (sec == "Open questions") at=FNR; next }
+    sec == "Open questions" && ($0 ~ /^-? *none *$/ || $0 ~ /^- Q[0-9]+:/) { has=1 }
+    END { if (!has) { printf "%s:%d: no \"## Open questions\" section. Fix: list every choice the spec leaves open or contradicts as \"- Q<n>: <question> Answer: <answer>\", send each to the decision agent (skills/build/references/decide.md), and write \"none\" when there are none.\n", f, at ? at : 1; exit 1 } }' "$1"
+}
+
 commit() { # commit <index> <message>: commit only the index
   git -C "$(dirname "$1")" commit -q -m "$2" -- "$(basename "$1")" || { echo "$1: commit failed"; exit 2; }
 }
@@ -563,6 +573,7 @@ case $cmd in
   waves) [ $# -eq 1 ] || { echo "usage: wf waves <index.md>"; exit 2; }; waves "$1" ;;
   check-plan) [ $# -eq 1 ] || { echo "usage: wf check-plan <index.md>"; exit 2; }; check_plan "$1" ;;
   check-spec) [ $# -eq 1 ] || { echo "usage: wf check-spec <spec.md>"; exit 2; }; check_spec "$1" ;;
+  questions) [ $# -eq 1 ] || { echo "usage: wf questions <index.md>"; exit 2; }; questions "$1" ;;
   gate)
     [ $# -eq 1 ] || { [ $# -eq 2 ] && case $2 in --build|--final|--slice|--direct|--quick) true ;; *) false ;; esac; } ||
       { echo "usage: wf gate <spec|index.md> [--build|--final|--slice|--direct|--quick]"; exit 2; }
@@ -591,5 +602,5 @@ case $cmd in
       grep -qxF check-warnings.log "$gd/info/exclude" 2>/dev/null || echo check-warnings.log >> "$gd/info/exclude"
     fi
     grep -Fxq -- "$line" "$1/check-warnings.log" 2>/dev/null || printf '%s\n' "$line" >> "$1/check-warnings.log" ;;
-  *) echo "usage: wf base|frontier|chains|waves|check-plan|check-spec|check-review|gate|scope|red|size|set|done|ruling|mode|warn-log <index.md> ..."; exit 2 ;;
+  *) echo "usage: wf base|frontier|chains|waves|check-plan|check-spec|questions|check-review|gate|scope|red|size|set|done|ruling|mode|warn-log <index.md> ..."; exit 2 ;;
 esac
