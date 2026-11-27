@@ -10,7 +10,7 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 | Ticket | Title | Blocked by | Status |
 |---|---|---|---|
 | T01 | direct-parts (direct) | none | done a52f733c |
-| F01 | The final gate names a merged part still doing | none | doing |
+| F01 | The final gate names a merged part still doing | none | done a48f4a08 |
 
 ## Rulings
 - 2026-11-27, T01 (direct): skills/build/scripts/test/wf-test.sh may change: "gate --direct 7 ACs" now expects exit 0 and no output (US-1.AC1 drops the 6-AC limit)
