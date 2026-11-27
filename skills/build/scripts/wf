@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# wf <subcommand> ...: deterministic checks for /spec, /slice, /build, /final-review.
+# wf <subcommand> ...: deterministic checks for /spec, /slice, /build, /direct, /final-review.
 #   wf base                  The branch this repo's features merge into, as origin/<branch>: git config
 #                            constack.base, else origin/HEAD. Its source goes to stderr. Neither: exit 2.
 #   wf frontier <index.md>   todo tickets whose blockers are all done, one id per line.

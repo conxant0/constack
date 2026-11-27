@@ -1,6 +1,6 @@
 # constack
 
-Spec-driven, test-first feature building with Claude Code: grill the idea, write a spec with numbered acceptance criteria, slice it into vertical tickets, build them in parallel worktrees with per-ticket review, then a final review against the spec.
+Spec-driven, test-first feature building with Claude Code: grill the idea, write a spec with numbered acceptance criteria, build its parts in parallel worktrees with no ticket files, then a final review against the spec.
 
 ## Install
 
@@ -19,14 +19,14 @@ Needs: Claude Code, `git`, `gh` (for `/pr` and `/resolve`), `node` (status line)
 | 0 | `git worktree add ../<feature> -b feature/<feature> <base>`, then `cd ../<feature> && claude` | |
 | 1 | `/grill-me` (or `/quick "<task>"` for at most 3 ACs: writes the spec, one approval, builds as `/direct` does, then go to 5) | conversation only |
 | 2 | `/spec` (same session) | `docs/work/<feature>/spec.md` |
-| 3 | `/clear`, `/slice <spec>` (or `/direct <spec>` for at most 6 ACs: one session, no tickets) | `index.md` + `tickets/T01-*.md` |
-| 4 | `/clear`, `/build <index>` | merged, reviewed tickets |
-| 5 | `/clear`, `/encode-comments <Base>`, then `/clear`, `/final-review <spec>` | comment rules as tests; `review.md`; fix tickets on FAIL, then back to 4 |
+| 3 | `/clear`, `/direct <spec>`: any size, no tickets; up to 6 ACs in one session, above that helpers build the index's parts in parallel worktrees | `index.md` (Open questions, parts) + merged, reviewed code |
+| 4 | Fallback: `/clear`, `/slice <spec>`, then `/clear`, `/build <index>` | `tickets/T01-*.md` + merged, reviewed tickets |
+| 5 | `/clear`, `/encode-comments <Base>`, then `/clear`, `/final-review <spec>` | comment rules as tests; `review.md`; fix tickets on FAIL, then `/build <index>` |
 | 6 | `/pr` | draft PR |
 
 Every stage after `/spec` starts fresh and reads only the files. Each acceptance criterion needs a `test(US-n.ACm): red` commit that fails before the code exists; `scripts/check-red-green.sh` and `/final-review` enforce it.
 
-Extras: `/resolve` turns PR review comments into fixes and replies. `/retro` reviews a finished feature's workflow. `/handoff` writes a resume note before `/clear`. `/bro` restates the last answer in plain words. `skills/build/scripts/afk-loop <index>` runs build and final-review headless until PASS or a blocker; on a blocker it prints a command that opens `/unblock <index>`, which re-checks each AFK pick against the code, asks you one ticket at a time and writes the ruling into the ticket file. For phone pushes, put an unguessable topic name in `~/.claude/afk-ntfy-topic` and subscribe to it in the ntfy app.
+Extras: `/resolve` turns PR review comments into fixes and replies. `/retro` reviews a finished feature's workflow. `/handoff` writes a resume note before `/clear`. `/bro` restates the last answer in plain words. `skills/build/scripts/afk-loop <index>` runs build (`/direct` for an index with parts) and final-review headless until PASS or a blocker; on a blocker it prints a command that opens `/unblock <index>`, which re-checks each AFK pick against the code, asks you one ticket at a time and writes the ruling into the ticket file. For phone pushes, put an unguessable topic name in `~/.claude/afk-ntfy-topic` and subscribe to it in the ntfy app.
 
 ## Things to adjust
 
