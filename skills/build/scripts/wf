@@ -478,7 +478,9 @@ check_review() {
         range=0; last=id
       }
       w=cell[4]; gsub(/^ +| +$/, "", w)
-      if (verdict == "PASS" && tolower(w) ~ /^(no|partly)$/ && tolower(cell[5]) !~ /^ *waived [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/) { x=cell[2]; gsub(/^ +| +$/, "", x); p(FNR, x " says \"" w "\" under Test checks the AC, but Verdict is PASS. Fix: set Verdict: FAIL and write an F ticket for it (step 8), or, if the user waived it, start the Note with \"Waived <YYYY-MM-DD> (<who>): <reason>\".") }
+      x=cell[2]; gsub(/^ +| +$/, "", x)
+      if (tolower(w) == "partly") p(FNR, x " says \"" w "\" under Test checks the AC. Fix: grade the row yes or no (step 4): no when a production change makes the AC false and its tests still pass, else yes.")
+      if (verdict == "PASS" && tolower(w) == "no" && tolower(cell[5]) !~ /^ *waived [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/) { p(FNR, x " says \"" w "\" under Test checks the AC, but Verdict is PASS. Fix: set Verdict: FAIL and write an F ticket for it (step 8), or, if the user waived it, start the Note with \"Waived <YYYY-MM-DD> (<who>): <reason>\".") }
     }
     sec == "Verify" && $0 ~ "^(### )?US-[0-9]+[.]AC[^:]*: *(fail|not run)" && verdict == "PASS" {
       w=$0; sub(/^[^:]*: */, "", w); w=(w ~ /^fail/) ? "fail" : "not run"
