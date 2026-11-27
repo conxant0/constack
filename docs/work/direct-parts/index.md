@@ -9,7 +9,7 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 
 | Ticket | Title | Blocked by | Status |
 |---|---|---|---|
-| T01 | direct-parts (direct) | none | todo |
+| T01 | direct-parts (direct) | none | doing |
 
 ## Rulings
 
