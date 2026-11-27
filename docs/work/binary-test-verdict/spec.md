@@ -7,7 +7,7 @@ Date: 2026-11-27
 
 ## Problem
 
-The final review can grade an AC's test "partly", and the owner can waive a "partly" or "no" row. Across 32 features, 46 of 104 fix tickets were test-only gaps from these rows, and the owner waived 23 rows by hand (measured 2026-11-27). The owner wants a two-way call: the reviewer shows a code break the tests miss and it is fixed, or the test stands and nothing is written down.
+The final review can grade an AC's test "partly", and the owner can waive a "partly" or "no" row. Across 32 features, 46 of 104 fix tickets were test-only gaps from these rows, and the owner waived 20 rows by hand (measured 2026-11-27). The owner wants a two-way call: the reviewer shows a code break the tests miss and it is fixed, or the test stands and nothing is written down.
 
 ## User stories
 
