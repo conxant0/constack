@@ -1,0 +1,13 @@
+diff --git a/skills/build/scripts/check-mutation b/skills/build/scripts/check-mutation
+index f8e93f9..e3fb8de 100755
+--- a/skills/build/scripts/check-mutation
++++ b/skills/build/scripts/check-mutation
+@@ -17,7 +17,7 @@ import ast, os, subprocess, sys
+ def norm(src):
+     t = ast.parse(src)
+     for n in ast.walk(t):
+-        if isinstance(n, ast.JoinedStr): n.values = [v for v in n.values if not isinstance(v, ast.Constant)]
++        if 0: pass
+         elif isinstance(n, ast.Constant) and isinstance(n.value, str): n.value = ""
+     return ast.dump(t)
+ try:
