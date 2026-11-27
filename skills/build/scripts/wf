@@ -533,10 +533,12 @@ parts() { # parts <index>: /direct's "## Parts" lines split the spec's ACs betwe
   [ -r "$spec" ] || { echo "$f:1: no spec.md next to the index"; exit 2; }
   printf '%s\n' "$rows" | awk -F'\t' -v f="$f" -v spec="$spec" -v AC='US-[0-9]+[.]AC[0-9]+[a-z]?' '
     FNR == 1 { fi++ }
-    fi == 1 { if (NF) { rid[++nr]=$1; rln[$1]=$4 }; next }
+    fi == 1 { if (NF) { rid[++nr]=$1; rln[$1]=$4; isdone[$1]=($3 ~ /^done /); m=split($2, b, ","); for (j=1; j<=m; j++) reach[$1, b[j]]=1 }; next }
     fi == 2 { if (match($0, "^- " AC ":")) { a=substr($0, 3, RLENGTH - 3); sa[++ns]=a; sln[a]=FNR }; next }
     /^## / { sec=substr($0, 4); sub(/ +$/, "", sec); next }
     sec == "Parts" && /^- [A-Z][0-9]+:/ { id=$0; sub(/^- /, "", id); sub(/:.*/, "", id); pln[id]=FNR; pid[++np]=id
+      t=$0; sub(/^.*; *files: */, "", t); gsub(/`/, "", t); m=split(t, w, / *, */)
+      for (j=1; j<=m; j++) if (w[j] != "") { k=++nf; fid[k]=id; fpath[k]=w[j]; fln[k]=FNR }
       t=$0; sub(/^- [^:]*:/, "", t); sub(/; *files:.*/, "", t)
       while (match(t, AC)) { a=substr(t, RSTART, RLENGTH); t=substr(t, RSTART + RLENGTH)
         if (a in in_) { printf "%s:%d: %s is listed under %s and %s. Fix: leave it in one of them.\n", f, FNR, a, in_[a], id; bad=1 }
@@ -546,6 +548,10 @@ parts() { # parts <index>: /direct's "## Parts" lines split the spec's ACs betwe
       for (i=1; i<=nr; i++) if (!(rid[i] in pln)) { printf "%s:%d: %s has a row but no line under \"## Parts\". Fix: add \"- %s: <AC ids>; files: <paths it owns>\", or delete its row.\n", f, rln[rid[i]], rid[i], rid[i]; bad=1 }
       for (i=1; i<=np; i++) if (!(pid[i] in rln)) { printf "%s:%d: %s has a line under \"## Parts\" but no row. Fix: add its row to the table, or delete the line.\n", f, pln[pid[i]], pid[i]; bad=1 }
       for (i=1; i<=ns; i++) if (!(sa[i] in in_)) { printf "%s:%d: %s is in no part. Fix: add it to exactly one part'"'"'s line under \"## Parts\" in %s.\n", spec, sln[sa[i]], sa[i], f; bad=1 }
+      for (u in rln) for (v in rln) for (x in rln) if (reach[v, u] && reach[u, x]) reach[v, x]=1
+      for (i=1; i<=nf; i++) for (j=i+1; j<=nf; j++) { u=fid[i]; v=fid[j]
+        if (u == v || fpath[i] != fpath[j] || reach[u, v] || reach[v, u] || isdone[u] || isdone[v]) continue
+        printf "%s:%d: %s and %s both list %s, and neither is blocked by the other. Fix: give the file to one part, or order the two (one blocked by the other).\n", f, fln[j], u, v, fpath[i]; bad=1 }
       exit bad
     }' - "$spec" "$f"
 }
