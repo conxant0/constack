@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
-# delivers-part-test.sh: check-red-green.sh's delivers line for a /direct part (index.md:<part>, no ticket file). Exit 1 on any FAIL.
 set -u
 d=$(mktemp -d); trap 'rm -rf "$d"' EXIT
 fail=0
 bad() { echo "FAIL delivers-part-test: $*"; fail=1; }
 . "$(dirname "$0")/lib-fixture.sh"; s=$(cd "$(dirname "$0")/.." && pwd)
 
-# US-3.AC6: the part's line lists US-1.AC1 and US-1.AC2; the branch holds a red commit for US-1.AC1 only
 r=$d/r; fx_repo "$r"; base=$(git -C "$r" rev-parse HEAD)
 fx_commit "$r" 'test(US-1.AC1): red' tests/ac1.sh 'grep -qx 2 app.txt' >/dev/null
 head=$(fx_commit "$r" 'feat(US-1.AC1): green' app.txt 2)

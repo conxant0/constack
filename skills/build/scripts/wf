@@ -448,7 +448,7 @@ red() {
   return 1
 }
 
-lead() { # lead <index> [head]: /direct's orchestrator writes no AC code; its own commits are first-parent, non-merge
+lead() {
   local f=$1 head=${2:-HEAD} root base out plan n bad=0
   [ -r "$f" ] || { echo "$f: cannot read"; exit 2; }
   root=$(git -C "$(dirname "$f")" rev-parse --show-toplevel 2>/dev/null) || { echo "$f: not in a git repo"; exit 2; }
@@ -536,7 +536,7 @@ check_review() {
   [ -z "$out" ] || { printf '%s\n' "$out"; exit 1; }
 }
 
-questions() { # questions <index>: /direct's Open questions are listed, or "none", before any code
+questions() {
   [ -r "$1" ] || { echo "$1: cannot read"; exit 2; }
   awk -v f="$1" '
     /^## / { sec=substr($0, 4); sub(/ +$/, "", sec); if (sec == "Open questions") at=FNR; next }
@@ -546,7 +546,7 @@ questions() { # questions <index>: /direct's Open questions are listed, or "none
     END { if (bad) exit 1; if (!has) { printf "%s:%d: no \"## Open questions\" section. Fix: list every choice the spec leaves open or contradicts as \"- Q<n>: <question> Answer: <answer>\", send each to the decision agent (skills/build/references/decide.md), and write \"none\" when there are none.\n", f, at ? at : 1; exit 1 } }' "$1"
 }
 
-parts() { # parts <index>: /direct's "## Parts" lines split the spec's ACs between the table's parts
+parts() {
   local f=$1 spec rows; load "$f"
   spec=$(dirname "$f")/spec.md
   [ -r "$spec" ] || { echo "$f:1: no spec.md next to the index"; exit 2; }

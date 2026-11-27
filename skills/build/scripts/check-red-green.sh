@@ -21,7 +21,7 @@ if [ -n "$ticket" ]; then
   case $ticket in /*) ;; *) ticket=$PWD/$ticket ;; esac
   [ -r "$ticket" ] || { echo "ERROR cannot read ticket $ticket. Fix: pass the ticket path from the index (docs/work/<feature>/tickets/<id>-*.md)."; exit 2; }
 fi
-delivers() { # the `- US-n.ACm:` lines this ticket or part delivers
+delivers() {
   if [ -z "$part" ]; then sed -n '/^## Delivers/,/^## /p' "$ticket"; return; fi
   awk -v id="$part" '/^## / { sec=substr($0, 4); next }
     sec == "Parts" && index($0, "- " id ":") == 1 { found=1; t=$0; sub(/^- [^:]*:/, "", t); sub(/; *files:.*/, "", t)

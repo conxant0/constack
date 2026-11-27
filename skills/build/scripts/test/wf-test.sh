@@ -248,7 +248,6 @@ expect "gate --final not done" 1 "$g/index.md:1: not every ticket is done (run /
 sed -i '' 's/| todo |/| done abc |/' "$g/index.md"; git -C "$g" commit -qam done
 expect "gate --final all done" 0 "" gate "$g/spec.md" --final
 
-# gate --slice / --direct / --quick: approved, check-spec clean, any AC count for --direct, at most 3 for --quick (lettered ones count)
 spec gs 's/^Branch: b/Branch: feature\/x/'; cp "$d/gs.md" "$g/s.md"; git -C "$g" add s.md; git -C "$g" commit -qm spec
 expect "gate --slice approved" 0 "" gate "$g/s.md" --slice
 expect "gate --direct 4 ACs" 0 "" gate "$g/s.md" --direct
