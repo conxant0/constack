@@ -8,7 +8,6 @@ These stay the user's, whoever is asked. Each one weakens a check:
 
 - deleting, skipping or loosening an assertion, or editing a test written on purpose so the change can pass (build rule 8's pinned count, set, list or contract is still the lead's)
 - raising a size or character limit (a `*_CHARS_MAX` constant, a description cap)
-- waiving a final-review row that says `no` or `partly`
 - a Verify row `not run`, or a branch that changes its own verify skill
 
 Escalating: in AFK, follow `afk.md`'s blocked line. Otherwise, AskUserQuestion, with Fable's decision as the first option marked "(Recommended)". Log the answer with `pick: <Fable's decision>; chose: <their answer, or "pick">`.

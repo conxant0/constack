@@ -140,3 +140,10 @@ Leave on. Its SubagentStart hook injects into every subagent (~3 KB each). Skill
 - Red and guard commits touch test files only (reviewer.md:18): check-red-green.sh FAILs one that touches a non-test path (`test_re`: test dirs, fixtures, test_*.py, *_test.py, conftest.py, *.test/spec.js/ts). check-red-green-test.sh gained two FAIL cases; its "touches code runs all" case now uses a frontend test file. Red first, then green.
 - AFK never asks (afk.md): afk-loop passes `--disallowedTools ... AskUserQuestion`. afk-loop-test.sh logs the fake claude's args and asserts it, plus /encode-comments <Base> AFK before each /final-review.
 
+
+## Final review grades each test yes or no, on proof (2026-11-27)
+- `partly` is gone and no AC row can be waived. A `no` row's Note is `Mutation: <patch beside the review>; <test command>`; `wf check-review` holds that shape, and the new `build/scripts/check-mutation` applies each patch in place, re-runs the command and puts the tree back. A patch the tests catch is not a `no`.
+- Why (measured 2026-11-27, 32 features in the product repo): 46 of 104 fix tickets were test-only gaps from AC rows, and the owner waived 20 rows by hand, 8 of them "a sentence in the step text has no assert" on one feature.
+- Logic only: under an unqualified "show a break the tests miss" rule those 8 would all have become forced fix tickets. A patch whose Python files match once every string is blanked is wording, which mutate-copy already judges, and check-mutation rejects it.
+- Limits: the wording comparison is Python only (other files count as logic); a `yes` is not checked.
+- Review after 3 features: count `no` rows, patches the script rejected, and fix tickets written.

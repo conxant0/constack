@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# check-mutation <review.md>: for each AC row graded "no" with Note "Mutation: <patch beside the review>; <test command>",
+# apply the patch in place, run the command from the repo root, and put it back. A patch whose Python files differ
+# only in strings is wording, and a command that fails means the tests catch it: either is exit 1.
+# One file:line: problem. Fix: ... per line. Exit 2 when a row cannot be checked (missing, stale or dirty patch).
+set -u
+f=${1:?usage: check-mutation <review.md>}
+[ -r "$f" ] || { echo "$f: cannot read"; exit 2; }
+dir=$(cd "$(dirname "$f")" && pwd)
+root=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null) || { echo "$f: not in a git repo"; exit 2; }
+export PYTHONDONTWRITEBYTECODE=1
+applied=
+restore() { [ -z "$applied" ] || git -C "$root" apply -R "$applied"; applied=; }
+trap restore EXIT; trap 'restore; exit 130' INT; trap 'restore; exit 143' TERM
+wording_only='
+import ast, os, subprocess, sys
+def norm(src):
+    t = ast.parse(src)
+    for n in ast.walk(t):
+        if isinstance(n, ast.JoinedStr): n.values = [v for v in n.values if not isinstance(v, ast.Constant)]
+        elif isinstance(n, ast.Constant) and isinstance(n.value, str): n.value = ""
+    return ast.dump(t)
+try:
+    for p in sys.argv[2:]:
+        old = subprocess.run(["git", "-C", sys.argv[1], "show", "HEAD:" + p], capture_output=True, text=True)
+        if not p.endswith(".py") or old.returncode or norm(old.stdout) != norm(open(os.path.join(sys.argv[1], p)).read()): sys.exit(1)
+except (SyntaxError, ValueError, OSError): sys.exit(1)
+'
+bad=0
+while IFS=$'\t' read -r n id note <&3; do
+  at="$f:$n: $id"; spec=${note#Mutation:}
+  case $spec in *\;*) ;; *) echo "$at: the Note names no test command. Fix: write it as \"Mutation: <patch>; <test command>\"."; exit 2 ;; esac
+  rel=$(sed 's/^ *//;s/ *$//' <<<"${spec%%;*}"); p=$dir/$rel; cmd=${spec#*;}
+  [ -f "$p" ] || { echo "$at: no patch $rel beside the review. Fix: save the production change there with git diff, then re-run."; exit 2; }
+  files=$(git -C "$root" apply --numstat "$p" | cut -f3)
+  dirty=$(git -C "$root" status --porcelain -- $files | cut -c4- | paste -sd, - | sed 's/,/, /g')
+  [ -z "$dirty" ] || { echo "$at: $dirty has uncommitted changes. Fix: commit or stash them, then re-run."; exit 2; }
+  git -C "$root" apply --check "$p" 2>/dev/null || { echo "$at: the patch $rel does not apply. Fix: re-make it with git diff against this branch's HEAD, then re-run."; exit 2; }
+  git -C "$root" apply "$p" && applied=$p
+  if python3 -c "$wording_only" "$root" $files; then
+    echo "$at: the patch $rel changes only wording. Fix: wording is the wording check's job (mutate-copy); grade the row yes."; bad=1; restore
+  else
+    restore
+    out=$(cd "$root" && bash -c "$cmd" </dev/null 2>&1) || { echo "$at: the test command fails before the patch is applied: $(tail -n 1 <<<"$out"). Fix: correct the command in the Note so it passes on this branch, then re-run."; exit 2; }
+    git -C "$root" apply "$p" && applied=$p
+  fi
+  if [ -n "$applied" ] && ! out=$(cd "$root" && bash -c "$cmd" </dev/null 2>&1); then
+    line=$(grep -m1 -E '(^|[^A-Za-z])FAIL(ED)?[: ]' <<<"$out" || tail -n 1 <<<"$out")
+    echo "$at: $line: the tests already catch this change. Fix: grade the row yes."; bad=1
+  fi
+  restore
+done 3< <(awk -F'|' '/^## / { sec=substr($0, 4); next }
+  sec ~ /^Acceptance criteria/ && /^\| *US-/ { g=$4; gsub(/^ +| +$/, "", g); if (tolower(g) != "no") next
+    id=$2; note=$5; gsub(/^ +| +$/, "", id); gsub(/^ +| +$/, "", note); if (note ~ /^Mutation:/) printf "%d\t%s\t%s\n", FNR, id, note }' "$f")
+exit $bad
