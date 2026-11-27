@@ -10,7 +10,7 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 | Ticket | Title | Blocked by | Status |
 |---|---|---|---|
 | T01 | binary-test-verdict (direct) | none | done bf66fee2 |
-| F01 | guard an empty Note and a late "Mutation:" | none | todo |
+| F01 | guard an empty Note and a late "Mutation:" | none | doing |
 | F02 | guard text deleted between f-string placeholders | none | todo |
 
 ## Rulings
