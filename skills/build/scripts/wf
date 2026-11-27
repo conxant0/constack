@@ -538,7 +538,9 @@ parts() { # parts <index>: /direct's "## Parts" lines split the spec's ACs betwe
     /^## / { sec=substr($0, 4); sub(/ +$/, "", sec); next }
     sec == "Parts" && /^- [A-Z][0-9]+:/ { id=$0; sub(/^- /, "", id); sub(/:.*/, "", id); pln[id]=FNR; pid[++np]=id
       t=$0; sub(/^- [^:]*:/, "", t); sub(/; *files:.*/, "", t)
-      while (match(t, AC)) { a=substr(t, RSTART, RLENGTH); t=substr(t, RSTART + RLENGTH); in_[a]=in_[a] " " id } }
+      while (match(t, AC)) { a=substr(t, RSTART, RLENGTH); t=substr(t, RSTART + RLENGTH)
+        if (a in in_) { printf "%s:%d: %s is listed under %s and %s. Fix: leave it in one of them.\n", f, FNR, a, in_[a], id; bad=1 }
+        else in_[a]=id } }
     END {
       for (i=1; i<=nr; i++) if (!(rid[i] in pln)) { printf "%s:%d: %s has a row but no line under \"## Parts\". Fix: add \"- %s: <AC ids>; files: <paths it owns>\", or delete its row.\n", f, rln[rid[i]], rid[i], rid[i]; bad=1 }
       for (i=1; i<=np; i++) if (!(pid[i] in rln)) { printf "%s:%d: %s has a line under \"## Parts\" but no row. Fix: add its row to the table, or delete the line.\n", f, pln[pid[i]], pid[i]; bad=1 }
