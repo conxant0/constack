@@ -361,7 +361,17 @@ gate() {
       [ "$need" -le 3 ] || echo "$f:1: $need ACs, /quick takes at most 3. Fix: use the grilled path (/grill-me, /spec, then /direct $f)."
     fi
     if [ "$mode" = --final ]; then
-      [ "$(frontier "$dir/index.md" 2>&1)" = "all done" ] || echo "$dir/index.md:1: not every ticket is done (run /build)"
+      if [ "$(frontier "$dir/index.md" 2>&1)" != "all done" ]; then
+        have=
+        if grep -q '^## Parts' "$dir/index.md" && [ ! -e "$dir/tickets" ]; then
+          have=$(git -C "$root" log --format='%H %s' "$(base_ref "$dir/index.md")..HEAD" 2>/dev/null | awk -v f="$dir/index.md" '
+            NR == FNR { if ($3 == "doing") { id[++n]=$1; ln[n]=$4 }; next }
+            { for (i=1; i<=n; i++) if (index($0, " merge " id[i] ":") == 41 && !(id[i] in got)) got[id[i]]=substr($1, 1, 8) }
+            END { for (i=1; i<=n; i++) if (id[i] in got) printf "%s:%d: %s is merged (%s) but still doing. Fix: finish the no-ticket build (lead check, quality review, full suite), then run wf done %s %s %s.\n", f, ln[i], id[i], got[id[i]], f, id[i], got[id[i]] }
+          ' FS='\t' <(tickets "$dir/index.md") FS=' ' -)
+        fi
+        [ -n "$have" ] && printf '%s\n' "$have" || echo "$dir/index.md:1: not every ticket is done (run /build)"
+      fi
     fi
     if [ "$mode" = --build ]; then
       for rule in 'Bash(git:*)' 'Bash(${CLAUDE_SKILL_DIR}/scripts/check-red-green.sh:*)' 'Bash(${CLAUDE_SKILL_DIR}/scripts/wf:*)'; do
