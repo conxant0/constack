@@ -47,7 +47,7 @@ expect() {
   fi
   [ -z "$(git status --porcelain)" ] || { printf 'FAIL %s: tree not clean after the run:\n%s\n' "$1" "$(git status --porcelain)"; fail=1; }
 }
-at() { echo "$d/docs/work/x/$1.md:10: US-1.AC2"; }
+at() { echo "$d/docs/work/x/$1.md:$(grep -n "^. US-1.AC2 " "$d/docs/work/x/$1.md" | cut -d: -f1): US-1.AC2"; }
 
 mkpatch wording 's/Hello there\./Hi there./;s/may pass/is allowed/;s/Welcome, /Hi, /'
 review wording "Mutation: mutations/wording.diff; $TESTS"
