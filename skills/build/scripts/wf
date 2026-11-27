@@ -351,7 +351,7 @@ gate() {
     fi
     if [ "$mode" = --quick ]; then
       need=$(grep -cE '^- US-[0-9]+[.]AC[0-9]+[a-z]?:' "$f")
-      [ "$need" -le 3 ] || echo "$f:1: $need ACs, /quick takes at most 3. Fix: run /direct $f instead (at most 6 ACs), else /slice $f."
+      [ "$need" -le 3 ] || echo "$f:1: $need ACs, /quick takes at most 3. Fix: use the grilled path (/grill-me, /spec, then /direct $f)."
     fi
     if [ "$mode" = --final ]; then
       [ "$(frontier "$dir/index.md" 2>&1)" = "all done" ] || echo "$dir/index.md:1: not every ticket is done (run /build)"
