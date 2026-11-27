@@ -309,10 +309,11 @@ expect "check-review: review commit after the range is fine" 0 "" check-review "
 review 's/^| US-1.AC2 | def (guard) | yes |/| US-1.AC2 | def | partly |/;s/^| US-2.AC1 .*//'
 expect "check-review: missing AC row, weak test" 1 "$R:14: US-1.AC2 says \"partly\" under Test checks the AC. Fix: grade the row yes or no (step 4): no when a production change makes the AC false and its tests still pass, else yes.
 $R:9: US-2.AC1 (spec.md:18) has no row in the AC table. Fix: judge it (step 4) and add its row; a PASS needs every AC." check-review "$R"
-review 's/^| US-1.AC1, AC1b | abc | yes | |/| US-1.AC1-AC2 | abc | yes | |/;s/^| US-1.AC2 | def (guard) | yes | |/| US-1.AC2 | def | no | Waived 2026-11-02 (F04) |/'
-expect "check-review: hyphen range and a waived row" 0 "" check-review "$R"
+review 's/^| US-1.AC1, AC1b | abc | yes | |/| US-1.AC1-AC2 | abc | yes | |/'
+expect "check-review: hyphen range" 0 "" check-review "$R"
 review 's/^| US-1.AC2 | def (guard) | yes | |/| US-1.AC2 | def | no | waived, flaky |/'
-expect "check-review: waiver without a date does not count" 1 "$R:14: US-1.AC2 says \"no\" under Test checks the AC, but Verdict is PASS. Fix: set Verdict: FAIL and write an F ticket for it (step 8), or, if the user waived it, start the Note with \"Waived <YYYY-MM-DD> (<who>): <reason>\"." check-review "$R"
+expect "check-review: waiver without a date does not count" 1 "$R:14: US-1.AC2 says \"no\" under Test checks the AC, but Verdict is PASS. Fix: set Verdict: FAIL and write an F ticket for it (step 8), or, if the user waived it, start the Note with \"Waived <YYYY-MM-DD> (<who>): <reason>\".
+$R:14: US-1.AC2 says \"no\" under Test checks the AC, but its Note does not start with \"Mutation:\". Fix: start the Note with \"Mutation: <patch file beside this review>; <the test command that still passed>\", or grade the row yes." check-review "$R"
 review '/^## Fix tickets/,$d'
 expect "check-review: older review with no Fix tickets or OPEN section" 0 "" check-review "$R"
 review 's/^`true`: pass/`true`: fail (2 baseline)/;/^## Fix tickets/{n;n;s/none/F01 a: fixes US-1.AC2/;}'
