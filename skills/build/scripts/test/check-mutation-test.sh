@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# check-mutation-test.sh [python]: runs check-mutation on a throwaway repo. Prints FAIL lines, exit 1 on any.
 set -u
 PY=${1:-python3}
 tool=$(cd "$(dirname "$0")/.." && pwd)/check-mutation
@@ -35,13 +34,13 @@ class T(unittest.TestCase):
 EOF
 git add -A && git commit -qm base
 TESTS="$PY -m unittest discover -s tests"
-mkpatch() { # mkpatch <name> <sed script>: save the edit to calc.py as mutations/<name>.diff, then restore calc.py
+mkpatch() {
   sed -i '' "$2" calc.py; git diff -- calc.py > "docs/work/x/mutations/$1.diff"; git checkout -q -- calc.py
 }
-review() { # review <name> <Note of the US-1.AC2 row>: write docs/work/x/<name>.md, that row on line 10
+review() {
   printf '# X: final review\n\nVerdict: FAIL\n\n## Acceptance criteria\n\n| AC | Red commit | Test checks the AC | Note |\n|---|---|---|---|\n| US-1.AC1 | abc | yes | |\n| US-1.AC2 | def | no | %s |\n' "$2" > "docs/work/x/$1.md"
 }
-expect() { # expect <name> <exit> <output> <review name>: run check-mutation, then the tree must be clean
+expect() {
   local out rc; out=$("$tool" "$d/docs/work/x/$4.md" 2>&1); rc=$?
   if [ "$rc" != "$2" ] || [ "$out" != "$3" ]; then
     printf 'FAIL %s: exit %s, got:\n%s\nwant (exit %s):\n%s\n' "$1" "$rc" "$out" "$2" "$3"; fail=1
