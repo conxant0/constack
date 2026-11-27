@@ -28,4 +28,8 @@ expect "every AC in one part" 0 "" parts "$d/ok/index.md"
 plan rows 1 '| P1 | a | none | todo |' '| P2 | b | P1 | todo |' -- '- P1: US-1.AC1; files: a.sh' '- P3: none; files: c.sh'
 expect "row and line mismatch" 1 "$d/rows/index.md:11: P2 has a row but no line under \"## Parts\". Fix: add \"- P2: <AC ids>; files: <paths it owns>\", or delete its row.
 $d/rows/index.md:20: P3 has a line under \"## Parts\" but no row. Fix: add its row to the table, or delete the line." parts "$d/rows/index.md"
+
+# US-3.AC2: an AC under two parts
+plan dup 2 '| P1 | a | none | todo |' '| P2 | b | P1 | todo |' -- '- P1: US-1.AC1, US-1.AC2; files: a.sh' '- P2: US-1.AC1; files: b.sh'
+expect "US-3.AC2 AC under two parts" 1 "$d/dup/index.md:20: US-1.AC1 is listed under P1 and P2. Fix: leave it in one of them." parts "$d/dup/index.md"
 [ $fail = 0 ] && echo "OK parts-test"; exit $fail
