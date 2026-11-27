@@ -32,4 +32,11 @@ $d/rows/index.md:20: P3 has a line under \"## Parts\" but no row. Fix: add its r
 # US-3.AC2: an AC under two parts
 plan dup 2 '| P1 | a | none | todo |' '| P2 | b | P1 | todo |' -- '- P1: US-1.AC1, US-1.AC2; files: a.sh' '- P2: US-1.AC1; files: b.sh'
 expect "US-3.AC2 AC under two parts" 1 "$d/dup/index.md:20: US-1.AC1 is listed under P1 and P2. Fix: leave it in one of them." parts "$d/dup/index.md"
+
+# US-3.AC3: a part with 14 ACs (13 is the most)
+acs() { local i l=US-1.AC$1; for ((i = $1 + 1; i <= $2; i++)); do l="$l, US-1.AC$i"; done; printf '%s' "$l"; }
+plan big 15 '| P1 | a | none | todo |' '| P2 | b | P1 | todo |' -- "- P1: $(acs 1 14); files: a.sh" '- P2: US-1.AC15; files: b.sh'
+expect "US-3.AC3 part with 14 ACs" 1 "$d/big/index.md:19: P1 lists 14 ACs. Fix: split it so no part has more than 13." parts "$d/big/index.md"
+plan max 15 '| P1 | a | none | todo |' '| P2 | b | P1 | todo |' -- "- P1: $(acs 1 13); files: a.sh" "- P2: $(acs 14 15); files: b.sh"
+expect "part with 13 ACs" 0 "" parts "$d/max/index.md"
 [ $fail = 0 ] && echo "OK parts-test"; exit $fail
