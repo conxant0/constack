@@ -55,4 +55,10 @@ mkdir -p "$d/.claude/checks"; printf '# paid\nmcp__paid-a\n\nmcp__paid-b  # by h
 rm -f "$CALLS"; check "overlay tools" 0 "afk-loop: PASS" ok
 grep -v -q -- '--disallowedTools mcp__paid-a mcp__paid-b AskUserQuestion --output-format' "$CALLS" && { echo "FAIL a session ran without the overlay tools disallowed: $(head -1 "$CALLS")"; fail=1; }
 rm -f "$d/.claude/checks/afk-disallowed-tools"
+# US-5.AC1: an index with parts and no tickets folder starts the no-ticket build on the spec, never /build
+repo; printf '\n## Parts\n\n- T01: US-1.AC1; files: a.sh\n- T02: US-1.AC2; files: b.sh\n' >> docs/work/x/index.md; git commit -qam parts
+rm -f "$CALLS"; MODE=stuck WF=$s/wf PATH=$d/bin:$PATH HOME=$d "$s/afk-loop" docs/work/x/index.md >/dev/null 2>&1
+first=$(head -1 "$CALLS" 2>/dev/null)
+case $first in "-p /direct docs/work/x/spec.md AFK "*) ;; *) echo "FAIL US-5.AC1 first session: $first"; fail=1 ;; esac
+! grep -q -- '-p /build' "$CALLS" 2>/dev/null || { echo "FAIL US-5.AC1 started a ticket build: $(grep -- '-p /build' "$CALLS" | head -1)"; fail=1; }
 [ $fail = 0 ] && echo "afk-loop: all tests pass"; exit $fail
