@@ -19,4 +19,5 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 - 2026-11-27, final-review (fable): structure finding, two readers of a Parts line (check-red-green.sh:26, wf:548); reproduced: trailing-space heading and unknown AC id disagree; decided: declined; why: a refactor no AC needs is declined, both cases need a malformed index and fail loudly
 - 2026-11-27, F01 (afk): was doing at session start, interrupted; reset to todo for a fresh implementer
 - 2026-11-27, F01 (afk): was doing at session start, interrupted a second time; reset to todo for a fresh implementer
+- 2026-11-27, F01 (afk): reused the interrupted implementer's commits c1e0536..322dc60 (branch worktree-agent-a2b95792bc21a89f8) as build/F01 in serial worktree ../direct-parts-F01 instead of a fresh implementer; why: complete red+green already existed and two lead sessions died after dispatch; red-green check, both reviews and the suite all still run
 
