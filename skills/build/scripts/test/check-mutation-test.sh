@@ -71,8 +71,9 @@ mkpatch caught 's/^LIMIT = 3/LIMIT = 4/'
 review caught "Mutation: mutations/caught.diff; $TESTS"
 mkpatch missed 's/if n < 0:/if n < -1:/'
 review missed "Mutation: mutations/missed.diff; $TESTS"
-review pyshape "Mutation: mutations/caught.diff; printf '=== FAILURES ===\n___ test_limit ___\nFAILED tests/test_calc.py::test_limit - AssertionError\n1 failed\n'; exit 1"
-review lastline "Mutation: mutations/caught.diff; echo boom; echo last; exit 3"
+review pyshape "Mutation: mutations/caught.diff; if ! grep -q '^LIMIT = 3' calc.py; then printf '=== FAILURES ===\n___ test_limit ___\nFAILED tests/test_calc.py::test_limit - AssertionError\n1 failed\n'; exit 1; fi"
+review lastline "Mutation: mutations/caught.diff; if ! grep -q '^LIMIT = 3' calc.py; then echo boom; echo last; exit 3; fi"
+review broken "Mutation: mutations/missed.diff; echo no such module; exit 1"
 git add -A && git commit -qm fixture2
 CAUGHT=": the tests already catch this change. Fix: grade the row yes."
 out=$("$tool" "$d/docs/work/x/caught.md" 2>&1); rc=$?
@@ -82,6 +83,7 @@ case "$out" in "$(at caught): FAIL: test_limit "*"$CAUGHT") ok=$rc ;; *) ok=x ;;
 expect "AC5: pytest-shaped output names the failing test" 1 "$(at pyshape): FAILED tests/test_calc.py::test_limit - AssertionError$CAUGHT" pyshape
 expect "AC5: no FAIL line, the last line" 1 "$(at lastline): last$CAUGHT" lastline
 expect "a logic patch the tests miss" 0 "" missed
+expect "a command that fails without the patch" 2 "$(at broken): the test command fails before the patch is applied: no such module. Fix: correct the command in the Note so it passes on this branch, then re-run." broken
 
 [ $fail = 0 ] && echo "OK check-mutation-test"
 exit $fail
