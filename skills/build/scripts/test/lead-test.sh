@@ -31,4 +31,11 @@ expect "US-4.AC1 lead AC commit" 1 "$r/docs/work/x/index.md:1: commit $sha \"fea
 repo big; lines "$r" glue.sh 30 'chore: wire parts'; lines "$r" app.txt 11 'fix: glue'; lines "$r" docs/work/x/notes.md 50 'docs(direct): notes'
 expect "US-4.AC2 41 lines" 1 "$r/docs/work/x/index.md:1: the lead's own commits change 41 lines outside docs/work/x/, limit 40. Fix: hand the work to a helper and merge its branch with a merge commit (git merge --no-ff)." lead "$r/docs/work/x/index.md"
 
+# US-4.AC3: AC commits arrive through merge commits; own commits change 10 lines outside the plan folder, any number inside
+repo merged; git -C "$r" checkout -qb helper
+lines "$r" ac1-test.sh 60 'test(US-1.AC1): red'; lines "$r" app.txt 60 'feat(US-1.AC1): green'
+git -C "$r" checkout -q feature/x; git -C "$r" merge -q --no-ff helper -m 'merge P1: a'
+lines "$r" glue.sh 10 'chore: glue'; lines "$r" docs/work/x/notes.md 200 'docs(direct): notes'
+expect "US-4.AC3 merged AC work, small glue" 0 "" lead "$r/docs/work/x/index.md"
+
 [ $fail = 0 ] && echo "OK lead-test"; exit $fail
