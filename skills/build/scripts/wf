@@ -49,8 +49,8 @@
 #                            exactly "test(<id>): red" or "test(<id>): guard" in Base..head (Base from the spec, head
 #                            default HEAD). One file:line: problem per AC without one, exit 1 on any.
 #   wf lead <index.md> [head] /direct's orchestrator wrote no AC code: its own commits (first-parent, non-merge, in
-#                            Base..head) hold no "<type>(US-n.ACm): ..." subject. One file:line: problem. Fix: ... per line,
-#                            exit 1 on any.
+#                            Base..head) hold no "<type>(US-n.ACm): ..." subject and change at most 40 lines outside the
+#                            index's folder. One file:line: problem. Fix: ... per line, exit 1 on any.
 #   wf size <index.md> [head] Non-test files changed in Base...head that cross 1000 lines, or were already
 #                            over 1000 and grew by more than 100. One path: before -> after per file, exit 1 on any.
 #   wf check-review <review.md> [head]
@@ -449,7 +449,7 @@ red() {
 }
 
 lead() { # lead <index> [head]: /direct's orchestrator writes no AC code; its own commits are first-parent, non-merge
-  local f=$1 head=${2:-HEAD} root base out
+  local f=$1 head=${2:-HEAD} root base out plan n bad=0
   [ -r "$f" ] || { echo "$f: cannot read"; exit 2; }
   root=$(git -C "$(dirname "$f")" rev-parse --show-toplevel 2>/dev/null) || { echo "$f: not in a git repo"; exit 2; }
   base=$(base_ref "$f")
@@ -457,7 +457,11 @@ lead() { # lead <index> [head]: /direct's orchestrator writes no AC code; its ow
   out=$(git -C "$root" log --reverse --first-parent --no-merges --format='%h %s' --abbrev=8 "$base..$head") || { echo "git log $base..$head failed"; exit 2; }
   printf '%s\n' "$out" | awk -v f="$f" '$2 ~ /^[a-z]+\(US-[0-9]+[.]AC[0-9]+[a-z]?\)/ { s=$0; sub(/^[^ ]* /, "", s)
     printf "%s:1: commit %s \"%s\" is the lead'"'"'s own AC commit. Fix: hand AC work to a helper and merge the helper'"'"'s branch with a merge commit (git merge --no-ff).\n", f, $1, s; bad=1 }
-    END { exit bad }'
+    END { exit bad }' || bad=1
+  plan=$(cd "$(dirname "$f")" && git rev-parse --show-prefix)
+  n=$(git -C "$root" log --first-parent --no-merges --numstat --format= "$base..$head" | awk -v plan="$plan" '$1 != "-" && index($3, plan) != 1 { n += $1 + $2 } END { print n + 0 }')
+  [ "$n" -le 40 ] || { echo "$f:1: the lead's own commits change $n lines outside $plan, limit 40. Fix: hand the work to a helper and merge its branch with a merge commit (git merge --no-ff)."; bad=1; }
+  return $bad
 }
 
 check_review() {
