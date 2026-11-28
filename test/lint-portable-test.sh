@@ -27,4 +27,6 @@ out=$("$lint" "$r" 2>&1); rc=$?
 [ $rc = 0 ] && [ -z "$out" ] || { printf 'FAIL clean repo: exit %s, got:\n%s\n' "$rc" "$out"; fail=1; }
 out=$("$lint" 2>&1); rc=$?
 [ $rc = 0 ] || { printf 'FAIL this repo: exit %s\n%s\n' "$rc" "$out"; fail=1; }
+out=$("$lint" "$d" 2>&1); rc=$?
+[ $rc = 1 ] && [ "$out" = "FAIL lint-portable: $d lists no tracked files. Fix: pass a git repo root, or no argument for this repo." ] || { printf 'FAIL not a repo: exit %s, got:\n%s\n' "$rc" "$out"; fail=1; }
 [ $fail = 0 ] && echo "OK lint-portable-test"; exit $fail
