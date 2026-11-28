@@ -591,6 +591,7 @@ entry() { # entry <raw argument>: is /direct's argument a spec path or a one-lin
   s=${s#\"}
   w=${s%%[[:space:]\"]*}
   [ -f "$w" ] && { echo spec; return 0; }
+  case $w in *.md) echo "wf entry: $w is not a file. Fix: correct the path, or quote a one-line task (\"<task>\")."; exit 1 ;; esac
   echo task
 }
 
