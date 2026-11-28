@@ -18,3 +18,9 @@ pyrepo() {
   git -C "$dir" commit -qm 'feat: green'
   head=$(git -C "$dir" rev-parse HEAD)
 }
+
+need_pytest() { # need_pytest <python> <test name>: one FAIL line with a Fix and exit 1 when that python has no pytest
+  "$1" -c 'import pytest' 2>/dev/null && return
+  echo "FAIL $2: $1 has no pytest. Fix: pass a python that has pytest as the first argument, e.g. bash $2.sh <venv>/bin/python3."
+  exit 1
+}

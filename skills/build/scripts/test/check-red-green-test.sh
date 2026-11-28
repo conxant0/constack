@@ -5,7 +5,7 @@ set -u
 s=$(cd "$(dirname "$0")/.." && pwd)
 d=$(mktemp -d); trap 'rm -rf "$d"' EXIT
 [ -z "${1:-}" ] || { mkdir "$d/bin"; printf '#!/bin/sh\nexec "%s" "$@"\n' "$1" > "$d/bin/python"; chmod +x "$d/bin/python"; PATH=$d/bin:$PATH; }
-python -c 'import pytest' 2>/dev/null || { echo "SKIP check-red-green-test: no python with pytest"; exit 0; }
+. "$s/test/lib-py.sh"; need_pytest python check-red-green-test
 fail=0
 export COUNT=$d/count # test_old.py appends a line on every run of the full suite
 export PYTHONDONTWRITEBYTECODE=1 # src.py's two versions share size and mtime second: a stale .pyc

@@ -6,7 +6,7 @@ bad() { echo "FAIL wording-test: $*"; fail=1; }
 
 . "$(dirname "$0")/lib-fixture.sh"; . "$(dirname "$0")/lib-py.sh"; s=$(cd "$(dirname "$0")/.." && pwd)
 py=${1:-python3}
-"$py" -c 'import pytest' 2>/dev/null || { echo "SKIP wording-test: no python with pytest"; exit 0; }
+need_pytest "$py" wording-test
 export PYTHONDONTWRITEBYTECODE=1
 printf 'wording=warn\ndelivers=block\n' > "$d/c.conf"; export CHECKS_CONF=$d/c.conf
 V="cd pkg && $py -m pytest -q -p no:cacheprovider"

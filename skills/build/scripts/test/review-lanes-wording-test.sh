@@ -4,8 +4,8 @@ d=$(mktemp -d); trap 'rm -rf "$d"' EXIT
 fail=0
 bad() { echo "FAIL review-lanes-wording-test: $*"; fail=1; }
 s=$(cd "$(dirname "$0")/.." && pwd)
-py=${1:-python3}
-"$py" -c 'import pytest' 2>/dev/null || { echo "SKIP review-lanes-wording-test: no python with pytest"; exit 0; }
+. "$(dirname "$0")/lib-py.sh"; py=${1:-python3}
+need_pytest "$py" review-lanes-wording-test
 export TMPDIR=$d/tmp PYTHONDONTWRITEBYTECODE=1; mkdir -p "$TMPDIR"
 export HOME=$d/home; mkdir -p "$HOME"
 
