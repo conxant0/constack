@@ -20,9 +20,11 @@ folders = [main] + [
 def rows(path):
     for line in path.open(errors="replace"):
         try:
-            yield json.loads(line)
+            row = json.loads(line)
         except ValueError:
-            pass
+            continue
+        if isinstance(row, dict):
+            yield row
 
 
 def text(content):
@@ -45,7 +47,7 @@ for folder in folders:
             if isinstance(content, list):
                 for block in content:
                     if isinstance(block, dict) and block.get("type") == "tool_result" and block.get("is_error"):
-                        errors[strip(text(block.get("content", "")))] += 1
+                        errors[strip(text(block.get("content") or ""))] += 1
 
 def tag(t, name):
     m = re.search(rf"<{name}>(.*?)</{name}>", t, re.S)
@@ -53,7 +55,7 @@ def tag(t, name):
 
 
 def typed(row):
-    if row.get("entrypoint") == "sdk-cli":
+    if row.get("entrypoint") == "sdk-cli" or row.get("turnOrigin") == "scheduled":
         return None
     queued = row.get("attachment") if row.get("type") == "attachment" else None
     if isinstance(queued, dict) and queued.get("type") == "queued_command":
@@ -81,6 +83,13 @@ messages = sorted(
     (row.get("timestamp", ""), msg)
     for log in sessions for row in rows(log) if (msg := typed(row))
 )
+
+
+def key(msg):
+    return " ".join(re.sub(r"[^\w\s]", "", msg.lower()).split()) or msg.strip()
+
+
+typed_counts = collections.Counter(key(msg) for _, msg in messages)
 seen = set()
 
 print("## Repeated errors")
@@ -88,7 +97,8 @@ for err, n in [(e, n) for e, n in errors.most_common() if n >= 2][:5]:
     print(f"{n}x {err}")
 print("## Typed messages")
 for _, msg in messages:
-    key = " ".join(re.sub(r"[^a-z0-9 ]", "", msg.lower()).split())
-    if key not in seen:
-        seen.add(key)
-        print(msg)
+    k = key(msg)
+    if k not in seen:
+        seen.add(k)
+        n = typed_counts[k]
+        print(f"{n}x {msg}" if n >= 2 else msg)

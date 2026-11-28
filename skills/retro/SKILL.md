@@ -8,7 +8,7 @@ The user has asked for a **retrospective**. You are suggesting improvements to t
 
 ## Steps
 
-1. Run `${CLAUDE_SKILL_DIR}/scripts/retro-log <worktree path>` for the feature's worktree (`../<feature>` beside this checkout; the current directory when none is named). It prints the feature's top repeated tool errors and every message the user typed. Start from that evidence: a repeated error is a candidate, and a request the user typed twice is one.
+1. Run `${CLAUDE_SKILL_DIR}/scripts/retro-log <worktree path>` for the feature's worktree (`../<feature>` beside this checkout; the current directory when none is named). It prints the feature's top repeated tool errors and every message the user typed. Start from that evidence: a repeated error is a candidate, and a request the user typed twice is one (printed as `<n>x <message>`).
 
 2. If a `writing-for-agents` skill is installed, call the Skill tool with it for the writing style guide.
 

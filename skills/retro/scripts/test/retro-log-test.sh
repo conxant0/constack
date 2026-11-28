@@ -46,11 +46,26 @@ typed "$main/$sid.jsonl" 2026-01-01T00:00:02Z "go"
 typed "$main/$sid.jsonl" 2026-01-01T00:00:03Z "<task-notification>helper done</task-notification>"
 typed "$main/$sid.jsonl" 2026-01-01T00:00:04Z "do the manual check via a subagent"
 typed "$main/$sid.jsonl" 2026-01-01T00:00:05Z "do the manual check via a subagent!"
+typed "$main/$sid.jsonl" 2026-01-01T00:00:06Z "Do the manual check via a subagent"
+typed "$main/$sid.jsonl" 2026-01-01T00:00:07Z "ship it"
 mkdir -p "$main/$sid/subagents"
 typed "$main/$sid/subagents/agent-x.jsonl" 2026-01-01T00:00:03Z "helper prompt: build P1"
 msgs=$(section "$("$here/retro-log" "$wt" 2>&1)" "Typed messages")
-check "typed messages" "$msgs" "go
-do the manual check via a subagent"
+check "repeats printed once with their count" "$msgs" "2x go
+3x do the manual check via a subagent
+ship it"
+
+fresh
+typed "$main/$sid.jsonl" 2026-01-01T00:00:01Z "?"
+typed "$main/$sid.jsonl" 2026-01-01T00:00:02Z "!!!"
+typed "$main/$sid.jsonl" 2026-01-01T00:00:03Z "はい"
+typed "$main/$sid.jsonl" 2026-01-01T00:00:04Z "いいえ"
+typed "$main/$sid.jsonl" 2026-01-01T00:00:05Z "はい。"
+msgs=$(section "$("$here/retro-log" "$wt" 2>&1)" "Typed messages")
+check "messages without latin letters kept apart" "$msgs" "?
+!!!
+2x はい
+いいえ"
 
 rm -rf "$CLAUDE_CONFIG_DIR"
 out=$("$here/retro-log" "$d/work/none" 2>&1); rc=$?
@@ -115,6 +130,23 @@ s "$main/$sdk.jsonl" 2026-01-01T00:00:04Z "yes, approve as written"
 msgs=$(section "$("$here/retro-log" "$wt" 2>&1)" "Typed messages")
 check "script-run prompts skipped" "$msgs" "go
 /clear"
+
+fresh
+err "$main/$sid.jsonl" 2026-01-01T00:00:01Z "worktree agent-a1c refused, exit 1"
+printf '123\n["a"]\n' >> "$main/$sid.jsonl"
+printf '{"type":"user","timestamp":"2026-01-01T00:00:02Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t","is_error":true,"content":null}]}}\n' >> "$main/$sid.jsonl"
+err "$main/$sid.jsonl" 2026-01-01T00:00:03Z "worktree agent-b2d refused, exit 2"
+typed "$main/$sid.jsonl" 2026-01-01T00:00:04Z "go"
+out=$("$here/retro-log" "$wt" 2>&1); rc=$?
+check "odd rows skipped" "$rc $(section "$out" "Repeated errors") / $(section "$out" "Typed messages")" "0 2x worktree agent- refused, exit / go"
+
+fresh
+typed "$main/$sid.jsonl" 2026-01-01T00:00:01Z "<command-name>/steward</command-name><command-args>483</command-args>"
+w() { printf '{"type":"user","entrypoint":"cli","turnOrigin":"scheduled","wakeupSource":"loop_wakeup","timestamp":"%s","message":{"role":"user","content":"%s"}}\n' "$2" "$3" >> "$1"; }
+for i in 2 3 4; do w "$main/$sid.jsonl" 2026-01-01T00:00:0${i}Z "<command-name>/steward</command-name><command-args>--tend 483</command-args>"; done
+w "$main/$sid.jsonl" 2026-01-01T00:00:05Z "check the deploy"
+msgs=$(section "$("$here/retro-log" "$wt" 2>&1)" "Typed messages")
+check "scheduled wakeups skipped" "$msgs" "/steward 483"
 
 [ $fail = 0 ] && echo "OK retro-log-test"
 exit $fail

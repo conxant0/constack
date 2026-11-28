@@ -23,7 +23,7 @@ As the lead, I want every command a helper prompt gives to be a form the isolate
 
 - Refused forms (measured with an isolated probe agent on 2026-11-28): a `{ }` group, `$( )` in a command naming git, `git -C <dir>`. Ran: `&&` and `;` chains, pipes, redirects, a leading `VAR=` assignment, a loop with no git, `git diff --output=<file>`, `cat a b > c`, writing a file with the Write tool, and the suite run as one script.
 - Helper-read text: the whole helper prompt, the whole implementer prompt, and the /direct Hard rules and Step 4 the helper prompt points at. Lead-only lines are not scanned.
-- The check scans backticked commands in those texts; it flags a `{ }` group, `$(` in a command naming git, `git -C`, and `cd` in a command naming git.
+- The check scans backticked commands in those texts, and each line inside a ``` fenced block as one command (leading spaces and a `$ ` prompt dropped); it prints one line per command, naming the first form it matches; it flags a `{ }` group, `$(` in a command naming git, `git -C`, and `cd` in a command naming git.
 - Testing seams: the check's output and exit code on fixture texts and on the repo; the prompt and step texts for AC1 and AC2.
 
 ## Out of Scope

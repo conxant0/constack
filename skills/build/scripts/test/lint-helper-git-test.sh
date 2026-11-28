@@ -30,6 +30,15 @@ Check with `git log -1 && git status --short` at the end.
 A line ```` ```diff ```` then `git -C wt diff` after a fence.
 Move with `cd wt && git log -1` there.
 Never use `git -C`, `cd`, `$( )` or `{ }` in a helper.
+```bash
+git status --short
+cd wt && git log -1
+```
+Both at once: `cd x && git -C y log`.
+1. An indented step:
+   ```bash
+   $ cd wt && git log -1
+   ```
 EOF
 out=$(bash "$lint" "$tmp/prompt.md" 2>&1); rc=$?
 [ $rc = 1 ] || bad "AC3 fixture: exit $rc, want 1: $out" "make the check exit 1 when it flags a line."
@@ -42,6 +51,11 @@ fixtext='Fix: split it into separate plain calls run from the worktree (no cd, n
 grep -qF -- "git -C in \`git -C wt log -1\`. $fixtext" <<<"$out" || bad "AC3 fixture: Fix text changed: $out" "end each flagged line with: $fixtext"
 grep -qF -- "$tmp/prompt.md:7:" <<<"$out" && bad "form names: a span that only names a form was flagged: $out" "skip a backticked span that is exactly cd, git -C, \$( ) or { }: naming a form is not running it."
 grep -qF -- "$tmp/prompt.md:4:" <<<"$out" && bad "AC3 fixture: plain && chain flagged: $out" "flag only { } groups, \$( ) or cd in a git command, and git -C."
+grep -qF -- "$tmp/prompt.md:9:" <<<"$out" && bad "fence: a plain git line inside a fenced block was flagged: $out" "flag only the refused forms inside fenced blocks."
+grep -qF -- "$tmp/prompt.md:10: cd in a git command in \`cd wt && git log -1\`" <<<"$out" || bad "fence: cd in a git command inside a fenced block was not flagged: $out" "scan each line inside a \`\`\` fenced block as one command, not only backticked spans."
+grep -qF -- "$tmp/prompt.md:15: cd in a git command in \`cd wt && git log -1\`" <<<"$out" || bad "fence: an indented fenced line with a \$ prompt was not flagged: $out" "drop leading spaces and a \$ prompt from a fenced line before checking it."
+both=$(grep -cF -- "$tmp/prompt.md:12:" <<<"$out")
+[ "$both" = 1 ] || bad "one span, two forms: got $both lines for line 12, want 1: $out" "print one line per span: stop at the first form that matches."
 grep -nF -- '\b' "$lint" && bad "portability: lint-helper-git uses \\b, which BSD grep lacks" "match git as a word with (^|[^[:alnum:]_-])git([^[:alnum:]_-]|\$) instead of \\b."
 out=$(bash "$lint" 2>&1); rc=$?
 [ $rc = 0 ] && [ -z "$out" ] || bad "AC3 repo: exit $rc: $out" "rewrite each flagged helper-prompt command as separate plain calls."

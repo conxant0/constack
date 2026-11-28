@@ -6,9 +6,13 @@ fail=0
 git_word_re='(^|[^[:alnum:]_-])git([^[:alnum:]_-]|$)'
 
 scan() {
-  local label=$1 n=$(($2 - 1)) line span form
+  local label=$1 n=$(($2 - 1)) line span form fenced=0
   while IFS= read -r line; do
     n=$((n + 1))
+    if grep -qE '^[[:space:]]*`{3,}' <<<"$line"; then
+      fenced=$((1 - fenced))
+      continue
+    fi
     while IFS= read -r span; do
       [ -n "$span" ] || continue
       span=${span#\`}; span=${span%\`}
@@ -21,8 +25,9 @@ scan() {
           cd) grep -qE "$git_word_re" <<<"$span" && grep -qE '(^|[;&|][[:space:]]*)cd[[:space:]]' <<<"$span" && msg='cd in a git command' || continue ;;
         esac
         echo "$label:$n: $msg in \`$span\`. $fix"; fail=1
+        break
       done
-    done < <(sed -E 's/`{3,}//g' <<<"$line" | grep -oE '`[^`]+`')
+    done < <(if [ $fenced = 1 ]; then sed -E 's/^[[:space:]]*(\$[[:space:]]+)?//' <<<"$line"; else sed -E 's/`{3,}//g' <<<"$line" | grep -oE '`[^`]+`'; fi)
   done
 }
 
