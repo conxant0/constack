@@ -3,6 +3,7 @@
 #   skills/<name>, statusline.js, hooks/<file>  -> symlinks into this checkout
 #   CLAUDE.md                                   -> your ~/.claude/CLAUDE.md imports ours (@<path>), so your own rules stay
 #   settings.json                               -> copied from settings.example.json when missing, else merge by hand
+#   git config --global core.hooksPath          -> git-hooks/ (blocks Claude Co-Authored-By lines, then runs each repo's own hooks)
 # A path that already exists and is not our link is left alone and reported (exit 1). --replace moves each one to
 # ~/.claude/backups/constack-<time>/ first, then links.
 set -u
@@ -30,6 +31,14 @@ import="@$src/CLAUDE.md"
 if [ ! -e "$dst/CLAUDE.md" ]; then printf '%s\n' "$import" > "$dst/CLAUDE.md"; echo "added  $dst/CLAUDE.md (imports $src/CLAUDE.md)"
 elif grep -qxF "$import" "$dst/CLAUDE.md"; then echo "ok     $dst/CLAUDE.md imports $src/CLAUDE.md"
 else echo "todo   $dst/CLAUDE.md: add this line at the top so it loads constack's rules: $import"; fi
+
+hooks=$src/git-hooks; had=$(git config --global --get core.hooksPath)
+if [ "$had" = "$hooks" ]; then echo "ok     git core.hooksPath = $hooks"
+elif [ -n "$had" ] && [ $replace = 0 ]; then conflicts+=("git core.hooksPath=$had"); echo "exists git core.hooksPath = $had"
+else
+  [ -n "$had" ] && { mkdir -p "$backup"; echo "$had" > "$backup/core.hooksPath"; echo "moved  git core.hooksPath $had -> $backup/core.hooksPath"; }
+  git config --global core.hooksPath "$hooks"; echo "added  git core.hooksPath = $hooks"
+fi
 
 if [ ! -e "$dst/settings.json" ]; then cp "$src/settings.example.json" "$dst/settings.json"; echo "added  $dst/settings.json"
 else echo "todo   $dst/settings.json exists: merge the keys from $src/settings.example.json by hand"; fi
