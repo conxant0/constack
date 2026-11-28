@@ -56,10 +56,14 @@
 #   wf check-review <review.md> [head]
 #                            /final-review's review.md agrees with itself. PASS: every spec AC has a row
 #                            (rows like "US-1.AC1 to AC4, AC6" or "US-3.AC1-AC4" count), no row says no under Test checks
-#                            the AC, no Verify row says fail or not run, Fix tickets and OPEN are none or absent (an "overruled by hand" PASS may keep
+#                            the AC, no Verify row says fail or not run, no Verify line starts "not run:" but "not run: no verify skill" (optionally followed by " ", "(" or "."), Fix tickets and OPEN are none or absent (an "overruled by hand" PASS may keep
 #                            OPEN). Full suite is not judged: a PASS may record baseline failures. FAIL: Fix tickets
 #                            or OPEN is not none. Either verdict: no row says partly, a no row's Note starts "Mutation:", the Range end is a sha, an ancestor of head (default
 #                            HEAD), and nothing but docs, *.md or tests changed since; each such line names "Range end". One file:line: problem. Fix: ... per line, exit 1 on any.
+#   wf verify-skill          The verify skill /final-review step 6b follows, run inside the repo under review: the repo's own
+#                            .claude/skills/verify/SKILL.md (absolute path), else the file git config constack.verify names if it
+#                            exists, else "none" (exit 0). Exit 1 with one "not run: verify skill missing: ... Fix: ..." line when
+#                            that config names a missing file, or is unset while git tracks files under .claude/skills/verify/.
 #   wf set <index.md> <id> todo|doing|"blocked: <reason>"
 #   wf done <index.md> <id> <merge sha>
 #   wf ruling <index.md> "<ticket or stage>: <ruling, why>"
@@ -515,6 +519,9 @@ check_review() {
       w=$0; sub(/^[^:]*: */, "", w); w=(w ~ /^fail/) ? "fail" : "not run"
       p(FNR, "Verify row says " w ", but Verdict is PASS. Fix: " (w == "fail" ? "set Verdict: FAIL and write an F ticket citing this row (step 8)." : "put it under OPEN and set Verdict: FAIL; the user decides (step 6b)."))
     }
+    sec == "Verify" && /^not run:/ && verdict == "PASS" && $0 != "not run: no verify skill" && $0 !~ /^not run: no verify skill[ (.]/ {
+      p(FNR, "Verify says the verify skill did not run (\"" $0 "\"), but Verdict is PASS. Fix: put that line under OPEN and set Verdict: FAIL; the user decides (step 6b). Only \"not run: no verify skill\" leaves a PASS standing.")
+    }
     END {
       if (!vln) { p(1, "missing \"Verdict:\" line. Fix: write review.md from assets/review-template.md."); exit }
       if (verdict == "PASS") {
@@ -544,6 +551,20 @@ check_review() {
     fi
   fi
   [ -z "$out" ] || { printf '%s\n' "$out"; exit 1; }
+}
+
+verify_skill() {
+  local root cfg
+  root=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "wf verify-skill: not in a git repo. Fix: run it from inside the repo under review."; exit 2; }
+  if [ -f "$root/.claude/skills/verify/SKILL.md" ]; then echo "$root/.claude/skills/verify/SKILL.md"; return; fi
+  cfg=$(git -C "$root" config --get constack.verify)
+  if [ -n "$cfg" ] && [ -f "$cfg" ]; then echo "$cfg"
+  elif [ -n "$cfg" ]; then
+    echo "not run: verify skill missing: git config constack.verify names $cfg, which does not exist. Fix: install or sync the overlay that provides the verify skill, or correct git config constack.verify."; exit 1
+  elif [ -n "$(git -C "$root" ls-files -- .claude/skills/verify/ | head -n 1)" ]; then
+    echo "not run: verify skill missing: the repo keeps files under .claude/skills/verify/ but has no .claude/skills/verify/SKILL.md, and git config constack.verify is unset. Fix: set git config constack.verify <path to the skill's SKILL.md>, which the overlay's installer does."; exit 1
+  else echo none
+  fi
 }
 
 questions() {
@@ -643,6 +664,7 @@ case $cmd in
     gate "$@" ;;
   scope) [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wf scope <index.md> [head]"; exit 2; }; scope "$@" ;;
   check-review) [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wf check-review <review.md> [head]"; exit 2; }; check_review "$@" ;;
+  verify-skill) [ $# -eq 0 ] || { echo "usage: wf verify-skill"; exit 2; }; verify_skill ;;
   lead) [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wf lead <index.md> [head]"; exit 2; }; lead "$@" ;;
   red) [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wf red <spec.md> [head]"; exit 2; }; red "$@" ;;
   size) [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wf size <index.md> [head]"; exit 2; }; size "$@" ;;
@@ -666,5 +688,5 @@ case $cmd in
       grep -qxF check-warnings.log "$gd/info/exclude" 2>/dev/null || echo check-warnings.log >> "$gd/info/exclude"
     fi
     grep -Fxq -- "$line" "$1/check-warnings.log" 2>/dev/null || printf '%s\n' "$line" >> "$1/check-warnings.log" ;;
-  *) echo "usage: wf base|frontier|chains|waves|check-plan|check-spec|questions|parts|check-review|gate|scope|red|lead|size|set|done|ruling|mode|warn-log <index.md> ..."; exit 2 ;;
+  *) echo "usage: wf base|frontier|chains|waves|check-plan|check-spec|questions|parts|check-review|verify-skill|gate|scope|red|lead|size|set|done|ruling|mode|warn-log <index.md> ..."; exit 2 ;;
 esac
