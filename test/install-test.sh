@@ -48,4 +48,14 @@ for p in "$h/.claude/skills/no-such-skill" "$h/.claude/hooks/no-such-hook"; do
   [ -L "$p" ] && f "prune: $p still there"
   [ "$(grep -cxF "pruned $p" <<<"$out")" = 1 ] || f "prune: want one 'pruned $p' line: $out"; done
 
+# US-4.AC2: a dangling link outside this checkout, a relative dangling link and a real folder stay
+h=$d/keep; mkdir -p "$h/.claude/skills/mine"
+ln -s "$repo-2/skills/gone" "$h/.claude/skills/outside"
+ln -s "../no-such-skill" "$h/.claude/skills/relative"
+run "$h"
+[ -L "$h/.claude/skills/outside" ] || f "keep: outside link removed"
+[ -L "$h/.claude/skills/relative" ] || f "keep: relative link removed"
+[ -d "$h/.claude/skills/mine" ] && [ ! -L "$h/.claude/skills/mine" ] || f "keep: real folder removed"
+grep -q '^pruned' <<<"$out" && f "keep: pruned something: $out"
+
 [ $fail = 0 ] && echo "OK install-test"; exit $fail
