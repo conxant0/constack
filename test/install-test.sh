@@ -16,6 +16,16 @@ for s in "$repo"/skills/*/; do n=$(basename "$s")
 [ "$(readlink "$h/.claude/hooks/prune-merged-worktrees.sh")" = "$repo/hooks/prune-merged-worktrees.sh" ] || f "fresh: hook not linked"
 [ "$(cat "$h/.claude/CLAUDE.md")" = "@$repo/CLAUDE.md" ] || f "fresh: CLAUDE.md is not the import line"
 cmp -s "$h/.claude/settings.json" "$repo/settings.example.json" || f "fresh: settings.json not copied"
+[ "$(HOME=$h git config --global --get core.hooksPath)" = "$repo/git-hooks" ] || f "fresh: core.hooksPath not set to git-hooks/"
+
+# a different core.hooksPath is left alone and reported; --replace backs it up and sets ours
+h=$d/hookspath; mkdir -p "$h"; HOME=$h git config --global core.hooksPath /elsewhere; run "$h"
+[ $rc = 1 ] || f "hookspath: exit $rc, want 1"
+[ "$(HOME=$h git config --global --get core.hooksPath)" = /elsewhere ] || f "hookspath: changed without --replace"
+grep -qF "Fix: re-run as ./install.sh --replace" <<<"$out" || f "hookspath: no Fix line: $out"
+run "$h" --replace
+[ "$(HOME=$h git config --global --get core.hooksPath)" = "$repo/git-hooks" ] || f "hookspath: --replace did not set ours"
+grep -qx /elsewhere "$h"/.claude/backups/constack-*/core.hooksPath 2>/dev/null || f "hookspath: old value not backed up"
 
 # second run changes nothing and passes
 run "$h"; [ $rc = 0 ] || f "rerun: exit $rc: $out"

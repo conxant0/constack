@@ -42,7 +42,7 @@ Safe because: <the one fact>. Proof: `<command>` -> <output, or "unproven">.
 
 ## Verify
 
-<"not run: no verify skill", or one row per AC: `<AC id>: pass | fail | unreachable | not run | not observable`, then the reason or the skill's evidence block. Last line: minutes the step took.>
+<"not run: no verify skill", the "not run: verify skill missing: ..." line `wf verify-skill` printed (it also goes under OPEN), or one row per AC: `<AC id>: pass | fail | unreachable | not run | not observable`, then the reason or the skill's evidence block. Last line: minutes the step took.>
 
 ## Check warnings
 
