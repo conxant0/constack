@@ -26,7 +26,7 @@ for l in "$dst"/skills/* "$dst"/hooks/*; do t=$(readlink "$l") || continue
 for s in "$src"/skills/*/; do link "skills/$(basename "$s")" "$dst/skills/$(basename "$s")"; done
 for h in "$src"/hooks/*; do link "hooks/$(basename "$h")" "$dst/hooks/$(basename "$h")"; done
 link statusline.js "$dst/statusline.js"
-chmod +x "$src"/skills/build/scripts/{wf,afk-loop,check-red-green.sh,require-model.sh,mutate-copy,review-lanes,check-mutation} "$src"/skills/quick/scripts/check-refs "$src"/hooks/* 2>/dev/null
+chmod +x "$src"/skills/build/scripts/{wf,afk-loop,check-red-green.sh,require-model.sh,mutate-copy,review-lanes,check-mutation} "$src"/skills/direct/scripts/check-refs "$src"/hooks/* 2>/dev/null
 
 import="@$src/CLAUDE.md"
 if [ ! -e "$dst/CLAUDE.md" ]; then printf '%s\n' "$import" > "$dst/CLAUDE.md"; echo "added  $dst/CLAUDE.md (imports $src/CLAUDE.md)"
