@@ -255,8 +255,10 @@ expect "gate --task 4 ACs" 1 "$g/s.md:1: 4 ACs, a one-line task takes at most 3 
 sed '/US-1.AC1b:/d' "$g/s.md" > "$g/s3.md"; git -C "$g" add s3.md; git -C "$g" commit -qm three
 expect "gate --task 3 ACs" 0 "" gate "$g/s3.md" --task
 sed -i '' 's/^Status: approved/Status: draft/' "$g/s.md"; git -C "$g" commit -qam draft
-expect "gate --quick draft" 1 "$g/s.md:3: Status is draft, /quick needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run.
-$g/s.md:1: 4 ACs, /quick takes at most 3. Fix: use the grilled path (/grill-me, /spec, then /direct $g/s.md)." gate "$g/s.md" --quick
+expect "gate --task draft" 1 "$g/s.md:3: Status is draft, /direct needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run.
+$g/s.md:1: 4 ACs, a one-line task takes at most 3 for /direct. Fix: use the grilled path (/grill-me, /spec, then /direct $g/s.md)." gate "$g/s.md" --task
+sed 's/^Status: approved/Status: draft/' "$g/s3.md" > "$g/s3d.md"; git -C "$g" add s3d.md; git -C "$g" commit -qm "three, draft"
+expect "gate --task draft 3 ACs" 1 "$g/s3d.md:3: Status is draft, /direct needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run." gate "$g/s3d.md" --task
 expect "gate --slice draft" 1 "$g/s.md:3: Status is draft, /slice needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run." gate "$g/s.md" --slice
 expect "gate --direct draft" 1 "$g/s.md:3: Status is draft, /direct needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run." gate "$g/s.md" --direct
 sed -i '' 's/^Status: draft/Status: approved/;s/US-1.AC2:/US-1.AC3:/' "$g/s.md"; git -C "$g" commit -qam order
