@@ -362,6 +362,11 @@ cd "$en" || exit 1
 expect "entry: existing spec" 0 "spec" entry 'docs/x/spec.md'
 expect "entry: quoted task" 0 "task" entry '"fix notes.md typo"'
 expect "entry: missing .md file" 1 "wf entry: docs/x/nope.md is not a file. Fix: correct the path, or quote a one-line task (\"<task>\")." entry 'docs/x/nope.md'
+afk="wf entry: a one-line task cannot run AFK. Fix: a one-line task needs the owner's approval, so run it attended or pass an approved spec."
+expect "entry: task then AFK" 1 "$afk" entry '"fix notes.md typo" AFK'
+expect "entry: task, slug, AFK" 1 "$afk" entry '"fix notes.md typo" notes-typo AFK'
+expect "entry: unquoted task ending AFK" 1 "$afk" entry 'fix the *.md links AFK'
+expect "entry: AFK inside the quotes" 0 "task" entry '"run the AFK loop docs"'
 cd "$here" || exit 1
 
 [ $fail = 0 ] && echo "OK wf-test"
