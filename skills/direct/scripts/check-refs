@@ -4,17 +4,18 @@ root=${1:-$(cd "$(dirname "$0")/../.." && pwd)}
 citer=$root/direct/SKILL.md
 out=""
 want() {
-  local f=$root/$1/SKILL.md got
+  local skill=$1 section=$2 number=$3 lead=$4 must_contain=${5:-} got
+  local f=$root/$skill/SKILL.md
   [ -r "$f" ] || { echo "$f: cannot read"; exit 2; }
-  got=$(awk -v sec="$2" -v n="$3" '
+  got=$(awk -v sec="$section" -v n="$number" '
     /^## / { in_=(substr($0, 4) == sec); next }
     in_ && index($0, n ". ") == 1 { print NR "\t" $0; exit }' "$f")
   if [ -z "$got" ]; then
-    out+="$f:1: no item $3 under \"## $2\", but $citer cites it. Fix: update the number $citer cites, or restore item $3."$'\n'
-  elif [[ ${got#*$'\t'} != "$3. $4"* ]]; then
-    out+="$f:${got%%$'\t'*}: item $3 under \"## $2\" no longer starts \"$4\", which $citer cites. Fix: point $citer at the item's new number, or restore it."$'\n'
-  elif [ -n "${5:-}" ] && [[ $got != *"$5"* ]]; then
-    out+="$f:${got%%$'\t'*}: item $3 under \"## $2\" no longer mentions \"$5\", which $citer relies on. Fix: update $citer to match, or restore it."$'\n'
+    out+="$f:1: no item $number under \"## $section\", but $citer cites it. Fix: update the number $citer cites, or restore item $number."$'\n'
+  elif [[ ${got#*$'\t'} != "$number. $lead"* ]]; then
+    out+="$f:${got%%$'\t'*}: item $number under \"## $section\" no longer starts \"$lead\", which $citer cites. Fix: point $citer at the item's new number, or restore it."$'\n'
+  elif [ -n "$must_contain" ] && [[ $got != *"$must_contain"* ]]; then
+    out+="$f:${got%%$'\t'*}: item $number under \"## $section\" no longer mentions \"$must_contain\", which $citer relies on. Fix: update $citer to match, or restore it."$'\n'
   fi
 }
 want spec "Hard rules" 3 "**Every AC is testable"
