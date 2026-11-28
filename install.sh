@@ -21,6 +21,8 @@ link() { # link <file in this repo> <target>
   mkdir -p "$(dirname "$to")"; ln -s "$from" "$to"; echo "linked $to"
 }
 
+for l in "$dst"/skills/* "$dst"/hooks/*; do t=$(readlink "$l") || continue
+  case $t in "$src"/*) [ -e "$l" ] || { rm "$l"; echo "pruned $l"; } ;; esac; done
 for s in "$src"/skills/*/; do link "skills/$(basename "$s")" "$dst/skills/$(basename "$s")"; done
 for h in "$src"/hooks/*; do link "hooks/$(basename "$h")" "$dst/hooks/$(basename "$h")"; done
 link statusline.js "$dst/statusline.js"
