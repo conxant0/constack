@@ -29,3 +29,4 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 - P4: US-3.AC1; files: skills/quick/SKILL.md, skills/direct/SKILL.md, README.md, CLAUDE.md, install.sh, DECISIONS.md, skills/direct/scripts/test/no-quick-test.sh
 
 ## Rulings
+- 2026-11-28, P1 (direct): skills/build/scripts/test/wf-test.sh may change: the gate --quick cases become --task with the new /direct wording and the bad-mode usage line lists --task, per US-2.AC1-AC4
