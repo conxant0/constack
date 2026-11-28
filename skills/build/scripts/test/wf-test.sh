@@ -373,6 +373,7 @@ expect "entry: empty string" 1 "$none" entry ''
 expect "entry: whitespace only" 1 "$none" entry '   '
 expect "entry: empty quotes" 1 "$none" entry '""'
 expect "entry: two argv" 2 "usage: wf entry '<raw argument>'" entry docs/x/spec.md AFK
+expect "entry: spec then AFK" 0 "spec" entry 'docs/x/spec.md AFK'
 cd "$here" || exit 1
 
 [ $fail = 0 ] && echo "OK wf-test"
