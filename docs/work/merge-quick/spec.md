@@ -65,6 +65,7 @@ As a user who installed with the installer, I want links to skills and hooks tha
 - A `/quick` stub or alias (deleted outright).
 - Pruning dangling links that point outside this checkout, or links anywhere but the skills and hooks folders.
 - Cleaning installs made through skillshare (its own sync owns those links; checked by hand after the build).
+- Making the existing test fixtures run on GNU sed and without a git identity (afk-loop-test, check-mutation-test and wf-test fail the same way at Base on Linux).
 - Changing `/spec`, `/slice`, `/build` or the orchestrated section of `/direct`.
 
 ## Manual check
