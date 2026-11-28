@@ -38,4 +38,14 @@ run "$h" --replace; [ $rc = 0 ] || f "replace: exit $rc: $out"
 [ "$(readlink "$h/.claude/skills/spec")" = "$repo/skills/spec" ] || f "replace: spec not linked"
 ls "$h"/.claude/backups/constack-*/skills/spec/SKILL.md >/dev/null 2>&1 || f "replace: no backup of the old skill"
 
+# US-4.AC1: links to deleted skills and hooks inside this checkout are pruned
+h=$d/prune; mkdir -p "$h/.claude/skills" "$h/.claude/hooks"
+ln -s "$repo/skills/no-such-skill" "$h/.claude/skills/no-such-skill"
+ln -s "$repo/hooks/no-such-hook" "$h/.claude/hooks/no-such-hook"
+run "$h"
+[ $rc = 0 ] || f "prune: exit $rc: $out"
+for p in "$h/.claude/skills/no-such-skill" "$h/.claude/hooks/no-such-hook"; do
+  [ -L "$p" ] && f "prune: $p still there"
+  [ "$(grep -cxF "pruned $p" <<<"$out")" = 1 ] || f "prune: want one 'pruned $p' line: $out"; done
+
 [ $fail = 0 ] && echo "OK install-test"; exit $fail
