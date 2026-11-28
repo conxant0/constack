@@ -33,10 +33,6 @@
 #                            each with "Answer: <answer>" on its line. One file:line: problem. Fix: ... per line, exit 1 on any.
 #   wf parts <index.md>      /direct's "## Parts": one "- Pn: <AC ids>; files: <paths>" line per table row, every
 #                            AC in <index dir>/spec.md in exactly one part. One file:line: problem. Fix: ... per line, exit 1 on any.
-#   wf entry '<raw argument>' /direct's argument, one argv with its literal quotes: first word (after one opening ")
-#                            an existing file prints "spec" (AFK after it is fine); a word ending .md that is no file,
-#                            no argument, or a task with a word AFK after its closing quote (or last, unquoted): exit 1
-#                            with a Fix:. Else prints "task". Two or more argv: exit 2.
 #   wf gate <spec|index.md> [--build|--final|--slice|--direct|--task]
 #                            Current branch is the file's Branch: and the tree is clean.
 #                            --slice and --direct (spec): Status: approved and wf check-spec clean. --task: same,
