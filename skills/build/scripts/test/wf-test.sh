@@ -251,7 +251,7 @@ expect "gate --final all done" 0 "" gate "$g/spec.md" --final
 spec gs 's/^Branch: b/Branch: feature\/x/'; cp "$d/gs.md" "$g/s.md"; git -C "$g" add s.md; git -C "$g" commit -qm spec
 expect "gate --slice approved" 0 "" gate "$g/s.md" --slice
 expect "gate --direct 4 ACs" 0 "" gate "$g/s.md" --direct
-expect "gate --quick 4 ACs" 1 "$g/s.md:1: 4 ACs, /quick takes at most 3. Fix: use the grilled path (/grill-me, /spec, then /direct $g/s.md)." gate "$g/s.md" --quick
+expect "gate --task 4 ACs" 1 "$g/s.md:1: 4 ACs, a one-line task takes at most 3 for /direct. Fix: use the grilled path (/grill-me, /spec, then /direct $g/s.md)." gate "$g/s.md" --task
 sed '/US-1.AC1b:/d' "$g/s.md" > "$g/s3.md"; git -C "$g" add s3.md; git -C "$g" commit -qm three
 expect "gate --quick 3 ACs" 0 "" gate "$g/s3.md" --quick
 sed -i '' 's/^Status: approved/Status: draft/' "$g/s.md"; git -C "$g" commit -qam draft
