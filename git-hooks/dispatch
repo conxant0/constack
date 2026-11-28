@@ -1,0 +1,15 @@
+#!/bin/sh
+# Every hook name in this folder links here. install.sh sets `git config --global core.hooksPath` to this folder, which
+# makes git stop reading each repo's own .git/hooks, so the last line runs that repo's hook of the same name.
+name=$(basename "$0")
+
+if [ "$name" = commit-msg ] && grep -qiE '^co-authored-by:.*(claude|anthropic)' "$1"; then
+  echo "commit-msg: blocked: the message has a Claude Co-Authored-By line:" >&2
+  grep -iE '^co-authored-by:.*(claude|anthropic)' "$1" | sed 's/^/  /' >&2
+  echo "  Fix: delete that line from the message and run the same git commit again." >&2
+  exit 1
+fi
+
+own=$(git rev-parse --git-common-dir 2>/dev/null)/hooks/$name
+[ -x "$own" ] && exec "$own" "$@"
+exit 0

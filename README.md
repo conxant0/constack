@@ -17,7 +17,7 @@ Needs: Claude Code, `git`, `gh` (for `/pr` and `/resolve`), `node` (status line)
 | Step | Command | Writes |
 |---|---|---|
 | 0 | `git worktree add ../<feature> -b feature/<feature> <base>`, then `cd ../<feature> && claude` | |
-| 1 | `/grill-me` (or `/quick "<task>"` for at most 3 ACs: writes the spec, one approval, builds as `/direct` does, then go to 5) | conversation only |
+| 1 | `/grill-me` (or `/direct "<task>"` for at most 3 ACs: writes the spec, one approval, builds it in the same session, then go to 5) | conversation only |
 | 2 | `/spec` (same session) | `docs/work/<feature>/spec.md` |
 | 3 | `/clear`, `/direct <spec>`: any size, no tickets; up to 6 ACs in one session, above that helpers build the index's parts in parallel worktrees | `index.md` (Open questions, parts) + merged, reviewed code |
 | 4 | Fallback: `/clear`, `/slice <spec>`, then `/clear`, `/build <index>` | `tickets/T01-*.md` + merged, reviewed tickets |

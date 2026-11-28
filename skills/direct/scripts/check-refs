@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -u
+root=${1:-$(cd "$(dirname "$0")/../.." && pwd)}
+citer=$root/direct/SKILL.md
+out=""
+want() {
+  local skill=$1 section=$2 number=$3 lead=$4 must_contain=${5:-} got
+  local f=$root/$skill/SKILL.md
+  [ -r "$f" ] || { echo "$f: cannot read"; exit 2; }
+  got=$(awk -v sec="$section" -v n="$number" '
+    /^## / { in_=(substr($0, 4) == sec); next }
+    in_ && index($0, n ". ") == 1 { print NR "\t" $0; exit }' "$f")
+  if [ -z "$got" ]; then
+    out+="$f:1: no item $number under \"## $section\", but $citer cites it. Fix: update the number $citer cites, or restore item $number."$'\n'
+  elif [[ ${got#*$'\t'} != "$number. $lead"* ]]; then
+    out+="$f:${got%%$'\t'*}: item $number under \"## $section\" no longer starts \"$lead\", which $citer cites. Fix: point $citer at the item's new number, or restore it."$'\n'
+  elif [ -n "$must_contain" ] && [[ $got != *"$must_contain"* ]]; then
+    out+="$f:${got%%$'\t'*}: item $number under \"## $section\" no longer mentions \"$must_contain\", which $citer relies on. Fix: update $citer to match, or restore it."$'\n'
+  fi
+}
+want spec "Hard rules" 3 "**Every AC is testable"
+want spec "Hard rules" 4 "**No file paths"
+want spec "Hard rules" 5 "**Status stays"
+want spec Steps 3 "**Write**" "spec checks:"
+[ -z "$out" ] || { printf '%s' "$out"; exit 1; }
