@@ -169,7 +169,8 @@ Leave on. Its SubagentStart hook injects into every subagent (~3 KB each). Skill
 
 ## The tests run on Linux too (2026-11-28)
 - Measured on Linux (GNU sed 4.9, bash 5) before the fix: 4 of 27 test scripts failed, 102 FAIL lines (wf-test 54, wording-test 30, check-mutation-test 10, afk-loop-test 8). The scripts under test were fine; every cause sat in the tests.
-- Causes: 27 BSD-only `sed -i ''` calls (GNU reads `''` as the script) in wf-test, check-mutation-test and afk-loop-test; the afk-loop fake claude's `\n` in a sed replacement (GNU writes a newline, BSD an `n`); its fixture repos had no git identity, which git on Linux will not guess from an empty account name; wording-test linked a venv python by symlink, and a symlinked venv python runs as the base python without the venv's pytest.
-- Fixes: a `sedi` helper in `lib-fixture.sh` (`sed -i.bak` then remove the backup, the same on both), a backslash-newline in the replacement, a local git identity, an exec wrapper for the venv python as the other wording cases already used.
+- Causes: 27 BSD-only `sed -i ''` calls (GNU reads `''` as the script) in wf-test, check-mutation-test and afk-loop-test; afk-loop-test's fixture repos had no git identity, which git on Linux will not guess from an empty account name; wording-test linked a venv python by symlink, and a symlinked venv python runs as the base python without the venv's pytest.
+- Fixes: a `sedi` helper in `lib-fixture.sh` (`sed -i.bak` then remove the backup, the same on both), a local git identity, an exec wrapper for the venv python as the other wording cases already used.
+- Also changed, not a Linux failure: the afk-loop fake claude wrote its fix row with `\n` in a sed replacement, which GNU reads as a newline; it is now a backslash-newline, the POSIX form. Not yet run on macOS.
 - A python with no pytest now fails with one line and a `Fix:` instead of printing SKIP and passing.
 - Held by: `test/lint-portable.sh` (fails on in-place sed with no backup suffix, with its test) and `test/run-all.sh <python with pytest>`, which runs the lint and every test script and fails on any FAIL or SKIP line.
