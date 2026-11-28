@@ -367,6 +367,12 @@ expect "entry: task then AFK" 1 "$afk" entry '"fix notes.md typo" AFK'
 expect "entry: task, slug, AFK" 1 "$afk" entry '"fix notes.md typo" notes-typo AFK'
 expect "entry: unquoted task ending AFK" 1 "$afk" entry 'fix the *.md links AFK'
 expect "entry: AFK inside the quotes" 0 "task" entry '"run the AFK loop docs"'
+none="wf entry: no argument. Fix: give the path of an approved spec or a quoted one-line task (\"<task>\")."
+expect "entry: no argv" 1 "$none" entry
+expect "entry: empty string" 1 "$none" entry ''
+expect "entry: whitespace only" 1 "$none" entry '   '
+expect "entry: empty quotes" 1 "$none" entry '""'
+expect "entry: two argv" 2 "usage: wf entry '<raw argument>'" entry docs/x/spec.md AFK
 cd "$here" || exit 1
 
 [ $fail = 0 ] && echo "OK wf-test"
