@@ -2,7 +2,7 @@
 
 Verdict: PASS
 Spec: docs/work/merge-quick/spec.md
-Range: origin/main...433ff8266f9bf33a18f8e4caa388df4525a5331b
+Range: origin/main...9e49a4b5c69c1c182b8b356e592beb34b211fd6e
 Mode: full
 Date: 2026-11-28
 
@@ -24,7 +24,10 @@ Date: 2026-11-28
 | US-3.AC2 | guard e9d71e6 | yes | `real skills` expects exit 0 and empty output; Mutation patch (wrong lead for rule 4) fails it |
 | US-3.AC3 | ca4d647, guard ac6a78b | yes | `spec rule 3 replaced` expects exit 1, the item, `direct/SKILL.md` as citer and the Fix |
 | US-4.AC1 | 04a6452 | yes | dangling in-checkout links in skills/ and hooks/ are gone, one `pruned <link>` each, exit 0 |
+| US-1.AC7 | d542ab3 | yes | quoted task starting with an existing file, starting with a missing `.md`, and with a space after the opening quote each expect exit 0 and exactly `task`; dropping the quote rule (`[ -z "$q" ]`) or the post-quote trim fails one of them |
 | US-4.AC2 | guard cb2e55f | yes | outside, relative and real folder stay, no `pruned` line; Mutation patch (prune any dangling link) fails `keep: outside link removed` |
+
+Rows other than US-1.AC7 re-read at HEAD: since the last review (433ff82) only `entry()` in wf and wf-test.sh changed (`git diff 433ff82 HEAD -- skills install.sh test`); the AC1-AC6 tests still exercise the same exits (unquoted spec, quoted task, missing `.md`, task + AFK, no argument, spec + AFK).
 
 Copy: `LANE wording: PASS` (no Python files changed). `wf red`: no lines.
 
@@ -35,34 +38,28 @@ Test command from the index (all suites under `skills/*/scripts/test/` and `test
 Run plainly, `review-lanes docs/work/merge-quick/index.md origin/main`:
 
 ```
-LANE full: FAIL start=1795854591 end=1795854615
+LANE full: FAIL start=1795856512 end=1795856533
   FAIL skills/build/scripts/test/afk-loop-test.sh
   FAIL skills/build/scripts/test/check-mutation-test.sh
   FAIL skills/build/scripts/test/wf-test.sh
-LANE clean: FAIL start=1795854591 end=1795854615 unset=<vendor token>,PUBLIC_BASE_URL
+LANE clean: FAIL start=1795856512 end=1795856533 unset=<vendor token>,PUBLIC_BASE_URL
   FAIL skills/build/scripts/test/afk-loop-test.sh
   FAIL skills/build/scripts/test/check-mutation-test.sh
   FAIL skills/build/scripts/test/wf-test.sh
-LANE wording: PASS start=1795854591 end=1795854591
+LANE wording: PASS start=1795856512 end=1795856512
 ```
 
-The same three suites fail at origin/main in a detached worktree run plainly; every other suite passes there. Cause (index Rulings): fixtures use BSD `sed -i ''` (GNU sed 4.9 on this PC) and afk-loop-test's temp repos have no git identity.
-
-Re-run with a BSD-sed shim first on PATH and GIT_AUTHOR_NAME/EMAIL plus GIT_COMMITTER_NAME/EMAIL exported:
+Re-run with a BSD-sed shim first on PATH and GIT_AUTHOR_NAME/EMAIL plus GIT_COMMITTER_NAME/EMAIL exported (the lane result of record per the earlier ruling; spec Out of Scope covers the GNU sed / git identity fixture failures, same at origin/main):
 
 ```
-LANE full: PASS start=1795855056 end=1795855081
-LANE clean: PASS start=1795855056 end=1795855081 unset=<vendor token>,PUBLIC_BASE_URL
-LANE wording: PASS start=1795855056 end=1795855056
+LANE full: PASS start=1795856533 end=1795856558
+LANE clean: PASS start=1795856533 end=1795856558 unset=<vendor token>,PUBLIC_BASE_URL
+LANE wording: PASS start=1795856533 end=1795856533
 ```
-
-Plain wf-test.sh prints one more FAIL line at HEAD than at base (55 vs 54): the `gate --task` cases, including the new US-2.AC3 3-AC draft case, fail plainly only because the `sed -i ''` fixture lines before them never ran; on this PC the green evidence for US-2.AC1 to AC3 is the shim run above.
-
-Plain-run red lanes: Decided (fable): the red-without-shim lanes do not fail this branch; the shim-plus-identity run is the lane result of record, no fix ticket, Out of Scope line plus TODOS.md entry (failure is older than the branch, spec never asked about it; Preference 2).
 
 ## Out of Scope
 
-none. `wf scope` lists all 13 changed source files as unplanned, because it reads ticket files and /direct writes none. Each one is named in a Parts `files:` line in the index (P1: wf, wf-test.sh; P2: direct and quick check-refs and their tests; P3: install.sh, install-test.sh; P4: quick/SKILL.md, direct/SKILL.md, README.md, CLAUDE.md, install.sh, DECISIONS.md, no-quick-test.sh). Checked each Out of Scope line: the cap stays 3 (wf:363); no `/quick` stub or `--quick` alias (no-quick-test, US-2.AC4); prune only matches `"$src"/*` absolute targets directly in skills/ and hooks/ (install.sh:24-25); no skillshare code; `/spec`, `/slice`, `/build` are unchanged, and the `/direct` diff touches only the frontmatter, intro and steps 1-2 (hunks `@@ -1,13` and `@@ -19,8`), not the Orchestrated section.
+none. `wf scope` lists the 14 changed source/doc files as unplanned because /direct writes no ticket files; each is named in a Parts `files:` line in the index except TODOS.md, which the earlier final-review ruling added with its Out of Scope line. The AC7 change touches only `entry()` (wf:591-596) and wf-test.sh. Each Out of Scope line checked: cap stays 3; no `/quick` stub or `--quick` alias; prune only absolute in-checkout targets directly in skills/ and hooks/ (install.sh:24-25); no skillshare code; `/spec`, `/slice`, `/build` and `/direct`'s Orchestrated section unchanged.
 
 ## Structure
 
@@ -71,14 +68,14 @@ none
 
 ## Security
 
-none. Finder: NO FINDINGS. Coverage: all 15 files in `git diff --name-only origin/main...HEAD` (wf, install.sh, direct/check-refs, direct/SKILL.md and the deleted quick files as source; the 4 tests and 5 docs read). Spot-checked caller: `skills/direct/SKILL.md:24` passes `$ARGUMENTS` to `WF entry` through a quoted heredoc (`<<'ARG'`), as the report says; `skills/build/scripts/afk-loop:70` sends `/direct $spec AFK`.
+none. Finder: NO FINDINGS. Coverage: all 17 files in `git diff --stat origin/main...HEAD` (install.sh, wf, direct/SKILL.md, direct/check-refs and the deleted quick files as source; the 4 tests and docs read; index.md and review.md skipped as bookkeeping). Spot-checked callers: `skills/direct/SKILL.md:24` passes `$ARGUMENTS` to `WF entry` through a quoted heredoc (`<<'ARG'`); `skills/build/scripts/afk-loop:70` sends `/direct $spec AFK`, both as the report says.
 
-Safe because: install.sh's prune removes only a dangling link directly inside `~/.claude/skills` or `~/.claude/hooks` whose stored target is absolute and starts with `<checkout>/`, so it never deletes a real file, a live link, a sibling checkout's link or a nested entry. Proof: `bash /tmp/claude-1000/-home-lumbab-Developer-merge-quick/94274452-542b-4490-ac5d-9967bc828f1f/scratchpad/prune-proof.sh /home/lumbab/Developer/merge-quick` (runs the real install.sh with HOME set to a temp dir) ->
+Safe because: install.sh's prune removes only a dangling link directly inside `~/.claude/skills` or `~/.claude/hooks` whose stored target is absolute and starts with `<checkout>/`, so it never deletes a real file, a live link, a sibling checkout's link or a nested entry. Proof: `bash /tmp/claude-1000/-home-lumbab-Developer-merge-quick/9196956b-e2b8-44bc-ac9d-bdcd46b6c955/scratchpad/prune-proof.sh /home/lumbab/Developer/merge-quick` (runs the real install.sh with HOME set to a temp dir) ->
 
 ```
 rc=0
-pruned /tmp/tmp.ZC3ehPfS31/.claude/skills/dead-in
-pruned /tmp/tmp.ZC3ehPfS31/.claude/hooks/dead-hook
+pruned /tmp/tmp.smIsXhityy/.claude/skills/dead-in
+pruned /tmp/tmp.smIsXhityy/.claude/hooks/dead-hook
 gone    skills/dead-in
 gone    hooks/dead-hook
 present skills/sibling
@@ -95,10 +92,10 @@ none
 
 ### Notes
 
-- skills/build/scripts/wf:595: `/direct "README.md needs an install section"` (quoted task whose first word is an existing file) prints `spec`, then `gate --direct` lists spec errors for README.md; dropped as a finding because the spec's Decisions "Entry rule" chose "after any opening quote: an existing file means `spec`"; neither
-- skills/build/scripts/wf:595: `/direct ~/x/docs/work/f/spec.md` (`~` path, not expanded through the quoted heredoc) is refused as `is not a file` although it exists; neither
-- skills/build/scripts/wf:593: `/direct "docs/work/my feature/spec.md"` (spec path with a space) is classed `task`; with AFK it is refused as a task; neither
-- skills/build/scripts/wf:591: `/direct " fix the login typo"` (space after the opening quote) prints `no argument`; neither
+- skills/build/scripts/wf:595: `/direct ~/Developer/.../spec.md` (`~` path, not expanded through the quoted heredoc) is refused as `is not a file` although it exists; neither
+- skills/build/scripts/wf:592: `/direct 'notes.md is stale'` (single-quoted task, only `"` counts as a quote) is refused as `'notes.md is not a file` with a Fix to quote it; neither
+- skills/direct/SKILL.md:31: re-running `/direct "<task>" <slug>` after the approval prints `task` and rewrites the spec and asks again, never reaching step 2's resume; older
+- (dropped: `/direct README.md has a typo`, unquoted task starting with an existing file, prints `spec`: the spec's Decisions "Entry rule" chose "unquoted, an existing file means spec")
 
 ## Verify
 
