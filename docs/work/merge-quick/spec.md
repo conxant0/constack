@@ -15,12 +15,13 @@ The owner has two commands for one job. `/quick` writes a small spec from a one-
 
 As the owner, I want `/direct` to accept either an approved spec or a one-line task, so that I remember one command.
 
-- US-1.AC1: Given an argument whose first word names an existing spec file, when the entry check runs, then it exits 0 and prints exactly `spec`.
+- US-1.AC1: Given an unquoted argument whose first word names an existing spec file, when the entry check runs, then it exits 0 and prints exactly `spec`.
 - US-1.AC2: Given the argument `"fix notes.md typo"` and no file named fix, when the entry check runs, then it exits 0 and prints exactly `task`.
-- US-1.AC3: Given an argument whose first word ends in `.md` and names no existing file, when the entry check runs, then it exits 1, names that word, and its Fix line says to correct the path or to quote a one-line task.
+- US-1.AC3: Given an unquoted argument whose first word ends in `.md` and names no existing file, when the entry check runs, then it exits 1, names that word, and its Fix line says to correct the path or to quote a one-line task.
 - US-1.AC4: Given a quoted one-line task followed by the word `AFK`, when the entry check runs, then it exits 1 and its Fix line says a one-line task needs the owner's approval, so run it attended or pass an approved spec.
 - US-1.AC5: Given no argument at all, when the entry check runs, then it exits 1 and its Fix line says to give the path of an approved spec or a quoted one-line task.
-- US-1.AC6: Given an argument whose first word names an existing spec file and whose second word is `AFK`, when the entry check runs, then it exits 0 and prints exactly `spec`.
+- US-1.AC6: Given an unquoted argument whose first word names an existing spec file and whose second word is `AFK`, when the entry check runs, then it exits 0 and prints exactly `spec`.
+- US-1.AC7: Given a quoted one-line task whose first word names an existing file, ends in `.md`, or follows a space after the opening quote, when the entry check runs, then it exits 0 and prints exactly `task`.
 
 ### US-2 A spec written from a one-line task stays small
 
@@ -49,7 +50,7 @@ As a user who installed with the installer, I want links to skills and hooks tha
 ## Decisions
 
 - Testing seams: the exit codes and printed lines of the workflow script (entry check, task gate), the citation check and the installer, driven from the repo's own test suites with specs, skill copies and throwaway homes written by the tests. US-3.AC1 is a test that searches the shipped files.
-- Entry rule, decided by the workflow script on the first word of the argument, after any opening quote: an existing file means `spec`; a word ending in `.md` that names no file is refused; no argument is refused; anything else is `task`. `AFK` after a spec path is allowed as today; after a task it is refused.
+- Entry rule, decided by the workflow script: an argument that opens with a quote is a `task` (empty quotes are no argument). Otherwise, on the first word: an existing file means `spec`; a word ending in `.md` that names no file is refused; no argument is refused; anything else is `task`. Why the quote wins: a task that starts with a file name (`"greet.sh prints goodbye"`) was routed to the spec gate in the manual check. `AFK` after a spec path is allowed as today; after a task it is refused.
 - One flow: `/direct` step 1 runs the entry check. `spec` continues as today. `task` writes a small spec, asks once, then continues with the same steps in the same session. The task text lives inside step 1, so no step is renumbered and no separate file is read.
 - What the task path keeps from `/quick`, as skill text: stop and say `/grill-me` when the task needs more than 3 ACs, more than 3 questions, a new route, table, migration, tool input, or a paid or auth path; never guess a choice the user can observe, ask it in the one approval message; Out of Scope names the nearest thing a builder might add; the spec stays draft until an explicit yes; the optional feature slug is the word after the quoted task; the index's Open questions line is `none`. The 3-AC cap is checked by the task gate (US-2); the rest is the model's judgement, accepted by the Manual check.
 - Citation check: it moves beside `/direct` and keeps only the 4 `/spec` items the task path cites by number (hard rules 3, 4 and 5, and step 3 with its `spec checks:` line). It no longer checks `/direct`'s own steps, because nothing outside `/direct` cites them.
