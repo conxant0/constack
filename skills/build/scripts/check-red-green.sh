@@ -68,6 +68,13 @@ narrowed() {
   printf '%s' "${cmd:-$verify}"
 }
 
+ruling_for() { # the first ruling line for exact path $1: Approach of a ticket, ## Rulings of an index
+  [ -n "$ticket" ] || return 0
+  local sec=Approach pre='^(- )?Ruling [^ ]+ [(][^()]*$'
+  [ -z "$part" ] || { sec=Rulings; pre='^- [^ ,]+, [^()]*[(][^()]*$'; }
+  KEY="): $1 may change:" SEC=$sec PRE=$pre awk '/^## / { on = substr($0, 4) == ENVIRON["SEC"]; next }
+    on && (p = index($0, ENVIRON["KEY"])) && substr($0, 1, p - 1) ~ ENVIRON["PRE"] { print; exit }' "$ticket"
+}
 finding() {
   if [ "$1" = block ]; then echo "FAIL $2 $3: $4. Fix: $5"; fail=1; else
     echo "WARN $2 $3: $4. Fix: $5"
@@ -83,7 +90,7 @@ wording() {
   done | grep -E '(^|/)tests(_unit)?/(.*/)?test_[^/]*\.py$' | sort -u)
   cmd=$(pytest_cmd " -x" "$tests")
   cmd=${cmd:-false}
-  out=$("$here/mutate-copy" --base "$start" $srcs -- bash -c "$cmd" 2>&1); rc=$?
+  out=$("$here/mutate-copy" --base "$start" $srcs -- bash -o pipefail -c "$cmd" 2>&1); rc=$?
   [ $rc = 0 ] && return 0
   if [ $rc = 1 ] && printf '%s\n' "$out" | grep -q '^SURVIVED '; then
     while read -r l; do
@@ -117,7 +124,7 @@ for r in $reds; do
   run=$(narrowed "$r")
   if [ "$kind" = guard ]; then
     mut=$(git log -1 --format=%b "$r" | grep -m1 '^Mutation: ' | cut -c1-200)
-    if ! out=$(bash -c "$run" 2>&1); then
+    if ! out=$(bash -o pipefail -c "$run" 2>&1); then
       echo "FAIL guard $ac ${r:0:8}: verify failed at the guard commit: $(last_line "$out"). Fix: a guard must pass on arrival; if the code is missing, make it a red commit and add a green one."; fail=1
     elif [ -z "$mut" ]; then
       echo "FAIL guard $ac ${r:0:8}: no \"Mutation: \" line in the commit body. Fix: break the code the way the AC forbids, see the test fail, restore, and add \"Mutation: <change> -> <failure>\" to the guard commit body."; fail=1
@@ -136,14 +143,14 @@ for r in $reds; do
           "regenerate it with git diff at that commit and commit with --cleanup=verbatim (the default cleanup strips blank lines and trailing spaces)."
       else
         git apply "$patch"
-        if bash -c "$run" >/dev/null 2>&1; then
+        if bash -o pipefail -c "$run" >/dev/null 2>&1; then
           finding "$guard_patch_mode" guard-patch "$ac ${r:0:8}" "tests still pass with the Mutation patch applied" \
             "strengthen the test until this patch makes it fail, or pick the break the AC forbids."
         fi
         git apply -R "$patch"
       fi
     fi
-  elif out=$(bash -c "$run" 2>&1); then
+  elif out=$(bash -o pipefail -c "$run" 2>&1); then
     echo "FAIL red $ac ${r:0:8}: verify passed at the red commit. Fix: strengthen the test until it fails without the code; if the code already did this, make it a guard commit with a Mutation: line."; fail=1
   else
     echo "OK   red $ac ${r:0:8}: $(last_line "$out")"
@@ -155,7 +162,17 @@ for r in $reds; do
     touched=$(git diff-tree --no-commit-id --name-only -r "$c")
     for f in $files; do
       if printf '%s\n' "$touched" | grep -qFx -- "$f"; then
-        echo "FAIL frozen $ac: ${c:0:8} \"$subj\" changed $f after its red commit. Fix: revert that change to $f; a test only changes after red with a lead ruling (may change:)."; fail=1
+        rule=$(ruling_for "$f")
+        if [ -n "$rule" ]; then
+          echo "OK   frozen $ac: ${c:0:8} changed $f after its red commit, allowed by ruling in $ticket: $rule"
+        else
+          case $part:$ticket in
+            :) fix="revert that change to $f; a test only changes after red with a ruling line, so pass the ticket, or <index.md>:<part id>, as the 4th argument" ;;
+            :*) fix="revert that change to $f, or add \`Ruling <date> (lead): $f may change: <what>\` under ## Approach in the ticket $ticket" ;;
+            *) fix="revert that change to $f, or log \`wf ruling $ticket \"$part (direct): $f may change: <what>\"\` (a dated line under ## Rulings of the index)" ;;
+          esac
+          echo "FAIL frozen $ac: ${c:0:8} \"$subj\" changed $f after its red commit. Fix: $fix."; fail=1
+        fi
       fi
     done
   done
@@ -170,7 +187,7 @@ if [ -n "$ticket" ]; then
 fi
 
 git checkout -q "$branch"
-if out=$(bash -c "$verify" 2>&1); then
+if out=$(bash -o pipefail -c "$verify" 2>&1); then
   echo "OK   green HEAD ${head:0:8}"
   [ -z "$ticket" ] || wording
 else
