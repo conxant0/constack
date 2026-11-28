@@ -378,6 +378,10 @@ expect "entry: whitespace only" 1 "$none" entry '   '
 expect "entry: empty quotes" 1 "$none" entry '""'
 expect "entry: two argv" 2 "usage: wf entry '<raw argument>'" entry docs/x/spec.md AFK
 expect "entry: spec then AFK" 0 "spec" entry 'docs/x/spec.md AFK'
+expect "entry: quoted task starting with an existing file" 0 "task" entry '"docs/x/spec.md needs a heading"'
+expect "entry: quoted task starting with a missing .md" 0 "task" entry '"notes.md is missing a heading"'
+expect "entry: space after the opening quote" 0 "task" entry '" fix the login typo"'
+expect "entry: quoted task starting with a file, then AFK" 1 "$afk" entry '"docs/x/spec.md needs a heading" AFK'
 cd "$here" || exit 1
 
 [ $fail = 0 ] && echo "OK wf-test"
