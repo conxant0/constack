@@ -1,0 +1,13 @@
+diff --git a/skills/retro/scripts/retro-log b/skills/retro/scripts/retro-log
+index 2f07dd9..5cf4808 100755
+--- a/skills/retro/scripts/retro-log
++++ b/skills/retro/scripts/retro-log
+@@ -82,7 +82,7 @@ messages = sorted(
+ seen = set()
+ 
+ print("## Repeated errors")
+-for err, n in [(e, n) for e, n in errors.most_common() if n >= 2][:5]:
++for err, n in [(e, n) for e, n in errors.items() if n >= 2][:5]:
+     print(f"{n}x {err}")
+ print("## Typed messages")
+ for _, msg in messages:

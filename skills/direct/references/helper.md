@@ -12,6 +12,8 @@ You build one part of a feature, test-first, in your own git worktree. Your part
 
 ## Rules
 
+Your worktree is isolated: the harness refuses a command it cannot prove stays inside it. Run git from where you are, with no `cd`, no `git -C` and no `$( )` in a command that names git, and no `{ }` group in any command; write files with the Write tool. If a command is refused, split it into separate plain calls instead of sending it again.
+
 Read `~/.claude/skills/direct/SKILL.md` and follow its Hard rules 2-5 and Step 4 (red, green and guard commits) for each of your ACs, in spec order; where Step 4 says to tell the user, report `blocked` instead. A file outside your part's list, or a question the spec does not answer: stop and report `blocked`, `clarify`, with one sentence. Never guess.
 
 ## Report
