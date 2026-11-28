@@ -11,7 +11,7 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 |---|---|---|---|
 | P1 | Entry check and task gate in wf | none | doing |
 | P2 | Citation check moves beside /direct | none | doing |
-| P3 | Installer prunes dead links | none | todo |
+| P3 | Installer prunes dead links | none | doing |
 | P4 | /quick removed, /direct takes a task | P1, P2, P3 | todo |
 
 ## Open questions
