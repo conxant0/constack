@@ -33,4 +33,4 @@ Synthesize the grill that just happened into a spec. The file is the handoff: ev
 7. **Approve.** Show the path and ask for approval. Apply requested edits and ask again. On explicit approval, with no `OPEN` left:
    - set `Status: approved`, run `wf check-spec` and the spec checks again, and fix every line they print
    - `git add docs/work/<feature>/spec.md && git commit -m "docs(spec): <feature>"`
-8. **Hand off.** Tell the user: `/clear`, then `/slice docs/work/<feature>/spec.md`. If the spec has at most 6 ACs and none needs a new route, table, migration, tool input, or a paid or auth path, offer `/direct docs/work/<feature>/spec.md` first instead, and say why it fits.
+8. **Hand off.** Tell the user: `/clear`, then `/direct docs/work/<feature>/spec.md` (any size, no tickets). `/slice` then `/build` stay as the fallback.

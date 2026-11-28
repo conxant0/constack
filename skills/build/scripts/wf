@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# wf <subcommand> ...: deterministic checks for /spec, /slice, /build, /final-review.
+# wf <subcommand> ...: deterministic checks for /spec, /slice, /build, /direct, /final-review.
 #   wf base                  The branch this repo's features merge into, as origin/<branch>: git config
 #                            constack.base, else origin/HEAD. Its source goes to stderr. Neither: exit 2.
 #   wf frontier <index.md>   todo tickets whose blockers are all done, one id per line.
@@ -29,10 +29,14 @@
 #                            may follow AC7); each AC has Given, when, then; no OPEN: once approved;
 #                            Out of Scope and Manual check have content; no file paths (dir/file.ext).
 #                            One file:line: problem per line, exit 1 on any.
+#   wf questions <index.md>  /direct's "## Open questions" section exists and says "none" or lists "- Qn: ..." lines,
+#                            each with "Answer: <answer>" on its line. One file:line: problem. Fix: ... per line, exit 1 on any.
+#   wf parts <index.md>      /direct's "## Parts": one "- Pn: <AC ids>; files: <paths>" line per table row, every
+#                            AC in <index dir>/spec.md in exactly one part. One file:line: problem. Fix: ... per line, exit 1 on any.
 #   wf gate <spec|index.md> [--build|--final|--slice|--direct|--quick]
 #                            Current branch is the file's Branch: and the tree is clean.
-#                            --slice (spec): Status: approved and wf check-spec clean. --direct: same, plus
-#                            at most 6 ACs (lettered ones count); --quick: same, at most 3. Each new line ends with a Fix:.
+#                            --slice and --direct (spec): Status: approved and wf check-spec clean. --quick: same,
+#                            plus at most 3 ACs (lettered ones count). Each new line ends with a Fix:.
 #                            --build: settings allow git, check-red-green.sh and wf (skip in auto or
 #                            bypass mode), and every ignored venv / node_modules / .env is listed in
 #                            .worktreeinclude. --final: every ticket in the index next to it is done.
@@ -44,6 +48,9 @@
 #   wf red <spec.md> [head]   Every spec AC (lettered ones like AC7b too) has a commit whose subject is
 #                            exactly "test(<id>): red" or "test(<id>): guard" in Base..head (Base from the spec, head
 #                            default HEAD). One file:line: problem per AC without one, exit 1 on any.
+#   wf lead <index.md> [head] /direct's orchestrator wrote no AC code: its own commits (first-parent, non-merge, in
+#                            Base..head) hold no "<type>(US-n.ACm): ..." subject and change at most 40 lines outside the
+#                            index's folder. One file:line: problem. Fix: ... per line, exit 1 on any.
 #   wf size <index.md> [head] Non-test files changed in Base...head that cross 1000 lines, or were already
 #                            over 1000 and grew by more than 100. One path: before -> after per file, exit 1 on any.
 #   wf check-review <review.md> [head]
@@ -349,16 +356,22 @@ gate() {
       [ "$rule" = approved ] || echo "$f:${ln:-1}: Status is ${rule:-missing}, /${mode#--} needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run."
       have=$(check_spec "$f") || { printf '%s\n' "$have"; echo "$f:1: wf check-spec failed (lines above). Fix: correct each line in the spec, commit, re-run."; }
     fi
-    if [ "$mode" = --direct ]; then
-      need=$(grep -cE '^- US-[0-9]+[.]AC[0-9]+[a-z]?:' "$f")
-      [ "$need" -le 6 ] || echo "$f:1: $need ACs, /direct takes at most 6. Fix: run /slice $f instead."
-    fi
     if [ "$mode" = --quick ]; then
       need=$(grep -cE '^- US-[0-9]+[.]AC[0-9]+[a-z]?:' "$f")
-      [ "$need" -le 3 ] || echo "$f:1: $need ACs, /quick takes at most 3. Fix: run /direct $f instead (at most 6 ACs), else /slice $f."
+      [ "$need" -le 3 ] || echo "$f:1: $need ACs, /quick takes at most 3. Fix: use the grilled path (/grill-me, /spec, then /direct $f)."
     fi
     if [ "$mode" = --final ]; then
-      [ "$(frontier "$dir/index.md" 2>&1)" = "all done" ] || echo "$dir/index.md:1: not every ticket is done (run /build)"
+      if [ "$(frontier "$dir/index.md" 2>&1)" != "all done" ]; then
+        have=
+        if grep -q '^## Parts' "$dir/index.md" && [ ! -e "$dir/tickets" ]; then
+          have=$(git -C "$root" log --format='%H %s' "$(base_ref "$dir/index.md")..HEAD" 2>/dev/null | awk -v f="$dir/index.md" '
+            NR == FNR { if ($3 == "doing") { id[++n]=$1; ln[n]=$4 }; next }
+            { for (i=1; i<=n; i++) if (index($0, " merge " id[i] ":") == 41 && !(id[i] in got)) got[id[i]]=substr($1, 1, 8) }
+            END { for (i=1; i<=n; i++) if (id[i] in got) printf "%s:%d: %s is merged (%s) but still doing. Fix: finish the no-ticket build (lead check, quality review, full suite), then run wf done %s %s %s.\n", f, ln[i], id[i], got[id[i]], f, id[i], got[id[i]] }
+          ' FS='\t' <(tickets "$dir/index.md") FS=' ' -)
+        fi
+        [ -n "$have" ] && printf '%s\n' "$have" || echo "$dir/index.md:1: not every ticket is done (run /build)"
+      fi
     fi
     if [ "$mode" = --build ]; then
       for rule in 'Bash(git:*)' 'Bash(${CLAUDE_SKILL_DIR}/scripts/check-red-green.sh:*)' 'Bash(${CLAUDE_SKILL_DIR}/scripts/wf:*)'; do
@@ -445,6 +458,22 @@ red() {
   return 1
 }
 
+lead() {
+  local f=$1 head=${2:-HEAD} root base out plan n bad=0
+  [ -r "$f" ] || { echo "$f: cannot read"; exit 2; }
+  root=$(git -C "$(dirname "$f")" rev-parse --show-toplevel 2>/dev/null) || { echo "$f: not in a git repo"; exit 2; }
+  base=$(base_ref "$f")
+  [ -n "$base" ] || { echo "$f:1: missing \"Base:\" line"; exit 2; }
+  out=$(git -C "$root" log --reverse --first-parent --no-merges --format='%h %s' --abbrev=8 "$base..$head") || { echo "git log $base..$head failed"; exit 2; }
+  printf '%s\n' "$out" | awk -v f="$f" '$2 ~ /^[a-z]+\(US-[0-9]+[.]AC[0-9]+[a-z]?\)/ { s=$0; sub(/^[^ ]* /, "", s)
+    printf "%s:1: commit %s \"%s\" is the lead'"'"'s own AC commit. Fix: hand AC work to a helper and merge the helper'"'"'s branch with a merge commit (git merge --no-ff).\n", f, $1, s; bad=1 }
+    END { exit bad }' || bad=1
+  plan=$(cd "$(dirname "$f")" && git rev-parse --show-prefix)
+  n=$(git -C "$root" log --first-parent --no-merges --numstat --format= "$base..$head" | awk -v plan="$plan" '$1 != "-" && index($3, plan) != 1 { n += $1 + $2 } END { print n + 0 }')
+  [ "$n" -le 40 ] || { echo "$f:1: the lead's own commits change $n lines outside $plan, limit 40. Fix: hand the work to a helper and merge its branch with a merge commit (git merge --no-ff)."; bad=1; }
+  return $bad
+}
+
 check_review() {
   local f=$1 head=${2:-HEAD} root spec end ln changed out log doneids lf=()
   [ -r "$f" ] || { echo "$f: cannot read"; exit 2; }
@@ -517,6 +546,45 @@ check_review() {
   [ -z "$out" ] || { printf '%s\n' "$out"; exit 1; }
 }
 
+questions() {
+  [ -r "$1" ] || { echo "$1: cannot read"; exit 2; }
+  awk -v f="$1" '
+    /^## / { sec=substr($0, 4); sub(/ +$/, "", sec); if (sec == "Open questions") at=FNR; next }
+    sec == "Open questions" && ($0 ~ /^-? *none *$/ || $0 ~ /^- Q[0-9]+:/) { has=1 }
+    sec == "Open questions" && /^- Q[0-9]+:/ && $0 !~ / Answer: *[^ ]/ { q=$2; sub(/:$/, "", q)
+      printf "%s:%d: %s has no answer. Fix: send %s to the decision agent (skills/build/references/decide.md) and record its answer on that line as \"Answer: <answer>\".\n", f, FNR, q, q; bad=1 }
+    END { if (bad) exit 1; if (!has) { printf "%s:%d: no \"## Open questions\" section. Fix: list every choice the spec leaves open or contradicts as \"- Q<n>: <question> Answer: <answer>\", send each to the decision agent (skills/build/references/decide.md), and write \"none\" when there are none.\n", f, at ? at : 1; exit 1 } }' "$1"
+}
+
+parts() {
+  local f=$1 spec rows; load "$f"
+  spec=$(dirname "$f")/spec.md
+  [ -r "$spec" ] || { echo "$f:1: no spec.md next to the index"; exit 2; }
+  printf '%s\n' "$rows" | awk -F'\t' -v f="$f" -v spec="$spec" -v AC='US-[0-9]+[.]AC[0-9]+[a-z]?' '
+    FNR == 1 { fi++ }
+    fi == 1 { if (NF) { rid[++nr]=$1; rln[$1]=$4; isdone[$1]=($3 ~ /^done /); m=split($2, b, ","); for (j=1; j<=m; j++) reach[$1, b[j]]=1 }; next }
+    fi == 2 { if (match($0, "^- " AC ":")) { a=substr($0, 3, RLENGTH - 3); sa[++ns]=a; sln[a]=FNR }; next }
+    /^## / { sec=substr($0, 4); sub(/ +$/, "", sec); next }
+    sec == "Parts" && /^- [A-Z][0-9]+:/ { id=$0; sub(/^- /, "", id); sub(/:.*/, "", id); pln[id]=FNR; pid[++np]=id
+      t=$0; sub(/^.*; *files: */, "", t); gsub(/`/, "", t); m=split(t, w, / *, */)
+      for (j=1; j<=m; j++) if (w[j] != "") { k=++nf; fid[k]=id; fpath[k]=w[j]; fln[k]=FNR }
+      t=$0; sub(/^- [^:]*:/, "", t); sub(/; *files:.*/, "", t)
+      while (match(t, AC)) { a=substr(t, RSTART, RLENGTH); t=substr(t, RSTART + RLENGTH)
+        if (a in in_) { printf "%s:%d: %s is listed under %s and %s. Fix: leave it in one of them.\n", f, FNR, a, in_[a], id; bad=1 }
+        else in_[a]=id; n[id]++ }
+      if (n[id] > 13) { printf "%s:%d: %s lists %d ACs. Fix: split it so no part has more than 13.\n", f, FNR, id, n[id]; bad=1 } }
+    END {
+      for (i=1; i<=nr; i++) if (!(rid[i] in pln)) { printf "%s:%d: %s has a row but no line under \"## Parts\". Fix: add \"- %s: <AC ids>; files: <paths it owns>\", or delete its row.\n", f, rln[rid[i]], rid[i], rid[i]; bad=1 }
+      for (i=1; i<=np; i++) if (!(pid[i] in rln)) { printf "%s:%d: %s has a line under \"## Parts\" but no row. Fix: add its row to the table, or delete the line.\n", f, pln[pid[i]], pid[i]; bad=1 }
+      for (i=1; i<=ns; i++) if (!(sa[i] in in_)) { printf "%s:%d: %s is in no part. Fix: add it to exactly one part'"'"'s line under \"## Parts\" in %s.\n", spec, sln[sa[i]], sa[i], f; bad=1 }
+      for (u in rln) for (v in rln) for (x in rln) if (reach[v, u] && reach[u, x]) reach[v, x]=1
+      for (i=1; i<=nf; i++) for (j=i+1; j<=nf; j++) { u=fid[i]; v=fid[j]
+        if (u == v || fpath[i] != fpath[j] || reach[u, v] || reach[v, u] || isdone[u] || isdone[v]) continue
+        printf "%s:%d: %s and %s both list %s, and neither is blocked by the other. Fix: give the file to one part, or order the two (one blocked by the other).\n", f, fln[j], u, v, fpath[i]; bad=1 }
+      exit bad
+    }' - "$spec" "$f"
+}
+
 commit() { # commit <index> <message>: commit only the index
   git -C "$(dirname "$1")" commit -q -m "$2" -- "$(basename "$1")" || { echo "$1: commit failed"; exit 2; }
 }
@@ -567,12 +635,15 @@ case $cmd in
   waves) [ $# -eq 1 ] || { echo "usage: wf waves <index.md>"; exit 2; }; waves "$1" ;;
   check-plan) [ $# -eq 1 ] || { echo "usage: wf check-plan <index.md>"; exit 2; }; check_plan "$1" ;;
   check-spec) [ $# -eq 1 ] || { echo "usage: wf check-spec <spec.md>"; exit 2; }; check_spec "$1" ;;
+  parts) [ $# -eq 1 ] || { echo "usage: wf parts <index.md>"; exit 2; }; parts "$1" ;;
+  questions) [ $# -eq 1 ] || { echo "usage: wf questions <index.md>"; exit 2; }; questions "$1" ;;
   gate)
     [ $# -eq 1 ] || { [ $# -eq 2 ] && case $2 in --build|--final|--slice|--direct|--quick) true ;; *) false ;; esac; } ||
       { echo "usage: wf gate <spec|index.md> [--build|--final|--slice|--direct|--quick]"; exit 2; }
     gate "$@" ;;
   scope) [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wf scope <index.md> [head]"; exit 2; }; scope "$@" ;;
   check-review) [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wf check-review <review.md> [head]"; exit 2; }; check_review "$@" ;;
+  lead) [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wf lead <index.md> [head]"; exit 2; }; lead "$@" ;;
   red) [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wf red <spec.md> [head]"; exit 2; }; red "$@" ;;
   size) [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wf size <index.md> [head]"; exit 2; }; size "$@" ;;
   set)
@@ -595,5 +666,5 @@ case $cmd in
       grep -qxF check-warnings.log "$gd/info/exclude" 2>/dev/null || echo check-warnings.log >> "$gd/info/exclude"
     fi
     grep -Fxq -- "$line" "$1/check-warnings.log" 2>/dev/null || printf '%s\n' "$line" >> "$1/check-warnings.log" ;;
-  *) echo "usage: wf base|frontier|chains|waves|check-plan|check-spec|check-review|gate|scope|red|size|set|done|ruling|mode|warn-log <index.md> ..."; exit 2 ;;
+  *) echo "usage: wf base|frontier|chains|waves|check-plan|check-spec|questions|parts|check-review|gate|scope|red|lead|size|set|done|ruling|mode|warn-log <index.md> ..."; exit 2 ;;
 esac
