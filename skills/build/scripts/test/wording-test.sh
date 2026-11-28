@@ -6,7 +6,7 @@ bad() { echo "FAIL wording-test: $*"; fail=1; }
 
 . "$(dirname "$0")/lib-fixture.sh"; . "$(dirname "$0")/lib-py.sh"; s=$(cd "$(dirname "$0")/.." && pwd)
 py=${1:-python3}
-"$py" -c 'import pytest' 2>/dev/null || { echo "SKIP wording-test: no python with pytest"; exit 0; }
+need_pytest "$py" wording-test
 export PYTHONDONTWRITEBYTECODE=1
 printf 'wording=warn\ndelivers=block\n' > "$d/c.conf"; export CHECKS_CONF=$d/c.conf
 V="cd pkg && $py -m pytest -q -p no:cacheprovider"
@@ -91,7 +91,7 @@ for form in envu assign pyvar; do
 $x
 MSG = \"Keep it short.\"
 "
-  mkdir -p "$d/r9-$form/venv/bin"; ln -s "$real" "$d/r9-$form/venv/bin/python3"; echo venv/ >> "$d/r9-$form/.git/info/exclude"
+  mkdir -p "$d/r9-$form/venv/bin"; printf '#!/bin/sh\nexec %q "$@"\n' "$real" > "$d/r9-$form/venv/bin/python3"; chmod +x "$d/r9-$form/venv/bin/python3"; echo venv/ >> "$d/r9-$form/.git/info/exclude"
   fx_ticket "$d/f9-$form/tickets/T01-w.md" '- US-1.AC1: Given a, when b, then c'
   out=$(TOKEN=1 "$s/check-red-green.sh" "$d/r9-$form" "$base" "$V9" "$d/f9-$form/tickets/T01-w.md"); rc=$?
   [ $rc = 0 ] || bad "US-3.AC5 [$form] wording exit $rc: $out"

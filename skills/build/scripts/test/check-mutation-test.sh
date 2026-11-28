@@ -2,6 +2,7 @@
 set -u
 PY=${1:-python3}
 tool=$(cd "$(dirname "$0")/.." && pwd)/check-mutation
+. "$(dirname "$0")/lib-fixture.sh"
 d=$(mktemp -d); trap 'rm -rf "$d"' EXIT
 fail=0
 cd "$d" && git init -q . && git config user.email t@t && git config user.name t
@@ -35,7 +36,7 @@ EOF
 git add -A && git commit -qm base
 TESTS="$PY -m unittest discover -s tests"
 mkpatch() {
-  sed -i '' "$2" calc.py; git diff -- calc.py > "docs/work/x/mutations/$1.diff"; git checkout -q -- calc.py
+  sedi "$2" calc.py; git diff -- calc.py > "docs/work/x/mutations/$1.diff"; git checkout -q -- calc.py
 }
 review() {
   printf '# X: final review\n\nVerdict: FAIL\n\n## Acceptance criteria\n\n| AC | Red commit | Test checks the AC | Note |\n|---|---|---|---|\n| US-1.AC1 | abc | yes | |\n| US-1.AC2 | def | no | %s |\n' "$2" > "docs/work/x/$1.md"
@@ -52,7 +53,7 @@ at() { echo "$d/docs/work/x/$1.md:$(grep -n "^. US-1.AC2 " "$d/docs/work/x/$1.md
 mkpatch wording 's/Hello there\./Hi there./;s/may pass/is allowed/;s/Welcome, /Hi, /'
 review wording "Mutation: mutations/wording.diff; $TESTS"
 review missing "Mutation: mutations/missing.diff; $TESTS"
-mkpatch stale 's/^LIMIT = 3/LIMIT = 9/'; sed -i '' 's/^-LIMIT = 3/-LIMIT = 7/' docs/work/x/mutations/stale.diff
+mkpatch stale 's/^LIMIT = 3/LIMIT = 9/'; sedi 's/^-LIMIT = 3/-LIMIT = 7/' docs/work/x/mutations/stale.diff
 review stale "Mutation: mutations/stale.diff; $TESTS"
 review nocmd "Mutation: mutations/wording.diff"
 mkpatch fpiece 's/{GREETING} Welcome, {name}\./{GREETING}{name}/'

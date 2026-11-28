@@ -8,7 +8,7 @@ Spec-driven, test-first feature building with Claude Code: grill the idea, write
 git clone <this repo> && cd constack && ./install.sh
 ```
 
-It links each skill, the hooks and the status line into `~/.claude`, so `git pull` here updates them. Your `~/.claude/CLAUDE.md` gets one import line (`@<this repo>/CLAUDE.md`), so your own rules stay. `settings.json` is copied only when you have none; otherwise merge `settings.example.json` by hand. Anything already there is left alone and listed; `./install.sh --replace` moves those to `~/.claude/backups/` first. Tests: `test/install-test.sh`, `skills/build/scripts/test/*.sh`, `skills/pr/scripts/test/*.sh` and `skills/direct/scripts/test/*.sh`.
+It links each skill, the hooks and the status line into `~/.claude`, so `git pull` here updates them. Your `~/.claude/CLAUDE.md` gets one import line (`@<this repo>/CLAUDE.md`), so your own rules stay. `settings.json` is copied only when you have none; otherwise merge `settings.example.json` by hand. Anything already there is left alone and listed; `./install.sh --replace` moves those to `~/.claude/backups/` first. Tests: `test/run-all.sh <python with pytest>` runs every test script (`test/*-test.sh` and `skills/*/scripts/test/*-test.sh`) and `test/lint-portable.sh`, one line each, and exits 1 on any failure. A venv's `bin/python3` works as the argument.
 
 Needs: Claude Code, `git`, `gh` (for `/pr` and `/resolve`), `node` (status line), `python3` (`afk-loop`). Optional: [rtk](https://github.com/rtk-ai/rtk) (the hook and `RTK.md` do nothing without it).
 
@@ -32,7 +32,7 @@ Extras: `/resolve` turns PR review comments into fixes and replies. `/retro` rev
 
 - **Base branch.** Features merge into what `skills/build/scripts/wf base` prints: `git config constack.base <branch>` in that repo, else `origin/HEAD` (usually `main`). Set it once per repo if you merge into something else, e.g. `git config constack.base staging`.
 - **Private rules (optional).** Skills read extra checks from `~/.claude/checks/` when present, so a team can keep its own rules out of this repo: `spec-*` (executables `/spec` runs on each spec; exit 1 flags, 2 cannot run), `pr.md` (extra `/pr` rules), `afk-disallowed-tools` (tools `afk-loop` sessions may not use, one per line), `clean-suite-env` (env var names `/final-review` unsets for its clean-checkout run).
-- **macOS.** The tests in `skills/build/scripts/test/` use BSD `sed -i ''`. On Linux, change it to `sed -i`.
+- **macOS and Linux.** The scripts and tests run on both (BSD and GNU `sed`, bash 3.2 and later). `test/lint-portable.sh` fails on an in-place `sed` with no backup suffix, the form that runs on only one of them.
 - **Models.** Implementers and per-ticket reviewers run on Sonnet. `/final-review` and its security pass run on Opus.
 - **Plugins.** `/encode-comments` needs [pstack](https://github.com/cursor/plugins) (`pstack@cursor-plugins`). The settings also enable [humanizer](https://github.com/blader/humanizer) and two built-in plugins; the other skills work without them.
 

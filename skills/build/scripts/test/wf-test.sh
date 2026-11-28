@@ -3,6 +3,7 @@
 set -u
 wf=$(cd "$(dirname "$0")/.." && pwd)/wf
 d=$(mktemp -d); trap 'rm -rf "$d"' EXIT
+. "$(dirname "$0")/lib-fixture.sh"
 fail=0
 
 index() { # index <name> <rows...>: write a minimal index.md with those table rows
@@ -89,7 +90,7 @@ ticket() { # ticket <file> <blocked by> <ac id> <ac text>
     for s in Approach Constraints Verify "Out of scope"; do printf '## %s\n\n- x\n\n' "$s"; done; } > "$1"
 }
 broken() { # broken <name> <file under the plan> <sed script>: a plan copy with one edit
-  plan "$d/$1"; sed -i '' "$3" "$d/$1/$2"
+  plan "$d/$1"; sedi "$3" "$d/$1/$2"
 }
 plan "$d/good"
 expect "check-plan clean" 0 "" check-plan "$d/good/index.md"
@@ -120,17 +121,17 @@ broken notest tickets/T02-t.md 's/^### US-1.AC2b$/### US-1.AC2/'
 expect "AC without a test heading" 1 "$d/notest/tickets/T02-t.md:8: US-1.AC2b has no ### Tests heading naming it" check-plan "$d/notest/index.md"
 broken prefix tickets/T01-t.md 's/^### US-1.AC1$/### US-1.AC10/'
 expect "AC10 heading does not cover AC1" 1 "$d/prefix/tickets/T01-t.md:8: US-1.AC1 has no ### Tests heading naming it" check-plan "$d/prefix/index.md"
-broken overlap index.md 's/| T02 | b | T01 |/| T02 | b | none |/'; sed -i '' 's/^Blocked by: T01/Blocked by: none/' "$d/overlap/tickets/T02-t.md"
+broken overlap index.md 's/| T02 | b | T01 |/| T02 | b | none |/'; sedi 's/^Blocked by: T01/Blocked by: none/' "$d/overlap/tickets/T02-t.md"
 expect "shared file, no edge" 1 "$d/overlap/tickets/T02-t.md:12: T02 shares src/shared.py with T01, but neither is blocked by the other" check-plan "$d/overlap/index.md"
-sed -i '' 's/| T01 | a | none | todo |/| T01 | a | none | done abc |/' "$d/overlap/index.md"
+sedi 's/| T01 | a | none | todo |/| T01 | a | none | done abc |/' "$d/overlap/index.md"
 expect "shared file with a done ticket" 0 "" check-plan "$d/overlap/index.md"
 plan "$d/big"; five=$'- US-1.AC3: Given g, when h, then i.\\\n- US-1.AC4: Given g, when h, then j.\\\n- US-1.AC5: Given g, when h, then k.\\\n- US-1.AC6: Given g, when h, then l.'
-sed -i '' "/^- US-1.AC1:/a\\
+sedi "/^- US-1.AC1:/a\\
 $five
 " "$d/big/tickets/T01-t.md" "$d/big/spec.md"
-sed -i '' 's/^### US-1.AC1$/### US-1.AC1, US-1.AC3, US-1.AC4, US-1.AC5, US-1.AC6/' "$d/big/tickets/T01-t.md"
+sedi 's/^### US-1.AC1$/### US-1.AC1, US-1.AC3, US-1.AC4, US-1.AC5, US-1.AC6/' "$d/big/tickets/T01-t.md"
 expect "five ACs in one ticket" 1 "$d/big/tickets/T01-t.md:8: T01 delivers 5 ACs, max 4: split it (red-green runs Verify once per AC)" check-plan "$d/big/index.md"
-sed -i '' 's/| T01 | a | none | todo |/| T01 | a | none | done abc |/' "$d/big/index.md"
+sedi 's/| T01 | a | none | todo |/| T01 | a | none | done abc |/' "$d/big/index.md"
 expect "five ACs in a done ticket" 0 "" check-plan "$d/big/index.md"
 plan "$d/nofile"; rm "$d/nofile/tickets/T02-t.md"
 expect "row without ticket file" 1 "$d/nofile/index.md:11: T02 has no ticket file tickets/T02-*.md
@@ -149,7 +150,7 @@ broken tenth tickets/T02-t.md 's#src/shared.py#src/other.py#; s#^- x$#- Consumes
 expect "T010 does not name T01" 1 "$d/tenth/tickets/T02-t.md:4: $noreason" check-plan "$d/tenth/index.md"
 broken shares tickets/T02-t.md 's#src/shared.py#src/other.py#; /^- modify:/a\
 - shares: table:saved_searches'
-sed -i '' '/^- modify:/a\
+sedi '/^- modify:/a\
 - shares: `table:saved_searches` (rows T02 deletes)' "$d/shares/tickets/T01-t.md"
 expect "edge justified by a shares line" 0 "" check-plan "$d/shares/index.md"
 expect "waves names a shares edge" 0 "Waves: 2
@@ -158,16 +159,16 @@ Wave 1: T01
 Wave 2: T02" waves "$d/shares/index.md"
 broken testonly tickets/T02-t.md 's#src/shared.py#src/other.py#; /^- modify:/a\
 - test: `tests/test_saved.py` (add one test)'
-sed -i '' '/^- modify:/a\
+sedi '/^- modify:/a\
 - test: `tests/test_saved.py`' "$d/testonly/tickets/T01-t.md"
 expect "a shared test file is no reason" 1 "$d/testonly/tickets/T02-t.md:4: T02 is blocked by T01 only because both add tests to tests/test_saved.py. Fix: give T02 its own new test file, then drop T01 from T02's Blocked by (index and ticket)." check-plan "$d/testonly/index.md"
-sed -i '' 's#^- test: `tests/test_saved.py`$#- modify: `tests/test_saved.py` (one pin changes)#' "$d/testonly/tickets/T01-t.md"
+sedi 's#^- test: `tests/test_saved.py`$#- modify: `tests/test_saved.py` (one pin changes)#' "$d/testonly/tickets/T01-t.md"
 expect "a test file one ticket modifies is a reason" 0 "" check-plan "$d/testonly/index.md"
 broken prose tickets/T02-t.md 's#- modify: `src/shared.py`#- modify, only if a limit is crossed: src/a.py, `src/shared.py` (one line).#'
 expect "a path later in a prose Files line is a reason" 0 "" check-plan "$d/prose/index.md"
 broken sweep tickets/T02-t.md 's#src/shared.py#src/other.py#; s#^- x$#- Consumes: the merged work of T01 (runs last: full suite and CHANGELOG)#'
 expect "a run-last ticket names its blockers in Consumes" 0 "" check-plan "$d/sweep/index.md"
-sed -i '' 's/| T01 | a | none | todo |/| T01 | a | none | done abc |/' "$d/bare/index.md"
+sedi 's/| T01 | a | none | todo |/| T01 | a | none | done abc |/' "$d/bare/index.md"
 expect "edge to a done ticket needs no reason" 0 "" check-plan "$d/bare/index.md"
 # a Consumes line wf cannot read: the shared file still gives a reason, so only the format line prints
 consumesfix="a Consumes line needs a colon right after \"Consumes\", or wf cannot read which ticket it names. Fix: write it as '- Consumes: <signature> from T0n (<path>)'."
@@ -175,15 +176,15 @@ broken consfrom tickets/T02-t.md 's#^- x$#- Consumes from T01 (`src/shared.py`):
 expect "Consumes without a colon" 1 "$d/consfrom/tickets/T02-t.md:16: $consumesfix" check-plan "$d/consfrom/index.md"
 broken consbare tickets/T02-t.md 's#^- x$#- Consumes#'
 expect "a bare Consumes" 1 "$d/consbare/tickets/T02-t.md:16: $consumesfix" check-plan "$d/consbare/index.md"
-sed -i '' 's/| T02 | b | T01 | todo |/| T02 | b | T01 | done abc |/' "$d/consfrom/index.md"
+sedi 's/| T02 | b | T01 | todo |/| T02 | b | T01 | done abc |/' "$d/consfrom/index.md"
 expect "Consumes format in a done ticket is not checked" 0 "" check-plan "$d/consfrom/index.md"
 
 # waves: count, the longest path with each edge's kind, one line per wave, a note past 5 at once
 plan "$d/w"
 for t in T03 T04; do ticket "$d/w/tickets/$t-t.md" none US-1.AC1 'Given a, when b, then c.'; done
-sed -i '' 's#src/shared.py#src/three.py#' "$d/w/tickets/T03-t.md"
-sed -i '' 's#src/shared.py#src/four.py#; s#^Blocked by: none#Blocked by: T02, T03#; s#^- x$#- Consumes: `h()` from T03#' "$d/w/tickets/T04-t.md"
-sed -i '' 's/^| T02 | b | T01 | todo |$/&\
+sedi 's#src/shared.py#src/three.py#' "$d/w/tickets/T03-t.md"
+sedi 's#src/shared.py#src/four.py#; s#^Blocked by: none#Blocked by: T02, T03#; s#^- x$#- Consumes: `h()` from T03#' "$d/w/tickets/T04-t.md"
+sedi 's/^| T02 | b | T01 | todo |$/&\
 | T03 | c | none | todo |\
 | T04 | d | T02, T03 | todo |/' "$d/w/index.md"
 expect "waves" 0 "Waves: 3
@@ -205,7 +206,7 @@ expect "waves cycle" 2 "$d/loop.md: blocked-by cycle through T01. Fix: run wf ch
 # check-spec: a clean spec, then one broken copy per rule
 spec() { # spec <name> [sed script]
   printf '# X\n\nStatus: approved\nBranch: b\nBase: origin/main\nDate: 2026-10-26\n\n## User stories\n\n### US-1 One\n\n- US-1.AC1: Given a, when b, then c.\n- US-1.AC1b: Given a, when b, then d.\n- US-1.AC2: Given a, when b, then e.\n\n### US-2 Two\n\n- US-2.AC1: Given a, when b, then the docs/work index updates.\n\n## Out of Scope\n\n- y (later)\n\n## Manual check\n\n1. z\n' > "$d/$1.md"
-  [ -z "${2:-}" ] || sed -i '' "$2" "$d/$1.md"
+  [ -z "${2:-}" ] || sedi "$2" "$d/$1.md"
 }
 spec sgood
 expect "check-spec clean" 0 "" check-spec "$d/sgood.md"
@@ -227,7 +228,7 @@ spec spath 's/then e\./then src\/app\/main.py changes./'
 expect "file path" 1 "$d/spath.md:14: file path (rule 4: no file paths)" check-spec "$d/spath.md"
 
 # gate: branch, clean tree, --build settings and .worktreeinclude, --final all done
-g=$d/gate; plan "$g"; sed -i '' 's/^Branch: b/Branch: feature\/x/' "$g/index.md"; printf 'Branch: feature/x\n' >> "$g/spec.md"
+g=$d/gate; plan "$g"; sedi 's/^Branch: b/Branch: feature\/x/' "$g/index.md"; printf 'Branch: feature/x\n' >> "$g/spec.md"
 git -C "$g" init -q -b feature/x; git -C "$g" config user.email t@t; git -C "$g" config user.name t
 mkdir -p "$g/.claude" "$g/venv" && echo x > "$g/venv/x" && printf 'venv/\n' > "$g/.gitignore"
 printf '{"permissions":{"allow":["Bash(git:*)","Bash(${CLAUDE_SKILL_DIR}/scripts/check-red-green.sh:*)","Bash(${CLAUDE_SKILL_DIR}/scripts/wf:*)"]}}\n' > "$g/.claude/settings.json"
@@ -240,12 +241,12 @@ expect "gate wrong branch" 1 "$g/index.md:4: on branch other, want feature/x" ga
 git -C "$g" checkout -q feature/x; echo y >> "$g/spec.md"
 expect "gate dirty" 1 "$(cd "$g" && pwd -P): uncommitted changes (git status --porcelain is not empty)" gate "$g/spec.md"
 git -C "$g" checkout -q -- spec.md
-git -C "$g" rm -q .worktreeinclude; sed -i '' 's/,"Bash(${CLAUDE_SKILL_DIR}\/scripts\/wf:\*)"//' "$g/.claude/settings.json"; git -C "$g" commit -qam drop
+git -C "$g" rm -q .worktreeinclude; sedi 's/,"Bash(${CLAUDE_SKILL_DIR}\/scripts\/wf:\*)"//' "$g/.claude/settings.json"; git -C "$g" commit -qam drop
 r_=$(cd "$g" && pwd -P)
 expect "gate --build gaps" 1 "$r_/.claude/settings.local.json: missing allow rule \"Bash(\${CLAUDE_SKILL_DIR}/scripts/wf:*)\" (fine in auto or bypass mode)
 $r_/.worktreeinclude: add venv/ (ignored, so new worktrees lack it)" gate "$g/index.md" --build
 expect "gate --final not done" 1 "$g/index.md:1: not every ticket is done (run /build)" gate "$g/spec.md" --final
-sed -i '' 's/| todo |/| done abc |/' "$g/index.md"; git -C "$g" commit -qam done
+sedi 's/| todo |/| done abc |/' "$g/index.md"; git -C "$g" commit -qam done
 expect "gate --final all done" 0 "" gate "$g/spec.md" --final
 
 spec gs 's/^Branch: b/Branch: feature\/x/'; cp "$d/gs.md" "$g/s.md"; git -C "$g" add s.md; git -C "$g" commit -qm spec
@@ -254,19 +255,19 @@ expect "gate --direct 4 ACs" 0 "" gate "$g/s.md" --direct
 expect "gate --task 4 ACs" 1 "$g/s.md:1: 4 ACs, a one-line task takes at most 3 for /direct. Fix: use the grilled path (/grill-me, /spec, then /direct $g/s.md)." gate "$g/s.md" --task
 sed '/US-1.AC1b:/d' "$g/s.md" > "$g/s3.md"; git -C "$g" add s3.md; git -C "$g" commit -qm three
 expect "gate --task 3 ACs" 0 "" gate "$g/s3.md" --task
-sed -i '' 's/^Status: approved/Status: draft/' "$g/s.md"; git -C "$g" commit -qam draft
+sedi 's/^Status: approved/Status: draft/' "$g/s.md"; git -C "$g" commit -qam draft
 expect "gate --task draft" 1 "$g/s.md:3: Status is draft, /direct needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run.
 $g/s.md:1: 4 ACs, a one-line task takes at most 3 for /direct. Fix: use the grilled path (/grill-me, /spec, then /direct $g/s.md)." gate "$g/s.md" --task
 sed 's/^Status: approved/Status: draft/' "$g/s3.md" > "$g/s3d.md"; git -C "$g" add s3d.md; git -C "$g" commit -qm "three, draft"
 expect "gate --task draft 3 ACs" 1 "$g/s3d.md:3: Status is draft, /direct needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run." gate "$g/s3d.md" --task
 expect "gate --slice draft" 1 "$g/s.md:3: Status is draft, /slice needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run." gate "$g/s.md" --slice
 expect "gate --direct draft" 1 "$g/s.md:3: Status is draft, /direct needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run." gate "$g/s.md" --direct
-sed -i '' 's/^Status: draft/Status: approved/;s/US-1.AC2:/US-1.AC3:/' "$g/s.md"; git -C "$g" commit -qam order
+sedi 's/^Status: draft/Status: approved/;s/US-1.AC2:/US-1.AC3:/' "$g/s.md"; git -C "$g" commit -qam order
 expect "gate --slice check-spec" 1 "$g/s.md:14: US-1.AC3 out of order, want AC2 here
 $g/s.md:1: wf check-spec failed (lines above). Fix: correct each line in the spec, commit, re-run." gate "$g/s.md" --slice
 expect "gate --direct check-spec" 1 "$g/s.md:14: US-1.AC3 out of order, want AC2 here
 $g/s.md:1: wf check-spec failed (lines above). Fix: correct each line in the spec, commit, re-run." gate "$g/s.md" --direct
-sed -i '' 's/US-1.AC3:/US-1.AC2:/' "$g/s.md"
+sedi 's/US-1.AC3:/US-1.AC2:/' "$g/s.md"
 perl -i -pe 's{^(- US-2\.AC1:.*)$}{$1\n- US-2.AC2: Given a, when b, then f.\n- US-2.AC3: Given a, when b, then g.\n- US-2.AC3b: Given a, when b, then h.}' "$g/s.md"; git -C "$g" commit -qam seven
 expect "gate --slice 7 ACs" 0 "" gate "$g/s.md" --slice
 expect "gate --direct 7 ACs" 0 "" gate "$g/s.md" --direct
@@ -276,7 +277,7 @@ expect "gate old mode name" 2 "usage: wf gate <spec|index.md> [--build|--final|-
 # scope: changed files no ticket lists; the plan folder and dir/ entries are exempt
 c=$d/scope; mkdir -p "$c"; git -C "$c" init -q -b main; git -C "$c" config user.email t@t; git -C "$c" config user.name t
 echo a > "$c/README"; git -C "$c" add -A; git -C "$c" commit -qm base
-plan "$c/docs/work/x"; sed -i '' 's/^Base: .*/Base: main/' "$c/docs/work/x/index.md"
+plan "$c/docs/work/x"; sedi 's/^Base: .*/Base: main/' "$c/docs/work/x/index.md"
 perl -i -pe 's{^(- modify: .src/shared.py.)$}{$1\n- create: lib/}' "$c/docs/work/x/tickets/T02-t.md"
 git -C "$c" checkout -qb feature/x; mkdir -p "$c/src" "$c/lib/deep"
 echo x > "$c/src/shared.py"; echo x > "$c/lib/deep/m.py"; git -C "$c" add -A; git -C "$c" commit -qm work
@@ -295,7 +296,7 @@ expect "red: lettered AC missing" 1 "$e/spec.md:13: US-1.AC1b has no \"test(US-1
 git -C "$e" commit -q --allow-empty -m "test(US-1.AC1b): guard"
 expect "red: guard counts" 0 "" red "$e/spec.md"
 expect "red: explicit head" 1 "$e/spec.md:13: US-1.AC1b has no \"test(US-1.AC1b): red\" or guard commit in main..HEAD~1" red "$e/spec.md" HEAD~1
-sed -i '' 's/^Base: .*/Base: `main` (abc1234)/' "$e/spec.md" "$c/docs/work/x/index.md"
+sedi 's/^Base: .*/Base: `main` (abc1234)/' "$e/spec.md" "$c/docs/work/x/index.md"
 expect "red: annotated Base" 0 "" red "$e/spec.md"
 expect "scope: annotated Base" 1 "src/extra.py: changed, but no ticket lists it under Files" scope "$c/docs/work/x/index.md"
 
@@ -305,7 +306,7 @@ spec vspec; cp "$d/vspec.md" "$v/docs/work/x/spec.md"; echo a > "$v/src/a.py"; g
 echo b > "$v/src/a.py"; git -C "$v" commit -qam work; end=$(git -C "$v" rev-parse HEAD)
 review() { # review <sed script or ""> : write review.md for the clean PASS case, then apply the edit
   printf '# X: final review\n\nVerdict: PASS\nSpec: docs/work/x/spec.md\nRange: main...%s\nMode: full\nDate: 2026-11-21\n\n## Acceptance criteria\n\n| AC | Red commit | Test checks the AC | Note |\n|---|---|---|---|\n| US-1.AC1, AC1b | abc | yes | |\n| US-1.AC2 | def (guard) | yes | |\n| US-2.AC1 | none | n/a | manual check |\n\n## Full suite\n\n`true`: pass\n\n## Out of Scope\n\nnone.\n\n## Structure\n\n`wf size`: none\nnone\n\n## Security\n\nnone.\n\nSafe because: x. Proof: `y` -> ok\n\n## Behaviour\n\nnone\n\n### Notes\n\nnone\n\n## Verify\n\nnot run: no verify skill\n\n## Fix tickets\n\nnone\n\n## OPEN\n\nnone.\n' "$end" > "$v/docs/work/x/review.md"
-  [ -z "$1" ] || sed -i '' "$1" "$v/docs/work/x/review.md"
+  [ -z "$1" ] || sedi "$1" "$v/docs/work/x/review.md"
 }
 R=$v/docs/work/x/review.md
 review ""; expect "check-review clean PASS" 0 "" check-review "$R"

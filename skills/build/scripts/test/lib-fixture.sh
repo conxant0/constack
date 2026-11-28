@@ -50,3 +50,9 @@ patch_of() {
   git -C "$1" diff -- "$2"
   git -C "$1" checkout -- "$2"
 }
+
+sedi() { # sedi <sed script> <file>...: in-place edit with a backup suffix, which BSD and GNU sed read the same way
+  local script=$1 f; shift
+  sed -i.bak "$script" "$@" || return
+  for f in "$@"; do rm -f "$f.bak"; done
+}
