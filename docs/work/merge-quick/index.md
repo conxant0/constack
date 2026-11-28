@@ -31,3 +31,4 @@ Status values: todo | doing | done <merge sha> | blocked: <reason>
 ## Rulings
 - 2026-11-28, P1 (direct): skills/build/scripts/test/wf-test.sh may change: the gate --quick cases become --task with the new /direct wording and the bad-mode usage line lists --task, per US-2.AC1-AC4
 - 2026-11-28, P2 (direct): skills/direct/scripts/test/check-refs-test.sh may change: moved from skills/quick/scripts/test/; drops the /direct step 7 case, citer is direct/SKILL.md in every expected line, missing-skill case removes spec/SKILL.md, per spec Decisions "Citation check"
+- 2026-11-28, P2 (direct): skills/quick/scripts/test/check-refs-test.sh may change: moved to skills/direct/scripts/test/; drops the /direct step 7 case, citer is direct/SKILL.md in every expected line, missing-skill case removes spec/SKILL.md, per spec Decisions "Citation check"
