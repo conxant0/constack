@@ -13,19 +13,16 @@ fresh() { rm -rf "${d:?}"/*; for s in spec direct; do mkdir -p "$d/$s"; cp "$ski
 fresh
 expect "real skills" 0 ""
 
-fresh; perl -i -pe 's/^7\. \*\*Hand off\.\*\*/8. **Hand off.**/' "$d/direct/SKILL.md"
-expect "direct step 7 renumbered" 1 "$d/direct/SKILL.md:1: no item 7 under \"## Steps\", but $d/quick/SKILL.md cites it. Fix: update the number $d/quick/SKILL.md cites, or restore item 7."
-
 fresh; perl -i -pe 's/^3\. \*\*Every AC is testable/3. **Something new/' "$d/spec/SKILL.md"
 ln=$(grep -n '^3\. \*\*Something new' "$d/spec/SKILL.md" | cut -d: -f1)
-expect "spec rule 3 replaced" 1 "$d/spec/SKILL.md:$ln: item 3 under \"## Hard rules\" no longer starts \"**Every AC is testable\", which $d/quick/SKILL.md cites. Fix: point $d/quick/SKILL.md at the item's new number, or restore it."
+expect "spec rule 3 replaced" 1 "$d/spec/SKILL.md:$ln: item 3 under \"## Hard rules\" no longer starts \"**Every AC is testable\", which $d/direct/SKILL.md cites. Fix: point $d/direct/SKILL.md at the item's new number, or restore it."
 
 fresh; perl -i -pe 's/spec checks:/checks found:/g' "$d/spec/SKILL.md"
 ln=$(grep -n '^3\. \*\*Write\*\*' "$d/spec/SKILL.md" | cut -d: -f1)
-expect "spec step 3 lost spec checks line" 1 "$d/spec/SKILL.md:$ln: item 3 under \"## Steps\" no longer mentions \"spec checks:\", which $d/quick/SKILL.md relies on. Fix: update $d/quick/SKILL.md to match, or restore it."
+expect "spec step 3 lost spec checks line" 1 "$d/spec/SKILL.md:$ln: item 3 under \"## Steps\" no longer mentions \"spec checks:\", which $d/direct/SKILL.md relies on. Fix: update $d/direct/SKILL.md to match, or restore it."
 
-fresh; rm "$d/direct/SKILL.md"
-expect "missing skill" 2 "$d/direct/SKILL.md: cannot read"
+fresh; rm "$d/spec/SKILL.md"
+expect "missing skill" 2 "$d/spec/SKILL.md: cannot read"
 
 [ $fail = 0 ] && echo "OK check-refs-test"
 exit $fail
