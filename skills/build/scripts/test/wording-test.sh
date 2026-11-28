@@ -91,7 +91,7 @@ for form in envu assign pyvar; do
 $x
 MSG = \"Keep it short.\"
 "
-  mkdir -p "$d/r9-$form/venv/bin"; ln -s "$real" "$d/r9-$form/venv/bin/python3"; echo venv/ >> "$d/r9-$form/.git/info/exclude"
+  mkdir -p "$d/r9-$form/venv/bin"; printf '#!/bin/sh\nexec %q "$@"\n' "$real" > "$d/r9-$form/venv/bin/python3"; chmod +x "$d/r9-$form/venv/bin/python3"; echo venv/ >> "$d/r9-$form/.git/info/exclude"
   fx_ticket "$d/f9-$form/tickets/T01-w.md" '- US-1.AC1: Given a, when b, then c'
   out=$(TOKEN=1 "$s/check-red-green.sh" "$d/r9-$form" "$base" "$V9" "$d/f9-$form/tickets/T01-w.md"); rc=$?
   [ $rc = 0 ] || bad "US-3.AC5 [$form] wording exit $rc: $out"
