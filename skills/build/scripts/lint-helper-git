@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -u
+root=$(cd "$(dirname "$0")/../../.." && pwd)
+fix="Fix: split it into separate plain calls run from the worktree (no cd, no git -C, no \$( ), no { } group); write files with the Write tool."
+fail=0
+git_word_re='(^|[^[:alnum:]_-])git([^[:alnum:]_-]|$)'
+
+scan() {
+  local label=$1 n=$(($2 - 1)) line span form
+  while IFS= read -r line; do
+    n=$((n + 1))
+    while IFS= read -r span; do
+      [ -n "$span" ] || continue
+      span=${span#\`}; span=${span%\`}
+      case $span in cd | 'git -C' | '$( )' | '{ }') continue ;; esac
+      for form in group subst dashc cd; do
+        case $form in
+          group) grep -qE '(^|[;&|(][[:space:]]*)\{[[:space:]]' <<<"$span" && msg='{ } group' || continue ;;
+          subst) grep -qE "$git_word_re" <<<"$span" && grep -qF '$(' <<<"$span" && msg='$( ) in a git command' || continue ;;
+          dashc) grep -qE '(^|[^[:alnum:]_-])git[[:space:]]+-C([^[:alnum:]_]|$)' <<<"$span" && msg='git -C' || continue ;;
+          cd) grep -qE "$git_word_re" <<<"$span" && grep -qE '(^|[;&|][[:space:]]*)cd[[:space:]]' <<<"$span" && msg='cd in a git command' || continue ;;
+        esac
+        echo "$label:$n: $msg in \`$span\`. $fix"; fail=1
+      done
+    done < <(sed -E 's/`{3,}//g' <<<"$line" | grep -oE '`[^`]+`')
+  done
+}
+
+if [ $# -gt 0 ]; then
+  for f in "$@"; do scan "$f" 1 <"$f"; done
+  exit $fail
+fi
+for f in skills/direct/references/helper.md skills/build/references/implementer.md; do
+  scan "$f" 1 <"$root/$f"
+done
+s=skills/direct/SKILL.md
+for range in '/^## Hard rules/,/^## Steps/' '/^4\. \*\*Per AC/,/^5\. \*\*Copy check/'; do
+  first=$(awk "$range {print NR; exit}" "$root/$s")
+  [ -n "$first" ] || { echo "$s: no section $range. Fix: keep the Hard rules and Step 4 headings, or update lint-helper-git's ranges."; fail=1; continue; }
+  scan "$s" "$first" < <(awk "$range" "$root/$s")
+done
+exit $fail
