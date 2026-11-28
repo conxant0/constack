@@ -360,6 +360,7 @@ cd "$here" || exit 1
 en=$d/entry; mkdir -p "$en/docs/x"; printf '# X\n' > "$en/docs/x/spec.md"
 cd "$en" || exit 1
 expect "entry: existing spec" 0 "spec" entry 'docs/x/spec.md'
+expect "entry: quoted task" 0 "task" entry '"fix notes.md typo"'
 cd "$here" || exit 1
 
 [ $fail = 0 ] && echo "OK wf-test"
