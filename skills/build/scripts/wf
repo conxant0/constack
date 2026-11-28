@@ -589,11 +589,11 @@ parts() {
 entry() {
   local s=$1 w after ws x q=
   s=${s#"${s%%[![:space:]]*}"}; s=${s%"${s##*[![:space:]]}"}
-  case $s in \"*) s=${s#\"}; q=1 ;; esac
+  case $s in \"*) s=${s#\"}; s=${s#"${s%%[![:space:]]*}"}; q=1 ;; esac
   w=${s%%[[:space:]\"]*}
   [ -n "$w" ] || { echo "wf entry: no argument. Fix: give the path of an approved spec or a quoted one-line task (\"<task>\")."; exit 1; }
-  [ -f "$w" ] && { echo spec; return 0; }
-  case $w in *.md) echo "wf entry: $w is not a file. Fix: correct the path, or quote a one-line task (\"<task>\")."; exit 1 ;; esac
+  [ -z "$q" ] && [ -f "$w" ] && { echo spec; return 0; }
+  [ -n "$q" ] || case $w in *.md) echo "wf entry: $w is not a file. Fix: correct the path, or quote a one-line task (\"<task>\")."; exit 1 ;; esac
   if [ -n "$q" ] && [ "$s" != "${s#*\"}" ]; then
     after=${s#*\"}; read -ra ws <<<"$after"
   else
