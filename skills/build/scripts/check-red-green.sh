@@ -10,6 +10,7 @@
 #   TESTS:  a red or guard commit touches test files only (see test_re)
 # One line per check. Exit 0 all OK, 1 any FAIL, 2 could not run.
 set -u
+export PYTHONDONTWRITEBYTECODE=1
 wt=$1 base=$2 verify=$3 ticket=${4:-} start=${5:-$2}
 here=$(cd "$(dirname "$0")" && pwd)
 red_re='^test\(US-[0-9]+\.AC[0-9]+[a-z]?\): (red|guard)$'
