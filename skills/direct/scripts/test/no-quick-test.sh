@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# no-quick-test.sh: the removed build command is named nowhere it ships, and its skill folder is gone. Exit 1 on any hit.
 set -u
 root=$(cd "$(dirname "$0")/../../../.." && pwd)
 q=quick

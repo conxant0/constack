@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# check-refs-test.sh: runs check-refs on copies of the real skills, then on renumbered ones. Exit 1 on any FAIL.
 set -u
 here=$(cd "$(dirname "$0")/.." && pwd); skills=$(cd "$here/../.." && pwd)
 d=$(mktemp -d); trap 'rm -rf "$d"' EXIT
 fail=0
-expect() { # expect <name> <exit> <output>
+expect() {
   local out rc; out=$("$here/check-refs" "$d" 2>&1); rc=$?
   [ "$rc" = "$2" ] && [ "$out" = "$3" ] || { printf 'FAIL %s: exit %s, got:\n%s\nwant (exit %s):\n%s\n' "$1" "$rc" "$out" "$2" "$3"; fail=1; }
 }

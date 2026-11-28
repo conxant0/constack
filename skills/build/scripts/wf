@@ -590,7 +590,7 @@ parts() {
     }' - "$spec" "$f"
 }
 
-entry() { # entry <raw argument>: is /direct's argument a spec path or a one-line task?
+entry() {
   local s=$1 w after ws x q=
   s=${s#"${s%%[![:space:]]*}"}; s=${s%"${s##*[![:space:]]}"}
   case $s in \"*) s=${s#\"}; q=1 ;; esac

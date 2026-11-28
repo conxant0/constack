@@ -359,7 +359,6 @@ expect "base: constack.base with origin/" 0 $'origin/staging\nwf base: from git 
 expect "base: extra arg" 2 "usage: wf base" base x
 cd "$here" || exit 1
 
-# entry: /direct's argument is a spec path or a quoted one-line task; run from a cwd holding one spec and no file named fix
 en=$d/entry; mkdir -p "$en/docs/x"; printf '# X\n' > "$en/docs/x/spec.md"
 cd "$en" || exit 1
 expect "entry: existing spec" 0 "spec" entry 'docs/x/spec.md'
