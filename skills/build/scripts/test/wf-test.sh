@@ -270,7 +270,8 @@ sed -i '' 's/US-1.AC3:/US-1.AC2:/' "$g/s.md"
 perl -i -pe 's{^(- US-2\.AC1:.*)$}{$1\n- US-2.AC2: Given a, when b, then f.\n- US-2.AC3: Given a, when b, then g.\n- US-2.AC3b: Given a, when b, then h.}' "$g/s.md"; git -C "$g" commit -qam seven
 expect "gate --slice 7 ACs" 0 "" gate "$g/s.md" --slice
 expect "gate --direct 7 ACs" 0 "" gate "$g/s.md" --direct
-expect "gate bad mode" 2 "usage: wf gate <spec|index.md> [--build|--final|--slice|--direct|--quick]" gate "$g/s.md" --nope
+expect "gate bad mode" 2 "usage: wf gate <spec|index.md> [--build|--final|--slice|--direct|--task]" gate "$g/s.md" --nope
+expect "gate old mode name" 2 "usage: wf gate <spec|index.md> [--build|--final|--slice|--direct|--task]" gate "$g/s.md" --quick
 
 # scope: changed files no ticket lists; the plan folder and dir/ entries are exempt
 c=$d/scope; mkdir -p "$c"; git -C "$c" init -q -b main; git -C "$c" config user.email t@t; git -C "$c" config user.name t
