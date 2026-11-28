@@ -22,14 +22,15 @@ case "$2" in
     if [ "$MODE" = badpass ]; then printf '%s\n' "$pass" | sed 's/^none$/q?/' > docs/work/x/review.md
     elif grep -q F01 $idx; then printf '%s\n' "$pass" > docs/work/x/review.md
     else echo "Verdict: FAIL" > docs/work/x/review.md
-      sed -i '' 's/^| T02 .*/&\n| F01 | fix | none | todo |/' $idx; fi
+      sed -i.bak 's/^| T02 .*/&\
+| F01 | fix | none | todo |/' $idx && rm $idx.bak; fi
     git add -A; git commit -qm review ;;
 esac
 echo '{"result":"ok","session_id":"none"}'
 C
 chmod +x "$d/bin/"*
 repo() { # fresh repo with a 2-ticket index
-  rm -rf "$d/r"; mkdir -p "$d/r/docs/work/x"; cd "$d/r"; git init -q
+  rm -rf "$d/r"; mkdir -p "$d/r/docs/work/x"; cd "$d/r"; git init -q; git config user.email t@t; git config user.name t
   echo spec > docs/work/x/spec.md
   printf '# X\n\nBranch: b\nBase: origin/main\nTest command: `true`\n\n| Ticket | Title | Blocked by | Status |\n|---|---|---|---|\n| T01 | a | none | todo |\n| T02 | b | T01 | todo |\n\n## Rulings\n' > docs/work/x/index.md
   git add -A; git commit -qm init
