@@ -2,7 +2,7 @@
 
 Verdict: PASS
 Spec: docs/work/merge-quick/spec.md
-Range: origin/main...9e49a4b5c69c1c182b8b356e592beb34b211fd6e
+Range: origin/main...97948fd78f11f28e31eb06f8424578188374e498
 Mode: full
 Date: 2026-11-28
 
@@ -24,7 +24,7 @@ Date: 2026-11-28
 | US-3.AC2 | guard e9d71e6 | yes | `real skills` expects exit 0 and empty output; Mutation patch (wrong lead for rule 4) fails it |
 | US-3.AC3 | ca4d647, guard ac6a78b | yes | `spec rule 3 replaced` expects exit 1, the item, `direct/SKILL.md` as citer and the Fix |
 | US-4.AC1 | 04a6452 | yes | dangling in-checkout links in skills/ and hooks/ are gone, one `pruned <link>` each, exit 0 |
-| US-1.AC7 | d542ab3 | yes | quoted task starting with an existing file, starting with a missing `.md`, and with a space after the opening quote each expect exit 0 and exactly `task`; dropping the quote rule (`[ -z "$q" ]`) or the post-quote trim fails one of them |
+| US-1.AC7 | 7675479 | yes | quoted task starting with an existing file, starting with a missing `.md`, and with a space after the opening quote each expect exit 0 and exactly `task`; dropping the quote rule (`[ -z "$q" ]`) or the post-quote trim fails one of them |
 | US-4.AC2 | guard cb2e55f | yes | outside, relative and real folder stay, no `pruned` line; Mutation patch (prune any dangling link) fails `keep: outside link removed` |
 
 Rows other than US-1.AC7 re-read at HEAD: since the last review (433ff82) only `entry()` in wf and wf-test.sh changed (`git diff 433ff82 HEAD -- skills install.sh test`); the AC1-AC6 tests still exercise the same exits (unquoted spec, quoted task, missing `.md`, task + AFK, no argument, spec + AFK).
