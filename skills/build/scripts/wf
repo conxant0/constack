@@ -585,6 +585,14 @@ parts() {
     }' - "$spec" "$f"
 }
 
+entry() { # entry <raw argument>: is /direct's argument a spec path or a one-line task?
+  local s=$1 w
+  s=${s#"${s%%[![:space:]]*}"}; s=${s%"${s##*[![:space:]]}"}
+  s=${s#\"}
+  w=${s%%[[:space:]\"]*}
+  [ -f "$w" ] && { echo spec; return 0; }
+}
+
 commit() { # commit <index> <message>: commit only the index
   git -C "$(dirname "$1")" commit -q -m "$2" -- "$(basename "$1")" || { echo "$1: commit failed"; exit 2; }
 }
@@ -637,6 +645,7 @@ case $cmd in
   check-spec) [ $# -eq 1 ] || { echo "usage: wf check-spec <spec.md>"; exit 2; }; check_spec "$1" ;;
   parts) [ $# -eq 1 ] || { echo "usage: wf parts <index.md>"; exit 2; }; parts "$1" ;;
   questions) [ $# -eq 1 ] || { echo "usage: wf questions <index.md>"; exit 2; }; questions "$1" ;;
+  entry) [ $# -le 1 ] || { echo "usage: wf entry '<raw argument>'"; exit 2; }; entry "${1:-}" ;;
   gate)
     [ $# -eq 1 ] || { [ $# -eq 2 ] && case $2 in --build|--final|--slice|--direct|--quick) true ;; *) false ;; esac; } ||
       { echo "usage: wf gate <spec|index.md> [--build|--final|--slice|--direct|--quick]"; exit 2; }
