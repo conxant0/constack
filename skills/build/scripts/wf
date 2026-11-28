@@ -586,12 +586,20 @@ parts() {
 }
 
 entry() { # entry <raw argument>: is /direct's argument a spec path or a one-line task?
-  local s=$1 w
+  local s=$1 w after ws x q=
   s=${s#"${s%%[![:space:]]*}"}; s=${s%"${s##*[![:space:]]}"}
-  s=${s#\"}
+  case $s in \"*) s=${s#\"}; q=1 ;; esac
   w=${s%%[[:space:]\"]*}
   [ -f "$w" ] && { echo spec; return 0; }
   case $w in *.md) echo "wf entry: $w is not a file. Fix: correct the path, or quote a one-line task (\"<task>\")."; exit 1 ;; esac
+  if [ -n "$q" ] && [ "$s" != "${s#*\"}" ]; then
+    after=${s#*\"}; read -ra ws <<<"$after"
+  else
+    read -ra ws <<<"$s"; ws=("${ws[@]: -1}")
+  fi
+  for x in ${ws[@]+"${ws[@]}"}; do
+    [ "$x" != AFK ] || { echo "wf entry: a one-line task cannot run AFK. Fix: a one-line task needs the owner's approval, so run it attended or pass an approved spec."; exit 1; }
+  done
   echo task
 }
 
