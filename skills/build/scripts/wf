@@ -33,9 +33,13 @@
 #                            each with "Answer: <answer>" on its line. One file:line: problem. Fix: ... per line, exit 1 on any.
 #   wf parts <index.md>      /direct's "## Parts": one "- Pn: <AC ids>; files: <paths>" line per table row, every
 #                            AC in <index dir>/spec.md in exactly one part. One file:line: problem. Fix: ... per line, exit 1 on any.
-#   wf gate <spec|index.md> [--build|--final|--slice|--direct|--quick]
+#   wf entry '<raw argument>' /direct's argument, one argv with its literal quotes: first word (after one opening ")
+#                            an existing file prints "spec" (AFK after it is fine); a word ending .md that is no file,
+#                            no argument, or a task with a word AFK after its closing quote (or last, unquoted): exit 1
+#                            with a Fix:. Else prints "task". Two or more argv: exit 2.
+#   wf gate <spec|index.md> [--build|--final|--slice|--direct|--task]
 #                            Current branch is the file's Branch: and the tree is clean.
-#                            --slice and --direct (spec): Status: approved and wf check-spec clean. --quick: same,
+#                            --slice and --direct (spec): Status: approved and wf check-spec clean. --task: same,
 #                            plus at most 3 ACs (lettered ones count). Each new line ends with a Fix:.
 #                            --build: settings allow git, check-red-green.sh and wf (skip in auto or
 #                            bypass mode), and every ignored venv / node_modules / .env is listed in
@@ -350,15 +354,16 @@ gate() {
     if [ -z "$want" ]; then echo "$f:1: missing \"Branch:\" line"
     elif [ "$cur" != "$want" ]; then echo "$f:$ln: on branch ${cur:-(detached)}, want $want"; fi
     [ -z "$(git -C "$root" status --porcelain | cut -c4- | grep -vE '(^|/)check-warnings\.log$')" ] || echo "$root: uncommitted changes (git status --porcelain is not empty)"
-    if [ "$mode" = --slice ] || [ "$mode" = --direct ] || [ "$mode" = --quick ]; then
+    if [ "$mode" = --slice ] || [ "$mode" = --direct ] || [ "$mode" = --task ]; then
       ln=$(grep -n -m1 '^Status:' "$f" | cut -d: -f1)
       rule=$(sed -n "${ln:-0}s/^Status: *//p" "$f" | sed 's/ *$//')
-      [ "$rule" = approved ] || echo "$f:${ln:-1}: Status is ${rule:-missing}, /${mode#--} needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run."
+      p=/${mode#--}; [ "$mode" != --task ] || p=/direct
+      [ "$rule" = approved ] || echo "$f:${ln:-1}: Status is ${rule:-missing}, $p needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run."
       have=$(check_spec "$f") || { printf '%s\n' "$have"; echo "$f:1: wf check-spec failed (lines above). Fix: correct each line in the spec, commit, re-run."; }
     fi
-    if [ "$mode" = --quick ]; then
+    if [ "$mode" = --task ]; then
       need=$(grep -cE '^- US-[0-9]+[.]AC[0-9]+[a-z]?:' "$f")
-      [ "$need" -le 3 ] || echo "$f:1: $need ACs, /quick takes at most 3. Fix: use the grilled path (/grill-me, /spec, then /direct $f)."
+      [ "$need" -le 3 ] || echo "$f:1: $need ACs, a one-line task takes at most 3 for /direct. Fix: use the grilled path (/grill-me, /spec, then /direct $f)."
     fi
     if [ "$mode" = --final ]; then
       if [ "$(frontier "$dir/index.md" 2>&1)" != "all done" ]; then
@@ -585,6 +590,25 @@ parts() {
     }' - "$spec" "$f"
 }
 
+entry() { # entry <raw argument>: is /direct's argument a spec path or a one-line task?
+  local s=$1 w after ws x q=
+  s=${s#"${s%%[![:space:]]*}"}; s=${s%"${s##*[![:space:]]}"}
+  case $s in \"*) s=${s#\"}; q=1 ;; esac
+  w=${s%%[[:space:]\"]*}
+  [ -n "$w" ] || { echo "wf entry: no argument. Fix: give the path of an approved spec or a quoted one-line task (\"<task>\")."; exit 1; }
+  [ -f "$w" ] && { echo spec; return 0; }
+  case $w in *.md) echo "wf entry: $w is not a file. Fix: correct the path, or quote a one-line task (\"<task>\")."; exit 1 ;; esac
+  if [ -n "$q" ] && [ "$s" != "${s#*\"}" ]; then
+    after=${s#*\"}; read -ra ws <<<"$after"
+  else
+    read -ra ws <<<"$s"; ws=("${ws[@]: -1}")
+  fi
+  for x in ${ws[@]+"${ws[@]}"}; do
+    [ "$x" != AFK ] || { echo "wf entry: a one-line task cannot run AFK. Fix: a one-line task needs the owner's approval, so run it attended or pass an approved spec."; exit 1; }
+  done
+  echo task
+}
+
 commit() { # commit <index> <message>: commit only the index
   git -C "$(dirname "$1")" commit -q -m "$2" -- "$(basename "$1")" || { echo "$1: commit failed"; exit 2; }
 }
@@ -637,9 +661,10 @@ case $cmd in
   check-spec) [ $# -eq 1 ] || { echo "usage: wf check-spec <spec.md>"; exit 2; }; check_spec "$1" ;;
   parts) [ $# -eq 1 ] || { echo "usage: wf parts <index.md>"; exit 2; }; parts "$1" ;;
   questions) [ $# -eq 1 ] || { echo "usage: wf questions <index.md>"; exit 2; }; questions "$1" ;;
+  entry) [ $# -le 1 ] || { echo "usage: wf entry '<raw argument>'"; exit 2; }; entry "${1:-}" ;;
   gate)
-    [ $# -eq 1 ] || { [ $# -eq 2 ] && case $2 in --build|--final|--slice|--direct|--quick) true ;; *) false ;; esac; } ||
-      { echo "usage: wf gate <spec|index.md> [--build|--final|--slice|--direct|--quick]"; exit 2; }
+    [ $# -eq 1 ] || { [ $# -eq 2 ] && case $2 in --build|--final|--slice|--direct|--task) true ;; *) false ;; esac; } ||
+      { echo "usage: wf gate <spec|index.md> [--build|--final|--slice|--direct|--task]"; exit 2; }
     gate "$@" ;;
   scope) [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wf scope <index.md> [head]"; exit 2; }; scope "$@" ;;
   check-review) [ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wf check-review <review.md> [head]"; exit 2; }; check_review "$@" ;;
@@ -666,5 +691,5 @@ case $cmd in
       grep -qxF check-warnings.log "$gd/info/exclude" 2>/dev/null || echo check-warnings.log >> "$gd/info/exclude"
     fi
     grep -Fxq -- "$line" "$1/check-warnings.log" 2>/dev/null || printf '%s\n' "$line" >> "$1/check-warnings.log" ;;
-  *) echo "usage: wf base|frontier|chains|waves|check-plan|check-spec|questions|parts|check-review|gate|scope|red|lead|size|set|done|ruling|mode|warn-log <index.md> ..."; exit 2 ;;
+  *) echo "usage: wf base|frontier|chains|waves|check-plan|check-spec|questions|parts|entry|check-review|gate|scope|red|lead|size|set|done|ruling|mode|warn-log <index.md> ..."; exit 2 ;;
 esac

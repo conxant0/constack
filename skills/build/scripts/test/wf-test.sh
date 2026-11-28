@@ -251,12 +251,14 @@ expect "gate --final all done" 0 "" gate "$g/spec.md" --final
 spec gs 's/^Branch: b/Branch: feature\/x/'; cp "$d/gs.md" "$g/s.md"; git -C "$g" add s.md; git -C "$g" commit -qm spec
 expect "gate --slice approved" 0 "" gate "$g/s.md" --slice
 expect "gate --direct 4 ACs" 0 "" gate "$g/s.md" --direct
-expect "gate --quick 4 ACs" 1 "$g/s.md:1: 4 ACs, /quick takes at most 3. Fix: use the grilled path (/grill-me, /spec, then /direct $g/s.md)." gate "$g/s.md" --quick
+expect "gate --task 4 ACs" 1 "$g/s.md:1: 4 ACs, a one-line task takes at most 3 for /direct. Fix: use the grilled path (/grill-me, /spec, then /direct $g/s.md)." gate "$g/s.md" --task
 sed '/US-1.AC1b:/d' "$g/s.md" > "$g/s3.md"; git -C "$g" add s3.md; git -C "$g" commit -qm three
-expect "gate --quick 3 ACs" 0 "" gate "$g/s3.md" --quick
+expect "gate --task 3 ACs" 0 "" gate "$g/s3.md" --task
 sed -i '' 's/^Status: approved/Status: draft/' "$g/s.md"; git -C "$g" commit -qam draft
-expect "gate --quick draft" 1 "$g/s.md:3: Status is draft, /quick needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run.
-$g/s.md:1: 4 ACs, /quick takes at most 3. Fix: use the grilled path (/grill-me, /spec, then /direct $g/s.md)." gate "$g/s.md" --quick
+expect "gate --task draft" 1 "$g/s.md:3: Status is draft, /direct needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run.
+$g/s.md:1: 4 ACs, a one-line task takes at most 3 for /direct. Fix: use the grilled path (/grill-me, /spec, then /direct $g/s.md)." gate "$g/s.md" --task
+sed 's/^Status: approved/Status: draft/' "$g/s3.md" > "$g/s3d.md"; git -C "$g" add s3d.md; git -C "$g" commit -qm "three, draft"
+expect "gate --task draft 3 ACs" 1 "$g/s3d.md:3: Status is draft, /direct needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run." gate "$g/s3d.md" --task
 expect "gate --slice draft" 1 "$g/s.md:3: Status is draft, /slice needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run." gate "$g/s.md" --slice
 expect "gate --direct draft" 1 "$g/s.md:3: Status is draft, /direct needs approved. Fix: answer every OPEN: line, set Status: approved, commit, re-run." gate "$g/s.md" --direct
 sed -i '' 's/^Status: draft/Status: approved/;s/US-1.AC2:/US-1.AC3:/' "$g/s.md"; git -C "$g" commit -qam order
@@ -268,7 +270,8 @@ sed -i '' 's/US-1.AC3:/US-1.AC2:/' "$g/s.md"
 perl -i -pe 's{^(- US-2\.AC1:.*)$}{$1\n- US-2.AC2: Given a, when b, then f.\n- US-2.AC3: Given a, when b, then g.\n- US-2.AC3b: Given a, when b, then h.}' "$g/s.md"; git -C "$g" commit -qam seven
 expect "gate --slice 7 ACs" 0 "" gate "$g/s.md" --slice
 expect "gate --direct 7 ACs" 0 "" gate "$g/s.md" --direct
-expect "gate bad mode" 2 "usage: wf gate <spec|index.md> [--build|--final|--slice|--direct|--quick]" gate "$g/s.md" --nope
+expect "gate bad mode" 2 "usage: wf gate <spec|index.md> [--build|--final|--slice|--direct|--task]" gate "$g/s.md" --nope
+expect "gate old mode name" 2 "usage: wf gate <spec|index.md> [--build|--final|--slice|--direct|--task]" gate "$g/s.md" --quick
 
 # scope: changed files no ticket lists; the plan folder and dir/ entries are exempt
 c=$d/scope; mkdir -p "$c"; git -C "$c" init -q -b main; git -C "$c" config user.email t@t; git -C "$c" config user.name t
@@ -354,6 +357,26 @@ expect "base: constack.base" 0 $'origin/staging\nwf base: from git config consta
 git -C "$b" config constack.base origin/staging
 expect "base: constack.base with origin/" 0 $'origin/staging\nwf base: from git config constack.base' base
 expect "base: extra arg" 2 "usage: wf base" base x
+cd "$here" || exit 1
+
+# entry: /direct's argument is a spec path or a quoted one-line task; run from a cwd holding one spec and no file named fix
+en=$d/entry; mkdir -p "$en/docs/x"; printf '# X\n' > "$en/docs/x/spec.md"
+cd "$en" || exit 1
+expect "entry: existing spec" 0 "spec" entry 'docs/x/spec.md'
+expect "entry: quoted task" 0 "task" entry '"fix notes.md typo"'
+expect "entry: missing .md file" 1 "wf entry: docs/x/nope.md is not a file. Fix: correct the path, or quote a one-line task (\"<task>\")." entry 'docs/x/nope.md'
+afk="wf entry: a one-line task cannot run AFK. Fix: a one-line task needs the owner's approval, so run it attended or pass an approved spec."
+expect "entry: task then AFK" 1 "$afk" entry '"fix notes.md typo" AFK'
+expect "entry: task, slug, AFK" 1 "$afk" entry '"fix notes.md typo" notes-typo AFK'
+expect "entry: unquoted task ending AFK" 1 "$afk" entry 'fix the *.md links AFK'
+expect "entry: AFK inside the quotes" 0 "task" entry '"run the AFK loop docs"'
+none="wf entry: no argument. Fix: give the path of an approved spec or a quoted one-line task (\"<task>\")."
+expect "entry: no argv" 1 "$none" entry
+expect "entry: empty string" 1 "$none" entry ''
+expect "entry: whitespace only" 1 "$none" entry '   '
+expect "entry: empty quotes" 1 "$none" entry '""'
+expect "entry: two argv" 2 "usage: wf entry '<raw argument>'" entry docs/x/spec.md AFK
+expect "entry: spec then AFK" 0 "spec" entry 'docs/x/spec.md AFK'
 cd "$here" || exit 1
 
 [ $fail = 0 ] && echo "OK wf-test"
