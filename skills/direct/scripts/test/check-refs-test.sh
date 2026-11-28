@@ -8,7 +8,7 @@ expect() { # expect <name> <exit> <output>
   local out rc; out=$("$here/check-refs" "$d" 2>&1); rc=$?
   [ "$rc" = "$2" ] && [ "$out" = "$3" ] || { printf 'FAIL %s: exit %s, got:\n%s\nwant (exit %s):\n%s\n' "$1" "$rc" "$out" "$2" "$3"; fail=1; }
 }
-fresh() { rm -rf "${d:?}"/*; for s in spec direct quick; do mkdir -p "$d/$s"; cp "$skills/$s/SKILL.md" "$d/$s/"; done; }
+fresh() { rm -rf "${d:?}"/*; for s in spec direct; do mkdir -p "$d/$s"; cp "$skills/$s/SKILL.md" "$d/$s/"; done; }
 
 fresh
 expect "real skills" 0 ""
