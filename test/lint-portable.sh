@@ -7,7 +7,8 @@ root=${1:-$(cd "$(dirname "$0")/.." && pwd)}
 S='se[d]' # bracketed so this file does not match its own patterns
 # an option cluster ending in i, then a space, an empty quoted suffix or the line end; or --in-place with no =SUFFIX
 re="(^|[^[:alnum:]_.-])$S([[:space:]]+-[^[:space:]]+)*[[:space:]]+(-[[:alpha:]]*i(''|\"\")?([[:space:]]|$)|--in-place([[:space:]]|$))"
-fix="Fix: give -i a backup suffix and remove it after (\`sed -i.bak '<script>' <file> && rm <file>.bak\`, or sedi in skills/build/scripts/test/lib-fixture.sh); \`sed -i ''\` is BSD only and a bare \`-i\` is GNU only."
+n=sed
+fix="Fix: give -i a backup suffix and remove it after (\`$n -i.bak '<script>' <file> && rm <file>.bak\`, or sedi in skills/build/scripts/test/lib-fixture.sh); \`$n -i ''\` is BSD only and a bare \`-i\` is GNU only."
 fail=0
 while IFS= read -r f; do
   [ -f "$root/$f" ] || continue
