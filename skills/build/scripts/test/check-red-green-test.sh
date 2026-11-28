@@ -99,6 +99,23 @@ out=$("$s/check-red-green.sh" "$d/p2" "$base" "$pipe_verify"); rc=$?
 if [ $rc != 0 ] || ! grep -q "^OK   guard US-1.AC1 ${sha:0:8}: " <<<"$out" || grep -q 'tests still pass' <<<"$out"; then
   printf 'FAIL piped verify with the Mutation patch applied: exit %s (want 0, OK guard, no "tests still pass")\n%s\n' $rc "$out"; fail=1
 fi
+bc_verify='[ "$PYTHONDONTWRITEBYTECODE" = 1 ] && '"$FX_VERIFY"
+fx_repo "$d/b1"; base=$(git -C "$d/b1" rev-parse HEAD)
+fx_commit "$d/b1" 'test(US-1.AC1): red' tests/ac1.sh 'echo "bytecode=$PYTHONDONTWRITEBYTECODE"; grep -qx 2 app.txt' >/dev/null
+fx_commit "$d/b1" 'feat(US-1.AC1): green' app.txt 2 >/dev/null
+out=$(env -u PYTHONDONTWRITEBYTECODE "$s/check-red-green.sh" "$d/b1" "$base" "$bc_verify"); rc=$?
+if [ $rc != 0 ] || ! grep -q '^OK   red US-1.AC1 [0-9a-f]*: bytecode=1$' <<<"$out" || ! grep -q '^OK   green HEAD' <<<"$out"; then
+  printf 'FAIL red and green runs see PYTHONDONTWRITEBYTECODE=1: exit %s (want 0, OK red ending bytecode=1, OK green)\n%s\n' $rc "$out"; fail=1
+fi
+fx_repo "$d/b2"; fx_commit "$d/b2" 'chore: other' other.txt a >/dev/null
+{ echo 'Mutation: app.txt: 1 -> 3 -> tests/g1.sh fails'; echo '```diff'; patch_of "$d/b2" app.txt 3; echo '```'; } > "$d/bb"
+base=$(git -C "$d/b2" rev-parse HEAD)
+gtest='if grep -qx 1 app.txt; then [ "$PYTHONDONTWRITEBYTECODE" = 1 ]; else [ "$PYTHONDONTWRITEBYTECODE" != 1 ]; fi'
+sha=$(fx_guard "$d/b2" US-1.AC1 tests/g1.sh "$gtest" "$d/bb")
+out=$(env -u PYTHONDONTWRITEBYTECODE "$s/check-red-green.sh" "$d/b2" "$base" "$FX_VERIFY"); rc=$?
+if [ $rc != 0 ] || ! grep -q "^OK   guard US-1.AC1 ${sha:0:8}: " <<<"$out" || grep -qE 'tests still pass|verify failed' <<<"$out" || ! grep -q '^OK   green HEAD' <<<"$out"; then
+  printf 'FAIL guard and Mutation runs see PYTHONDONTWRITEBYTECODE=1: exit %s (want 0, OK guard, no "tests still pass", OK green)\n%s\n' $rc "$out"; fail=1
+fi
 # every FAIL or ERROR line the script can print names its fix (global CLAUDE.md: checks print how to fix)
 nofix=$(grep -nE 'echo "(FAIL|ERROR|WARN)' "$s/check-red-green.sh" | grep -vF ' Fix: ')
 [ -z "$nofix" ] || { printf 'FAIL check-red-green.sh lines with no " Fix: ":\n%s\n' "$nofix"; fail=1; }
