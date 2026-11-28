@@ -17,6 +17,9 @@ fresh; perl -i -pe 's/^3\. \*\*Every AC is testable/3. **Something new/' "$d/spe
 ln=$(grep -n '^3\. \*\*Something new' "$d/spec/SKILL.md" | cut -d: -f1)
 expect "spec rule 3 replaced" 1 "$d/spec/SKILL.md:$ln: item 3 under \"## Hard rules\" no longer starts \"**Every AC is testable\", which $d/direct/SKILL.md cites. Fix: point $d/direct/SKILL.md at the item's new number, or restore it."
 
+fresh; perl -i -pe 's/^5\. \*\*Status stays/6. **Status stays/' "$d/spec/SKILL.md"
+expect "spec rule 5 renumbered" 1 "$d/spec/SKILL.md:1: no item 5 under \"## Hard rules\", but $d/direct/SKILL.md cites it. Fix: update the number $d/direct/SKILL.md cites, or restore item 5."
+
 fresh; perl -i -pe 's/spec checks:/checks found:/g' "$d/spec/SKILL.md"
 ln=$(grep -n '^3\. \*\*Write\*\*' "$d/spec/SKILL.md" | cut -d: -f1)
 expect "spec step 3 lost spec checks line" 1 "$d/spec/SKILL.md:$ln: item 3 under \"## Steps\" no longer mentions \"spec checks:\", which $d/direct/SKILL.md relies on. Fix: update $d/direct/SKILL.md to match, or restore it."
