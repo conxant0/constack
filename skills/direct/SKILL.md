@@ -1,13 +1,13 @@
 ---
 name: direct
-description: Build an approved spec of any size with no ticket files, then hand to /final-review. Up to 6 ACs this session builds it test-first; above that it orchestrates helpers in parallel worktrees, one per part listed in the index, and writes no AC code itself.
+description: Build an approved spec of any size with no ticket files, then hand to /final-review. Up to 6 ACs this session builds it test-first; above that it orchestrates helpers in parallel worktrees, one per part listed in the index, and writes no AC code itself. `/direct "<one-line task>"` first writes a spec of at most 3 ACs and asks once.
 disable-model-invocation: true
-argument-hint: "<path to spec.md> [AFK]"
+argument-hint: "<path to spec.md> [AFK] | \"<one-line task>\" [feature-slug]"
 ---
 
 # /direct
 
-The no-ticket lane: spec, index with parts, build, `/final-review`. `WF` below is `${CLAUDE_SKILL_DIR}/../build/scripts/wf`. A spec with at most 6 ACs is **solo**: Steps 1-7 in this session, one part. More is **orchestrated**: Steps 1-3, the Orchestrated section, then Step 7. A second word `AFK` (from `afk-loop`): read `${CLAUDE_SKILL_DIR}/../build/references/afk.md`, reading "ticket" as "part".
+The no-ticket lane: spec (or a one-line task, step 1), index with parts, build, `/final-review`. `WF` below is `${CLAUDE_SKILL_DIR}/../build/scripts/wf`. A spec with at most 6 ACs is **solo**: Steps 1-7 in this session, one part. More is **orchestrated**: Steps 1-3, the Orchestrated section, then Step 7. A second word `AFK` (from `afk-loop`): read `${CLAUDE_SKILL_DIR}/../build/references/afk.md`, reading "ticket" as "part".
 
 ## Hard rules
 
@@ -19,8 +19,20 @@ The no-ticket lane: spec, index with parts, build, `/final-review`. `WF` below i
 
 ## Steps
 
-1. **Gate.** The first word of `$ARGUMENTS` is the spec: `WF gate <spec> --direct`; show any line it prints and stop.
-2. **Index.** An `index.md` beside the spec means a resume: a `doing` part whose `merge <part>:` commit is on HEAD resumes at Orchestrated step 5; `WF set` every other `doing` part to `todo`, log `WF ruling`, and continue from the first step or part not done. Otherwise write it from `${CLAUDE_SKILL_DIR}/assets/index-template.md`: `Spec`, `Branch` and `Base` from the spec, the test command from the project's CLAUDE.md, no `tickets/` folder. Solo: one row `| P1 | <feature> | none | todo |` and one Parts line holding every AC; orchestrated: Orchestrated step 1. Under `## Open questions`, every choice the spec leaves open or contradicts, or `none` (`/quick` writes `none`: its approval settled them). Send them all in one call to the decision agent (`${CLAUDE_SKILL_DIR}/../build/references/decide.md`, Dispatch; only its Escalate list reaches the user) and write each DECISION on its question's line as `Answer: <decision> (fable)`; an answer that changes behaviour updates the spec's ACs or Out of Scope in the same commit. Done when `WF questions <index>` and `WF parts <index>` print nothing. Commit `docs(direct): <feature> index`; solo: `WF set <index> P1 doing`.
+1. **Gate.** Run the entry check; show any refusal and stop:
+   ```
+   WF entry "$(cat <<'ARG'
+   $ARGUMENTS
+   ARG
+   )"
+   ```
+   `spec`: the first word of `$ARGUMENTS` is the spec: `WF gate <spec> --direct`; show any line it prints and stop. `task`: write a small spec, ask once, then go on with step 2. `/spec` is `${CLAUDE_SKILL_DIR}/../spec/SKILL.md`; its hard rules 3, 4 and 5 bind (testable ACs, no file paths or names, `draft` until an explicit yes).
+   - **Branch.** Run `${CLAUDE_SKILL_DIR}/scripts/check-refs`; if it prints anything, show it and stop: the `/spec` items cited here have moved. Then run `git branch --show-current` and `git rev-parse --abbrev-ref @{upstream}`. On the base (`WF base`), `main` or another base branch: stop and print `git worktree add ../<feature> -b feature/<feature> $(WF base)` then `cd ../<feature> && claude`, and tell the user to run `/direct "<task>"` again there. No upstream: ask which base branch this work merges into, recommending what `WF base` prints.
+   - **Fit.** The task is the quoted part of `$ARGUMENTS`; `<feature>` is the word after it if given, else a short kebab-case slug. Grep and open the code the task touches, enough to know its testing seam and every caller. If the task needs more than 3 ACs, more than 3 questions to pin down, a new route, table, migration, tool input, or a paid or auth path: stop before writing anything, say `/grill-me`, and name which one it hit.
+   - **Write** `docs/work/<feature>/spec.md` from `${CLAUDE_SKILL_DIR}/../spec/assets/spec-template.md`: one story, 1-3 ACs in Given/When/Then, a 1-2 sentence Problem, a Decisions list holding only the testing seam and any settled choice, Out of Scope naming the nearest thing a builder might add that the task did not ask for, and a Manual check of 1-3 steps. Never guess a choice the one line does not settle and a user can observe (wording, a default, an error, an empty case): it is a question in the approval message. Every Decision line that states observable behaviour needs an AC that shows it with one example, or it becomes such a question. Then run the checks exactly as `/spec` step 3 says: `WF check-spec`, each executable `~/.claude/checks/spec-*` with the `spec checks:` line, and its exit 1 / exit 2 handling.
+   - **One approval.** Send one message: the spec's path, its ACs and Out of Scope lines verbatim, then the questions numbered, each with a recommended answer and a one-line reason. Ask: approve as written, or what to change. A requested change edits the spec (an answer that adds or changes behaviour goes into the ACs) and asks again; one that breaks Fit means stop and say `/grill-me`. Nothing is built before a yes.
+   - **Approve.** On an explicit yes: set `Status: approved`, re-run the checks, `git add docs/work/<feature>/spec.md && git commit -m "docs(spec): <feature>"`. Run `WF gate docs/work/<feature>/spec.md --task`; show any line it prints and stop. Then go on with step 2 with that spec as the spec; step 3 may reuse what Fit read.
+2. **Index.** An `index.md` beside the spec means a resume: a `doing` part whose `merge <part>:` commit is on HEAD resumes at Orchestrated step 5; `WF set` every other `doing` part to `todo`, log `WF ruling`, and continue from the first step or part not done. Otherwise write it from `${CLAUDE_SKILL_DIR}/assets/index-template.md`: `Spec`, `Branch` and `Base` from the spec, the test command from the project's CLAUDE.md, no `tickets/` folder. Solo: one row `| P1 | <feature> | none | todo |` and one Parts line holding every AC; orchestrated: Orchestrated step 1. Under `## Open questions`, every choice the spec leaves open or contradicts, or `none` (a spec from a one-line task writes `none`: its approval settled them). Send them all in one call to the decision agent (`${CLAUDE_SKILL_DIR}/../build/references/decide.md`, Dispatch; only its Escalate list reaches the user) and write each DECISION on its question's line as `Answer: <decision> (fable)`; an answer that changes behaviour updates the spec's ACs or Out of Scope in the same commit. Done when `WF questions <index>` and `WF parts <index>` print nothing. Commit `docs(direct): <feature> index`; solo: `WF set <index> P1 doing`.
 3. **Read first.** Open the code each AC touches and grep every caller of anything you will change, before the first test.
 4. **Per AC, in spec order:**
    - Write one test that fails whenever the AC is false, using the spec's own values. Run it; it must fail because the behaviour is missing, not from a typo. Commit only the test: `test(US-n.ACm): red`.
