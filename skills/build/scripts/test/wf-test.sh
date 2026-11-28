@@ -369,6 +369,8 @@ afk="wf entry: a one-line task cannot run AFK. Fix: a one-line task needs the ow
 expect "entry: task then AFK" 1 "$afk" entry '"fix notes.md typo" AFK'
 expect "entry: task, slug, AFK" 1 "$afk" entry '"fix notes.md typo" notes-typo AFK'
 expect "entry: unquoted task ending AFK" 1 "$afk" entry 'fix the *.md links AFK'
+expect "entry: unquoted AFK not last" 0 "task" entry 'fix the AFK loop docs'
+expect "entry: unclosed quote AFK not last" 0 "task" entry '"fix the AFK loop docs'
 expect "entry: AFK inside the quotes" 0 "task" entry '"run the AFK loop docs"'
 none="wf entry: no argument. Fix: give the path of an approved spec or a quoted one-line task (\"<task>\")."
 expect "entry: no argv" 1 "$none" entry
